@@ -1,5 +1,6 @@
-# Decide which fields to observe
-# Times to observe
+"""
+Decide which fields to observe and time windows to observe.
+"""
 
 import os
 import numpy as np
@@ -12,6 +13,9 @@ import maglites.utils.ortho
 ############################################################
 
 def prepareObservationWindows(nights, horizon=-14., outfile=None):
+    """
+    Use -14 deg twilight as default for start and end of observation windows.
+    """
 
     observatory = ephem.Observer()
     observatory.lon = maglites.utils.constants.LON_CTIO
@@ -72,18 +76,27 @@ def prepareTargetList(infile, outfile=None):
 
     print np.sum(cut)
 
+    ra_select = ra[cut]
+    dec_select = dec[cut]
     tiling = np.tile(1, np.sum(cut))
     priority = np.tile(1, np.sum(cut))
     field_id = np.arange(1, np.sum(cut) + 1)
 
+    # Kludge to make 3 effective tilings
+    ra_select = np.tile(ra_select, 3)
+    dec_select = np.tile(dec_select, 3)
+    tiling = np.tile(np.arange(1, 4), np.sum(cut)).reshape(np.sum(cut), 3).transpose().flatten()
+    priority = np.tile(1, 3 * np.sum(cut))
+    field_id = np.arange(1, (3 * np.sum(cut)) + 1)
+
     #fig, ax, basemap = maglites.utils.ortho.makePlot('2016/2/11 03:00')
     fig, basemap = maglites.utils.ortho.makePlot('2016/2/11 03:00')
 
-    proj = maglites.utils.ortho.safe_proj(basemap, ra[cut], dec[cut])
+    proj = maglites.utils.ortho.safeProj(basemap, ra_select, dec_select)
     basemap.scatter(*proj, color='orange', edgecolor='none', s=50)
 
     if outfile:
-        np.savetxt(outfile, zip(field_id, ra[cut], dec[cut], tiling, priority), 
+        np.savetxt(outfile, zip(field_id, ra_select, dec_select, tiling, priority), 
                    fmt='%12i%12.4f%12.4f%12i%12i', 
                    header='%10s%12s%12s%12s%12s'%('ID', 'RA', 'DEC', 'TILING', 'PRIORITY'))
         #data2 = np.recfromtxt(outfile, names=True)

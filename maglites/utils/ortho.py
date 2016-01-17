@@ -5,7 +5,7 @@ import ephem
 import matplotlib.pyplot as plt
 import matplotlib
 
-import utils
+import maglites.utils.projector
 import constants
 
 plt.ion()
@@ -37,12 +37,12 @@ FIGSIZE = (10.5,8.5)
 SCALE = np.sqrt((8.0*6.0)/(FIGSIZE[0]*FIGSIZE[1]))
 DPI = 80
 
-LMC_RA = 80.8939   
-LMC_DEC = -69.7561
+#LMC_RA = 80.8939   
+#LMC_DEC = -69.7561
 
 ############################################################
 
-def safe_proj(proj, lon, lat):
+def safeProj(proj, lon, lat):
     """ Remove points outside of projection """
     x, y = proj(np.asarray(lon),np.asarray(lat))
     x[x > 1e29] = None
@@ -52,7 +52,7 @@ def safe_proj(proj, lon, lat):
 ############################################################
 
 def drawDES(basemap):
-    infile = '%s/data/round13-poly.txt'%(os.environ['MAGLITESDIR'])
+    infile = '%s/maglites/data/round13-poly.txt'%(os.environ['MAGLITESDIR'])
     reader_poly = open(infile)
     lines_poly = reader_poly.readlines()
     reader_poly.close()
@@ -68,16 +68,16 @@ def drawDES(basemap):
         ra_poly.append(float(parts[0]))
         dec_poly.append(float(parts[1]))
 
-    l_poly, b_poly = utils.celToGal(ra_poly, dec_poly)
+    l_poly, b_poly = maglites.utils.projector.celToGal(ra_poly, dec_poly)
 
-    proj = safe_proj(basemap, ra_poly, dec_poly)
+    proj = safeProj(basemap, ra_poly, dec_poly)
     basemap.plot(*proj, color='red', lw=2)
 
 ############################################################
 
 def drawSMASH(basemap):
     # SMASH fields
-    infile = 'smash_fields_final.txt'
+    infile = '%s/maglites/data/smash_fields_final.txt'%(os.environ['MAGLITESDIR'])
     reader = open(infile)
     lines = reader.readlines()
     reader.close()
@@ -95,7 +95,7 @@ def drawSMASH(basemap):
     ra_smash = np.array(ra_smash)
     dec_smash = np.array(dec_smash)
 
-    proj = safe_proj(basemap, ra_smash, dec_smash)
+    proj = safeProj(basemap, ra_smash, dec_smash)
     basemap.scatter(*proj, edgecolor='black', color='none', marker='h', s=50)
 
     #basemap.scatter(ra_smash, dec_smash, latlon=True, edgecolor='black', color='none', marker='h', s=50)
@@ -113,13 +113,13 @@ def drawAirmassContour(basemap, observatory, airmass, n=360):
         ra_radians, dec_radians = observatory.radec_of(azimuth, '%.2f'%(np.degrees(altitude_radians)))
         ra_contour[ii] = np.degrees(ra_radians)
         dec_contour[ii] = np.degrees(dec_radians)
-    proj = safe_proj(basemap, ra_contour, dec_contour)
+    proj = safeProj(basemap, ra_contour, dec_contour)
     basemap.plot(*proj, color='green', lw=2)
 
     ra_zenith, dec_zenith = observatory.radec_of(0, '90') # RA and Dec of zenith
     ra_zenith = np.degrees(ra_zenith)
     dec_zenith = np.degrees(dec_zenith)
-    proj = safe_proj(basemap, np.array([ra_zenith]), np.array([dec_zenith]))
+    proj = safeProj(basemap, np.array([ra_zenith]), np.array([dec_zenith]))
     basemap.scatter(*proj, color='green', edgecolor='none', s=50)
 
 ############################################################
@@ -132,7 +132,12 @@ def datestring(date):
 ############################################################
 
 def makePlot(date):
-    
+    """
+    Create map in orthographic projection
+    """
+    if type(date) != ephem.Date:
+        date = ephem.Date(date)
+
     observatory = ephem.Observer()
     observatory.lon = constants.LON_CTIO
     observatory.lat = constants.LAT_CTIO
@@ -170,5 +175,10 @@ def makePlot(date):
 
     #return fig, ax, basemap
     return fig, basemap
+
+############################################################
+
+if __name__ == '__main__':
+    makePlot('2016/2/10 03:00')
 
 ############################################################

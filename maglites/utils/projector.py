@@ -16,21 +16,21 @@ def angsep(lon1,lat1,lon2,lat2):
 
     [1] http://en.wikipedia.org/wiki/Great-circle_distance
     """
-    lon1,lat1 = numpy.radians([lon1,lat1])
-    lon2,lat2 = numpy.radians([lon2,lat2])
+    lon1,lat1 = np.radians([lon1,lat1])
+    lon2,lat2 = np.radians([lon2,lat2])
     
-    sdlon = numpy.sin(lon2 - lon1)
-    cdlon = numpy.cos(lon2 - lon1)
-    slat1 = numpy.sin(lat1)
-    slat2 = numpy.sin(lat2)
-    clat1 = numpy.cos(lat1)
-    clat2 = numpy.cos(lat2)
+    sdlon = np.sin(lon2 - lon1)
+    cdlon = np.cos(lon2 - lon1)
+    slat1 = np.sin(lat1)
+    slat2 = np.sin(lat2)
+    clat1 = np.cos(lat1)
+    clat2 = np.cos(lat2)
 
     num1 = clat2 * sdlon
     num2 = clat1 * slat2 - slat1 * clat2 * cdlon
     denominator = slat1 * slat2 + clat1 * clat2 * cdlon
 
-    return numpy.degrees(numpy.arctan2(numpy.hypot(num1,num2), denominator))
+    return np.degrees(np.arctan2(np.hypot(num1,num2), denominator))
 
 ############################################################
 
