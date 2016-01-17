@@ -14,6 +14,7 @@
 # * Select next sequence of exposures from a given start time
 # * Visualize (afterburner?)
 
+import copy
 import numpy as np
 import ephem
 import matplotlib.pyplot as plt
@@ -81,28 +82,28 @@ class Simulator:
         ra_zenith, dec_zenith = self.observatory.radec_of(0, '90') # RA and Dec of zenith
         ra_zenith = np.degrees(ra_zenith)
         dec_zenith = np.degrees(dec_zenith)
-
-        airmass = 1. / np.cos(np.radians(maglites.utils.projector.angsep(self.target_fields['RA'],
-                                                                         self.target_fields['DEC'],
-                                                                         ra_zenith,
-                                                                         dec_zenith)))
+        
+        airmass = maglites.utils.projector.airmass(ra_zenith, dec_zenith, self.target_fields['RA'], self.target_fields['DEC'])
 
         # Don't consider fields which have already been observed
         cut_todo = np.logical_not(np.in1d(self.target_fields['ID'], self.accomplished_field_ids))
         cut = cut_todo & (airmass < 2.)
 
-        print np.sum(cut)
-
         # Now apply some kind of selection criteria, e.g., select the field with the lowest airmass
-        airmass[np.logical_not(cut)] = 999.
-        airmass_effective = airmass + self.target_fields['TILING']
+        #airmass[np.logical_not(cut)] = 999.
+        airmass_effective = copy.copy(airmass)
+        airmass_effective[np.logical_not(cut)] = 999. # Do not observe fields that are unavailable
+        airmass_effective = airmass_effective + self.target_fields['TILING'] # Priorize coverage over multiple tilings
         index_select = np.argmin(airmass_effective)
+
+        print self.target_fields['TILING'][index_select], airmass[index_select]
 
         if plot:
             #fig, ax, basemap = maglites.utils.ortho.makePlot(date)
             fig, basemap = maglites.utils.ortho.makePlot(date)
             
             """
+            # Plot airmass
             cut_accomplished = np.in1d(self.target_fields['ID'], self.accomplished_field_ids)
             proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_accomplished], self.target_fields['DEC'][cut_accomplished])
             basemap.scatter(*proj, c='0.75', edgecolor='none', s=50)
@@ -112,9 +113,9 @@ class Simulator:
             colorbar = plt.colorbar(label='Airmass')
             """
             
+            # Plot number of tilings
             cut_accomplished = np.in1d(self.target_fields['ID'], self.accomplished_field_ids)
             cut_accomplished[index_select] = True
-
             proj = maglites.utils.ortho.safeProj(basemap, 
                                                  self.target_fields['RA'][np.logical_not(cut_accomplished)], 
                                                  self.target_fields['DEC'][np.logical_not(cut_accomplished)])
@@ -124,6 +125,7 @@ class Simulator:
             basemap.scatter(*proj, c=self.target_fields['TILING'][cut_accomplished], edgecolor='none', s=50, vmin=0, vmax=3, cmap='summer_r')
             colorbar = plt.colorbar(label='Tiling')
 
+            # Show the selected field
             proj = maglites.utils.ortho.safeProj(basemap, [self.target_fields['RA'][index_select]], [self.target_fields['DEC'][index_select]])
             basemap.scatter(*proj, c='magenta', edgecolor='none', s=50)
 

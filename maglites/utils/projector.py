@@ -34,6 +34,16 @@ def angsep(lon1,lat1,lon2,lat2):
 
 ############################################################
 
+def airmass(lon_zenith, lat_zenith, lon, lat):
+    """
+    Safety handling when angular separation to zenith is more than 90 deg
+    """
+    airmass = 1. / np.cos(np.radians(angsep(lon, lat, lon_zenith, lat_zenith)))
+    airmass[airmass < 1.] = 999.
+    return airmass
+
+############################################################
+
 def galToCel(ll, bb):
     """
     Converts Galactic (deg) to Celestial J2000 (deg) coordinates
