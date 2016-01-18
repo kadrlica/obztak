@@ -27,13 +27,15 @@ import maglites.utils.ortho
 
 class Simulator:
 
-    def __init__(self, infile_target_fields, infile_observation_windows=None, infile_acomplished=None):
+    def __init__(self, infile_target_fields, infile_observation_windows=None, infile_accomplished_fields=None):
         self.target_fields = np.recfromtxt(infile_target_fields, names=True)
-        if not infile_acomplished:
-            self.accomplished_field_ids = [] 
+        if not infile_accomplished_fields:
+            self.accomplished_field_ids = []
+            self.accomplished_fields = {}
+            for key in ['ID', 'RA', 'DEC', 'TILING', 'PRIORITY', 'DATE', 'AIRMASS', 'SLEW']:
+                self.accomplished_fields[key] = []
         else:
-            # Load the IDs of accomplished fields
-            pass
+            self.accomplished_fields = np.recfromtxt(infile_accomplished_fields, delimiter=',', names=True)
             
         self.observatory = ephem.Observer()
         self.observatory.lon = maglites.utils.constants.LON_CTIO
@@ -69,7 +71,7 @@ class Simulator:
         for observation_window in self.observation_windows:
             print '  %s -- %s'%(observation_window[0], observation_window[1])
 
-    def selectField(self, date, plot=False):
+    def selectField(self, date, ra_previous=None, dec_previous=None, plot=False):
         """
         Input is pyephem date object
         """
@@ -82,21 +84,36 @@ class Simulator:
         ra_zenith, dec_zenith = self.observatory.radec_of(0, '90') # RA and Dec of zenith
         ra_zenith = np.degrees(ra_zenith)
         dec_zenith = np.degrees(dec_zenith)
-        
         airmass = maglites.utils.projector.airmass(ra_zenith, dec_zenith, self.target_fields['RA'], self.target_fields['DEC'])
+
+        # Slew from the previous pointing
+        if ra_previous is not None and dec_previous is not None:
+            slew = maglites.utils.projector.angsep(ra_previous, dec_previous, self.target_fields['RA'], self.target_fields['DEC'])
+        else:
+            slew = np.tile(0., len(self.target_fields['RA']))
 
         # Don't consider fields which have already been observed
         cut_todo = np.logical_not(np.in1d(self.target_fields['ID'], self.accomplished_field_ids))
         cut = cut_todo & (airmass < 2.)
 
+        # Need to figure out what to do if there are no available fields
+
         # Now apply some kind of selection criteria, e.g., select the field with the lowest airmass
         #airmass[np.logical_not(cut)] = 999.
+        """
         airmass_effective = copy.copy(airmass)
         airmass_effective[np.logical_not(cut)] = 999. # Do not observe fields that are unavailable
-        airmass_effective = airmass_effective + self.target_fields['TILING'] # Priorize coverage over multiple tilings
+        airmass_effective += self.target_fields['TILING'] # Priorize coverage over multiple tilings
         index_select = np.argmin(airmass_effective)
+        """
 
-        print self.target_fields['TILING'][index_select], airmass[index_select]
+        # Different selection
+        ra_effective = copy.copy(self.target_fields['RA'])
+        ra_effective[np.logical_not(cut)] = 9999.
+        ra_effective += 360. * self.target_fields['TILING']
+        index_select = np.argmin(ra_effective)
+
+        print np.sum(cut), self.target_fields['TILING'][index_select], airmass[index_select], slew[index_select]
 
         if plot:
             #fig, ax, basemap = maglites.utils.ortho.makePlot(date)
@@ -129,7 +146,16 @@ class Simulator:
             proj = maglites.utils.ortho.safeProj(basemap, [self.target_fields['RA'][index_select]], [self.target_fields['DEC'][index_select]])
             basemap.scatter(*proj, c='magenta', edgecolor='none', s=50)
 
-        return self.target_fields['ID'][index_select]
+
+        field_select_dict = {}
+        for name in self.target_fields.dtype.names:
+            field_select_dict[name] = self.target_fields[name][index_select]
+        field_select_dict['AIRMASS'] = airmass[index_select]
+        field_select_dict['DATE'] = maglites.utils.ortho.datestring(date)
+        field_select_dict['SLEW'] = slew[index_select]
+
+        #return self.target_fields['ID'][index_select]
+        return field_select_dict
 
     def run(self, date=None, plot=True):
 
@@ -164,7 +190,20 @@ class Simulator:
                 print '  %s'%(maglites.utils.ortho.datestring(date)),
             else:
                 print '  %s'%(maglites.utils.ortho.datestring(date))
-            id_select = self.selectField(date, plot=plot)
+            
+            # Check 
+            compute_slew = True
+            if len(self.accomplished_fields['ID']) == 0:
+                compute_slew = False
+            else:
+                if (date - ephem.Date(self.accomplished_fields['DATE'][-1])) > (30. * ephem.minute):
+                    compute_slew = False
+            if compute_slew:
+                field_select = self.selectField(date, ra_previous=self.accomplished_fields['RA'][-1], dec_previous=self.accomplished_fields['DEC'][-1], plot=plot)
+            else:
+                field_select = self.selectField(date, plot=plot)
+                
+            id_select = field_select['ID']
             if plot:
                 if latch:
                     latch = (raw_input(' ...continue ([y]/n)').lower() != 'n')
@@ -176,10 +215,54 @@ class Simulator:
             self.accomplished_field_ids.append(id_select)
             plot = False # Kludge to make end of night summary plots
 
+            for key in field_select.keys():
+                self.accomplished_fields[key].append(field_select[key])
+                #if key not in self.accomplished_fields.keys():
+                #    self.accomplished_fields[key] = [field_select[key]]
+                #else:
+                #    self.accomplished_fields[key].append(field_select[key])
+
         print len(self.accomplished_field_ids)
 
         # Clean up
-        self.accomplished_field_ids = [] 
+        self.accomplished_field_ids = []
+
+    def consolidateAccomplishedFields(self):
+        """
+        slew = np.tile(0., len(self.accomplished_fields['RA']))
+        for ii in range(1, len(self.accomplished_fields['RA'])):
+            time_difference = ephem.Date(self.accomplished_fields['DATE'][ii]) - ephem.Date(self.accomplished_fields['DATE'][ii - 1]) 
+            angsep = maglites.utils.projector.angsep(self.accomplished_fields['RA'][ii], self.accomplished_fields['DEC'][ii], 
+                                                     self.accomplished_fields['RA'][ii - 1], self.accomplished_fields['DEC'][ii - 1])
+            if time_difference > (30. * ephem.minute):
+                angsep = 0.
+            print time_difference, angsep
+            slew[ii] = angsep
+        """
+
+        data = zip(self.accomplished_fields['ID'],
+                   self.accomplished_fields['RA'],
+                   self.accomplished_fields['DEC'],
+                   self.accomplished_fields['TILING'],
+                   self.accomplished_fields['PRIORITY'],
+                   self.accomplished_fields['DATE'],
+                   self.accomplished_fields['AIRMASS'],
+                   self.accomplished_fields['SLEW'])
+        #slew]
+        dtype = [('ID', int),
+                 ('RA', float),
+                 ('DEC', float),
+                 ('TILING', int),
+                 ('PRIORITY', int),
+                 ('DATE', 'a20'),
+                 ('AIRMASS', float),
+                 ('SLEW', float)]
+        accomplished_fields = np.array(data, dtype=dtype)
+
+        return accomplished_fields
+
+    def saveAccomplishedFields(self, outfile):
+        np.savetxt(outfile, self.consolidateAccomplishedFields(), fmt='%i, %.4f, %.4f, %i, %i, %s, %.4f, %.4f', header='ID, RA, DEC, TILING, PRIORITY, DATE, AIRMASS, SLEW')
 
 ############################################################
 
@@ -192,5 +275,17 @@ if __name__ == '__main__':
     #my_simulator.run('2016/2/11 03:00')
     #my_simulator.run('2016/2/11 08:00')
     my_simulator.run(plot=False)
+    my_simulator.saveAccomplishedFields('accomplished_fields.txt')
+
+    # Example diagnostics
+    """
+    d = np.recfromtxt('accomplished_fields.txt', delimiter=',', names=True)
+    plt.figure()
+    plt.scatter(np.arange(len(d)), d['SLEW'])
+
+    plt.figure()
+    #plt.hist(d['AIRMASS'], bins=31)
+    plt.scatter(np.arange(len(d)), d['AIRMASS'])
+    """
 
 ############################################################

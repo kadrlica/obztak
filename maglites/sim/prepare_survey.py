@@ -109,6 +109,8 @@ def prepareTargetList(infile, outfile=None):
 
 if __name__ == '__main__':
 
+    """
+    # One season prediction
     nights = [['2016/2/10', 'second'],
               ['2016/2/11', 'second'],
               ['2016/2/12', 'second'],
@@ -118,6 +120,27 @@ if __name__ == '__main__':
               ['2016/6/27', 'full'],
               ['2016/6/28', 'full'],
               ['2016/6/29', 'full']]
+    """
+
+    # Two seasons prediction
+    nights = [['2016/2/10', 'second'],
+              ['2016/2/11', 'second'],
+              ['2016/2/12', 'second'],
+              ['2016/2/13', 'second'],
+              ['2016/2/14', 'second'],
+              ['2016/2/15', 'second'],
+              ['2016/6/27', 'full'],
+              ['2016/6/28', 'full'],
+              ['2016/6/29', 'full'],
+              ['2017/2/10', 'second'],
+              ['2017/2/11', 'second'],
+              ['2017/2/12', 'second'],
+              ['2017/2/13', 'second'],
+              ['2017/2/14', 'second'],
+              ['2017/2/15', 'second'],
+              ['2017/6/27', 'full'],
+              ['2017/6/28', 'full'],
+              ['2017/6/29', 'full']]
 
     observation_windows = prepareObservationWindows(nights, outfile='observation_windows.txt')
 
