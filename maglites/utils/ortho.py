@@ -124,6 +124,24 @@ def drawAirmassContour(basemap, observatory, airmass, n=360):
 
 ############################################################
 
+def drawMoon(basemap, date):
+    moon = ephem.Moon()
+    moon.compute(date)
+    ra_moon = np.degrees(moon.ra)
+    dec_moon = np.degrees(moon.dec)
+
+    proj = safeProj(basemap, np.array([ra_moon]), np.array([dec_moon]))
+    basemap.scatter(*proj, color='%.2f'%(0.01 * moon.phase), edgecolor='black', s=500)
+
+    if moon.phase > 50.:
+        color = 'black'
+    else:
+        color = 'white'
+    plt.text(proj[0], proj[1], '%.2f'%(0.01 * moon.phase), 
+             fontsize=10, ha='center', va='center', color=color)
+
+############################################################
+
 def datestring(date):
     if type(date) != ephem.Date:
         date = ephem.Date(date) 
@@ -170,6 +188,7 @@ def makePlot(date):
     drawDES(basemap)
     drawSMASH(basemap)
     drawAirmassContour(basemap, observatory, 2.)
+    drawMoon(basemap, date)
 
     plt.title(datestring(date))
 

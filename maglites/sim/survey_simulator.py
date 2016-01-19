@@ -32,7 +32,7 @@ class Simulator:
         if not infile_accomplished_fields:
             self.accomplished_field_ids = []
             self.accomplished_fields = {}
-            for key in ['ID', 'RA', 'DEC', 'TILING', 'PRIORITY', 'DATE', 'AIRMASS', 'SLEW']:
+            for key in ['ID', 'RA', 'DEC', 'TILING', 'PRIORITY', 'DATE', 'AIRMASS', 'SLEW', 'MOONANGLE']:
                 self.accomplished_fields[key] = []
         else:
             self.accomplished_fields = np.recfromtxt(infile_accomplished_fields, delimiter=',', names=True)
@@ -85,6 +85,13 @@ class Simulator:
         ra_zenith = np.degrees(ra_zenith)
         dec_zenith = np.degrees(dec_zenith)
         airmass = maglites.utils.projector.airmass(ra_zenith, dec_zenith, self.target_fields['RA'], self.target_fields['DEC'])
+
+        # Include moon angle
+        moon = ephem.Moon()
+        moon.compute(date)
+        ra_moon = np.degrees(moon.ra)
+        dec_moon = np.degrees(moon.dec)
+        moon_angle = maglites.utils.projector.angsep(ra_moon, dec_moon, self.target_fields['RA'], self.target_fields['DEC'])
 
         # Slew from the previous pointing
         if ra_previous is not None and dec_previous is not None:
@@ -153,6 +160,7 @@ class Simulator:
         field_select_dict['AIRMASS'] = airmass[index_select]
         field_select_dict['DATE'] = maglites.utils.ortho.datestring(date)
         field_select_dict['SLEW'] = slew[index_select]
+        field_select_dict['MOONANGLE'] = moon_angle[index_select]
 
         #return self.target_fields['ID'][index_select]
         return field_select_dict
@@ -247,7 +255,8 @@ class Simulator:
                    self.accomplished_fields['PRIORITY'],
                    self.accomplished_fields['DATE'],
                    self.accomplished_fields['AIRMASS'],
-                   self.accomplished_fields['SLEW'])
+                   self.accomplished_fields['SLEW'],
+                   self.accomplished_fields['MOONANGLE'])
         #slew]
         dtype = [('ID', int),
                  ('RA', float),
@@ -256,13 +265,14 @@ class Simulator:
                  ('PRIORITY', int),
                  ('DATE', 'a20'),
                  ('AIRMASS', float),
-                 ('SLEW', float)]
+                 ('SLEW', float),
+                 ('MOONANGLE', float)]
         accomplished_fields = np.array(data, dtype=dtype)
 
         return accomplished_fields
 
     def saveAccomplishedFields(self, outfile):
-        np.savetxt(outfile, self.consolidateAccomplishedFields(), fmt='%i, %.4f, %.4f, %i, %i, %s, %.4f, %.4f', header='ID, RA, DEC, TILING, PRIORITY, DATE, AIRMASS, SLEW')
+        np.savetxt(outfile, self.consolidateAccomplishedFields(), fmt='%i, %.4f, %.4f, %i, %i, %s, %.4f, %.4f, %.4f', header='ID, RA, DEC, TILING, PRIORITY, DATE, AIRMASS, SLEW, MOONANGLE')
 
 ############################################################
 
