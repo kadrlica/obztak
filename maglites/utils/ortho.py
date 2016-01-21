@@ -33,9 +33,10 @@ matplotlib.rcParams.update(params)
 
 ############################################################
 
-FIGSIZE = (10.5,8.5)
-SCALE = np.sqrt((8.0*6.0)/(FIGSIZE[0]*FIGSIZE[1]))
-DPI = 80
+#FIGSIZE = (10.5,8.5)
+#FIGSIZE = (10.5 / 2., 8.5 / 2.)
+#SCALE = np.sqrt((8.0*6.0)/(FIGSIZE[0]*FIGSIZE[1]))
+#DPI = 80
 
 #LMC_RA = 80.8939   
 #LMC_DEC = -69.7561
@@ -75,7 +76,7 @@ def drawDES(basemap):
 
 ############################################################
 
-def drawSMASH(basemap):
+def drawSMASH(basemap, s=50):
     # SMASH fields
     infile = '%s/maglites/data/smash_fields_final.txt'%(os.environ['MAGLITESDIR'])
     reader = open(infile)
@@ -96,13 +97,13 @@ def drawSMASH(basemap):
     dec_smash = np.array(dec_smash)
 
     proj = safeProj(basemap, ra_smash, dec_smash)
-    basemap.scatter(*proj, edgecolor='black', color='none', marker='h', s=50)
+    basemap.scatter(*proj, edgecolor='black', color='none', marker='h', s=s)
 
     #basemap.scatter(ra_smash, dec_smash, latlon=True, edgecolor='black', color='none', marker='h', s=50)
 
 ############################################################
 
-def drawAirmassContour(basemap, observatory, airmass, n=360):
+def drawAirmassContour(basemap, observatory, airmass, n=360, s=50):
     #airmass = 1. / cos(90. - altitude)
     #90 - alt = arccos(1. / airmass)
     altitude_radians = (0.5 * np.pi) - np.arccos(1. / airmass)
@@ -120,7 +121,7 @@ def drawAirmassContour(basemap, observatory, airmass, n=360):
     ra_zenith = np.degrees(ra_zenith)
     dec_zenith = np.degrees(dec_zenith)
     proj = safeProj(basemap, np.array([ra_zenith]), np.array([dec_zenith]))
-    basemap.scatter(*proj, color='green', edgecolor='none', s=50)
+    basemap.scatter(*proj, color='green', edgecolor='none', s=s)
 
 ############################################################
 
@@ -149,7 +150,7 @@ def datestring(date):
 
 ############################################################
 
-def makePlot(date):
+def makePlot(date, figsize=(10.5,8.5), dpi=80, s=50, center=None, airmass=True, moon=True):
     """
     Create map in orthographic projection
     """
@@ -165,7 +166,7 @@ def makePlot(date):
     #fig, ax = plt.subplots(fig='ortho', figsize=FIGSIZE, dpi=DPI)
     #fig = plt.figure('ortho')
     #ax = plt.subplots(figure=fig, figsize=FIGSIZE, dpi=DPI)
-    fig = plt.figure('ortho', figsize=FIGSIZE, dpi=DPI)
+    fig = plt.figure('ortho', figsize=figsize, dpi=dpi)
 
     ra_zenith, dec_zenith = observatory.radec_of(0, '90') # RA and Dec of zenith
     ra_zenith = np.degrees(ra_zenith)
@@ -177,7 +178,10 @@ def makePlot(date):
 
     # Create the basemap
     proj_kwargs = dict(projection='ortho', celestial=True)
-    lon_0, lat_0 = -lon_zen, lat_zen # Center position
+    if center is None:
+        lon_0, lat_0 = -lon_zen, lat_zen # Center position
+    else:
+        lon_0, lat_0 = center[0], center[1]
     proj_kwargs.update(lon_0=lon_0, lat_0=lat_0)
     basemap = Basemap(**proj_kwargs)
     parallels = np.arange(-90.,120.,30.)
@@ -186,11 +190,13 @@ def makePlot(date):
     basemap.drawmeridians(meridians)
 
     drawDES(basemap)
-    drawSMASH(basemap)
-    drawAirmassContour(basemap, observatory, 2.)
-    drawMoon(basemap, date)
+    drawSMASH(basemap, s=s)
+    if airmass:
+        drawAirmassContour(basemap, observatory, 2., s=s)
+    if moon:
+        drawMoon(basemap, date)
 
-    plt.title(datestring(date))
+    plt.title('%s UTC'%(datestring(date)))
 
     #return fig, ax, basemap
     return fig, basemap
@@ -201,3 +207,4 @@ if __name__ == '__main__':
     makePlot('2016/2/10 03:00')
 
 ############################################################
+

@@ -83,11 +83,12 @@ def prepareTargetList(infile, outfile=None):
     field_id = np.arange(1, np.sum(cut) + 1)
 
     # Kludge to make 3 effective tilings
-    ra_select = np.tile(ra_select, 3)
-    dec_select = np.tile(dec_select, 3)
-    tiling = np.tile(np.arange(1, 4), np.sum(cut)).reshape(np.sum(cut), 3).transpose().flatten()
-    priority = np.tile(1, 3 * np.sum(cut))
-    field_id = np.arange(1, (3 * np.sum(cut)) + 1)
+    n_effective_tilings = 4
+    ra_select = np.tile(ra_select, n_effective_tilings)
+    dec_select = np.tile(dec_select, n_effective_tilings)
+    tiling = np.tile(np.arange(1, n_effective_tilings + 1), np.sum(cut)).reshape(np.sum(cut), n_effective_tilings).transpose().flatten()
+    priority = np.tile(1, n_effective_tilings * np.sum(cut))
+    field_id = np.arange(1, (n_effective_tilings * np.sum(cut)) + 1)
 
     #fig, ax, basemap = maglites.utils.ortho.makePlot('2016/2/11 03:00')
     fig, basemap = maglites.utils.ortho.makePlot('2016/2/11 03:00')
@@ -132,12 +133,12 @@ if __name__ == '__main__':
               ['2016/6/27', 'full'],
               ['2016/6/28', 'full'],
               ['2016/6/29', 'full'],
-              ['2017/2/10', 'second'],
-              ['2017/2/11', 'second'],
-              ['2017/2/12', 'second'],
-              ['2017/2/13', 'second'],
-              ['2017/2/14', 'second'],
-              ['2017/2/15', 'second'],
+              ['2017/2/18', 'second'],
+              ['2017/2/19', 'second'],
+              ['2017/2/20', 'second'],
+              ['2017/2/21', 'second'],
+              ['2017/2/22', 'second'],
+              ['2017/2/23', 'second'],
               ['2017/6/27', 'full'],
               ['2017/6/28', 'full'],
               ['2017/6/29', 'full']]

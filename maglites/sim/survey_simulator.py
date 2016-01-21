@@ -71,7 +71,7 @@ class Simulator:
         for observation_window in self.observation_windows:
             print '  %s -- %s'%(observation_window[0], observation_window[1])
 
-    def selectField(self, date, ra_previous=None, dec_previous=None, plot=False):
+    def selectField(self, date, ra_previous=None, dec_previous=None, plot=False, mode='balance'):
         """
         Input is pyephem date object
         """
@@ -107,18 +107,41 @@ class Simulator:
 
         # Now apply some kind of selection criteria, e.g., select the field with the lowest airmass
         #airmass[np.logical_not(cut)] = 999.
-        """
-        airmass_effective = copy.copy(airmass)
-        airmass_effective[np.logical_not(cut)] = 999. # Do not observe fields that are unavailable
-        airmass_effective += self.target_fields['TILING'] # Priorize coverage over multiple tilings
-        index_select = np.argmin(airmass_effective)
-        """
+        
+        if mode == 'airmass':
+            airmass_effective = copy.copy(airmass)
+            airmass_effective[np.logical_not(cut)] = 999. # Do not observe fields that are unavailable
+            airmass_effective += self.target_fields['TILING'] # Priorize coverage over multiple tilings
+            index_select = np.argmin(airmass_effective)
+        elif mode == 'ra':
+            # Different selection
+            #ra_effective = copy.copy(self.target_fields['RA'])
+            ra_effective = copy.copy(self.target_fields['RA']) - ra_zenith
+            ra_effective[ra_effective > 180.] = ra_effective[ra_effective > 180.] - 360.
+            ra_effective[np.logical_not(cut)] = 9999.
+            ra_effective += 360. * self.target_fields['TILING']
+            index_select = np.argmin(ra_effective)
+        elif mode == 'slew':
+            #ra_effective = copy.copy(self.target_fields['RA'])
+            ra_effective = copy.copy(self.target_fields['RA']) - ra_zenith
+            ra_effective[ra_effective > 180.] = ra_effective[ra_effective > 180.] - 360.
+            ra_effective[np.logical_not(cut)] = 9999.
+            ra_effective += 360. * self.target_fields['TILING']
+            ra_effective += slew**2
+            #ra_effective += 2. * slew
+            index_select = np.argmin(ra_effective)
+        elif mode == 'balance':
+            ra_effective = copy.copy(self.target_fields['RA']) - ra_zenith
+            ra_effective[ra_effective > 180.] = ra_effective[ra_effective > 180.] - 360.
+            ra_effective[np.logical_not(cut)] = 9999.
+            ra_effective += 360. * self.target_fields['TILING']
+            ra_effective += slew**2
+            ra_effective += 100. * (airmass - 1.)**3
+            index_select = np.argmin(ra_effective)
 
-        # Different selection
-        ra_effective = copy.copy(self.target_fields['RA'])
-        ra_effective[np.logical_not(cut)] = 9999.
-        ra_effective += 360. * self.target_fields['TILING']
-        index_select = np.argmin(ra_effective)
+        #plt.figure()
+        #plt.scatter(np.arange(len(ra_effective)), ra_effective)
+        #raw_input()
 
         print np.sum(cut), self.target_fields['TILING'][index_select], airmass[index_select], slew[index_select]
 
@@ -136,6 +159,30 @@ class Simulator:
             basemap.scatter(*proj, c=airmass[cut_todo], edgecolor='none', s=50, vmin=1., vmax=2., cmap='summer_r')
             colorbar = plt.colorbar(label='Airmass')
             """
+            """
+            # Plot RA
+            proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_todo], self.target_fields['DEC'][cut_todo])
+            ra_effective = self.target_fields['RA'][cut_todo] - ra_zenith
+            ra_effective[ra_effective > 180.] = ra_effective[ra_effective > 180.] - 360.
+            basemap.scatter(*proj, c=ra_effective, edgecolor='none', s=50, cmap='summer_r')
+            colorbar = plt.colorbar(label='RA')
+
+            cut_accomplished = np.in1d(self.target_fields['ID'], self.accomplished_field_ids)
+            proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_accomplished], self.target_fields['DEC'][cut_accomplished])
+            basemap.scatter(*proj, c='0.75', edgecolor='none', s=50)
+            """
+            """
+            # Plot weight
+            index_sort = np.argsort(ra_effective[cut_todo])[::-1]
+            proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_todo][index_sort], self.target_fields['DEC'][cut_todo][index_sort])
+            weight_min = np.min(ra_effective[cut_todo])
+            basemap.scatter(*proj, c=ra_effective[cut_todo][index_sort], edgecolor='none', s=50, vmin=weight_min, vmax=weight_min + 100., cmap='summer_r')
+            colorbar = plt.colorbar(label='Weight')
+
+            cut_accomplished = np.in1d(self.target_fields['ID'], self.accomplished_field_ids)
+            proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_accomplished], self.target_fields['DEC'][cut_accomplished])
+            basemap.scatter(*proj, c='0.75', edgecolor='none', s=50)
+            """
             
             # Plot number of tilings
             cut_accomplished = np.in1d(self.target_fields['ID'], self.accomplished_field_ids)
@@ -143,11 +190,12 @@ class Simulator:
             proj = maglites.utils.ortho.safeProj(basemap, 
                                                  self.target_fields['RA'][np.logical_not(cut_accomplished)], 
                                                  self.target_fields['DEC'][np.logical_not(cut_accomplished)])
-            basemap.scatter(*proj, c=np.tile(0, np.sum(np.logical_not(cut_accomplished))), edgecolor='none', s=50, vmin=0, vmax=3, cmap='summer_r')
+            basemap.scatter(*proj, c=np.tile(0, np.sum(np.logical_not(cut_accomplished))), edgecolor='none', s=50, vmin=0, vmax=4, cmap='summer_r')
             
             proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_accomplished], self.target_fields['DEC'][cut_accomplished])
-            basemap.scatter(*proj, c=self.target_fields['TILING'][cut_accomplished], edgecolor='none', s=50, vmin=0, vmax=3, cmap='summer_r')
+            basemap.scatter(*proj, c=self.target_fields['TILING'][cut_accomplished], edgecolor='none', s=50, vmin=0, vmax=4, cmap='summer_r')
             colorbar = plt.colorbar(label='Tiling')
+            
 
             # Show the selected field
             proj = maglites.utils.ortho.safeProj(basemap, [self.target_fields['RA'][index_select]], [self.target_fields['DEC'][index_select]])
