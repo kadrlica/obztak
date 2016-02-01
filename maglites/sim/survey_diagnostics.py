@@ -62,7 +62,7 @@ def movie(infile_accomplished_fields, infile_target_fields=None, outdir=None, ch
 
 ############################################################
 
-def slew(infile_accomplished_fields):
+def slew(infile_accomplished_fields, save=False):
     accomplished_fields = np.recfromtxt(infile_accomplished_fields, delimiter=',', names=True)
 
     plt.figure()
@@ -98,7 +98,7 @@ def slew(infile_accomplished_fields):
 
 ############################################################
 
-def airmass(infile_accomplished_fields):
+def airmass(infile_accomplished_fields, save=False):
     accomplished_fields = np.recfromtxt(infile_accomplished_fields, delimiter=',', names=True)
 
     plt.figure()
@@ -162,7 +162,7 @@ if __name__ == '__main__':
     #movie('accomplished_fields.txt', infile_target_fields='target_fields.txt', outdir='movie3', chunk=2)
     #slew('accomplished_fields.txt')
     #airmass('accomplished_fields.txt')
-    progress('accomplished_fields.txt', '2016/6/30 10:32:50', infile_target_fields='target_fields.txt')
-    #progress('accomplished_fields.txt', '2017/6/30 10:32:51', infile_target_fields='target_fields.txt')
+    #progress('accomplished_fields.txt', '2016/6/30 10:32:50', infile_target_fields='target_fields.txt')
+    progress('accomplished_fields.txt', '2017/6/30 10:32:51', infile_target_fields='target_fields.txt')
 
 ############################################################

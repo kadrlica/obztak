@@ -14,8 +14,10 @@
 # * Select next sequence of exposures from a given start time
 # * Visualize (afterburner?)
 
+import os
 import copy
 import numpy as np
+import scipy.interpolate
 import ephem
 import matplotlib.pyplot as plt
 
@@ -32,7 +34,7 @@ class Simulator:
         if not infile_accomplished_fields:
             self.accomplished_field_ids = []
             self.accomplished_fields = {}
-            for key in ['ID', 'RA', 'DEC', 'TILING', 'PRIORITY', 'DATE', 'AIRMASS', 'SLEW', 'MOONANGLE']:
+            for key in ['ID', 'RA', 'DEC', 'TILING', 'PRIORITY', 'DATE', 'AIRMASS', 'SLEW', 'MOONANGLE', 'HOURANGLE']:
                 self.accomplished_fields[key] = []
         else:
             self.accomplished_fields = np.recfromtxt(infile_accomplished_fields, delimiter=',', names=True)
@@ -46,6 +48,8 @@ class Simulator:
             self.loadObservationWindows(infile_observation_windows)
         else:
             self.observation_windows = None
+
+        self.loadBlancoConstraints()
 
     def loadObservationWindows(self, infile_observation_windows):
         reader = open(infile_observation_windows)
@@ -70,6 +74,21 @@ class Simulator:
         print 'Observation Windows'
         for observation_window in self.observation_windows:
             print '  %s -- %s'%(observation_window[0], observation_window[1])
+
+    def loadBlancoConstraints(self):
+        """
+        Load telescope pointing constraints
+        """
+        data = np.recfromtxt('%s/maglites/data/blanco_hour_angle_limits.dat'%(os.environ['MAGLITESDIR']), names=True)
+        self.blanco_constraints = data
+        ha_degrees = np.tile(0., len(self.blanco_constraints['HA']))
+        for ii in range(0, len(self.blanco_constraints['HA'])):
+            ha_degrees[ii] = maglites.utils.projector.hms2dec(self.blanco_constraints['HA'][ii])
+
+        self.f_hour_angle_limit = scipy.interpolate.interp1d(self.blanco_constraints['Dec'], ha_degrees, 
+                                                             bounds_error=False, fill_value=-1.)
+        self.f_airmass_limit = scipy.interpolate.interp1d(self.blanco_constraints['Dec'], self.blanco_constraints['AirmassLimit'], 
+                                                          bounds_error=False, fill_value=-1.)
 
     def selectField(self, date, ra_previous=None, dec_previous=None, plot=False, mode='balance'):
         """
@@ -99,9 +118,18 @@ class Simulator:
         else:
             slew = np.tile(0., len(self.target_fields['RA']))
 
+        # Hour angle restrictions
+        hour_angle_degree = copy.copy(self.target_fields['RA']) - ra_zenith
+        hour_angle_degree[hour_angle_degree > 180.] = hour_angle_degree[hour_angle_degree > 180.] - 360.
+        cut_hour_angle = np.fabs(hour_angle_degree) < self.f_hour_angle_limit(self.target_fields['DEC']) # Check the hour angle restrictions at south pole
+        
+        # Airmass restrictions
+        cut_airmass = airmass < self.f_airmass_limit(self.target_fields['DEC'])
+
         # Don't consider fields which have already been observed
         cut_todo = np.logical_not(np.in1d(self.target_fields['ID'], self.accomplished_field_ids))
-        cut = cut_todo & (airmass < 2.)
+        cut = cut_todo & cut_hour_angle & cut_airmass & (airmass < 2.) # Now with Blanco telescope constraints
+        #cut = cut_todo & (airmass < 2.) # Original
 
         # Need to figure out what to do if there are no available fields
 
@@ -157,7 +185,19 @@ class Simulator:
             
             proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_todo], self.target_fields['DEC'][cut_todo])
             basemap.scatter(*proj, c=airmass[cut_todo], edgecolor='none', s=50, vmin=1., vmax=2., cmap='summer_r')
+            #basemap.scatter(*proj, c=cut_airmass.astype(float)[cut_todo], edgecolor='none', s=50, vmin=0., vmax=1., cmap='summer_r')
             colorbar = plt.colorbar(label='Airmass')
+            """
+            """
+            # Plot hour angle
+            cut_accomplished = np.in1d(self.target_fields['ID'], self.accomplished_field_ids)
+            proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_accomplished], self.target_fields['DEC'][cut_accomplished])
+            basemap.scatter(*proj, c='0.75', edgecolor='none', s=50)
+            
+            proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_todo], self.target_fields['DEC'][cut_todo])
+            basemap.scatter(*proj, c=np.fabs(hour_angle_degree[cut_todo]), edgecolor='none', s=50, vmin=0., vmax=78.75, cmap='summer_r')
+            #basemap.scatter(*proj, c=cut_hour_angle.astype(float)[cut_todo], edgecolor='none', s=50, vmin=0., vmax=1., cmap='summer_r')
+            colorbar = plt.colorbar(label='Hour Angle')
             """
             """
             # Plot RA
@@ -209,6 +249,7 @@ class Simulator:
         field_select_dict['DATE'] = maglites.utils.ortho.datestring(date)
         field_select_dict['SLEW'] = slew[index_select]
         field_select_dict['MOONANGLE'] = moon_angle[index_select]
+        field_select_dict['HOURANGLE'] = hour_angle_degree[index_select]
 
         #return self.target_fields['ID'][index_select]
         return field_select_dict
@@ -304,7 +345,8 @@ class Simulator:
                    self.accomplished_fields['DATE'],
                    self.accomplished_fields['AIRMASS'],
                    self.accomplished_fields['SLEW'],
-                   self.accomplished_fields['MOONANGLE'])
+                   self.accomplished_fields['MOONANGLE'],
+                   self.accomplished_fields['HOURANGLE'])
         #slew]
         dtype = [('ID', int),
                  ('RA', float),
@@ -314,13 +356,14 @@ class Simulator:
                  ('DATE', 'a20'),
                  ('AIRMASS', float),
                  ('SLEW', float),
-                 ('MOONANGLE', float)]
+                 ('MOONANGLE', float),
+                 ('HOURANGLE', float)]
         accomplished_fields = np.array(data, dtype=dtype)
 
         return accomplished_fields
 
     def saveAccomplishedFields(self, outfile):
-        np.savetxt(outfile, self.consolidateAccomplishedFields(), fmt='%i, %.4f, %.4f, %i, %i, %s, %.4f, %.4f, %.4f', header='ID, RA, DEC, TILING, PRIORITY, DATE, AIRMASS, SLEW, MOONANGLE')
+        np.savetxt(outfile, self.consolidateAccomplishedFields(), fmt='%i, %.4f, %.4f, %i, %i, %s, %.4f, %.4f, %.4f, %.4f', header='ID, RA, DEC, TILING, PRIORITY, DATE, AIRMASS, SLEW, MOONANGLE, HOURANGLE')
 
 ############################################################
 
@@ -333,11 +376,11 @@ if __name__ == '__main__':
     #my_simulator.run('2016/2/11 03:00')
     #my_simulator.run('2016/2/11 08:00')
     my_simulator.run(plot=False)
-    my_simulator.saveAccomplishedFields('accomplished_fields.txt')
+    my_simulator.saveAccomplishedFields('accomplished_fields_2.txt')
 
     # Example diagnostics
     """
-    d = np.recfromtxt('accomplished_fields.txt', delimiter=',', names=True)
+    d = np.recfromtxt('accomplished_fields_2.txt', delimiter=',', names=True)
     plt.figure()
     plt.scatter(np.arange(len(d)), d['SLEW'])
 

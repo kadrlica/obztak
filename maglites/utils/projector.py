@@ -1,3 +1,4 @@
+import re
 import numpy as np
 
 ############################################################
@@ -95,5 +96,26 @@ def celToGal(ra, dec):
     bb = np.arcsin(sin_b)
     ll = (lcp - lcpml + (2. * np.pi)) % (2. * np.pi)
     return np.degrees(ll), np.degrees(bb)
+
+############################################################
+
+def hms2dec(hms):
+    """
+    Convert longitude from hours,minutes,seconds in string or 3-array
+    format to decimal degrees.
+    """
+    DEGREE = 360.
+    HOUR = 24.
+    MINUTE = 60.
+    SECOND = 3600.
+
+    if isinstance(hms,basestring):
+        hour,minute,second = np.array(hms.split(':')).astype(float)
+        #hour,minute,second = np.array(re.split('[hms]',hms))[:3].astype(float)
+    else:
+        hour,minute,second = hms.T
+
+    decimal = (hour + minute * 1./MINUTE + second * 1./SECOND)*(DEGREE/HOUR)
+    return decimal
 
 ############################################################
