@@ -19,11 +19,26 @@ import copy
 import numpy as np
 import scipy.interpolate
 import ephem
+
 import matplotlib.pyplot as plt
+import matplotlib.mlab as mlab
+
 
 import maglites.utils.projector
 import maglites.utils.constants
 import maglites.utils.ortho
+
+
+class FormatFloatForce(mlab.FormatFormatStr): 
+    """
+    mlab not doing well...
+    """
+    def __init__(self,fmt="%.4f"): 
+        mlab.FormatFormatStr.__init__(self,fmt) 
+    def toval(self, x): 
+        return x 
+    def fromstr(self, s): 
+        return float(s) 
 
 ############################################################
 
@@ -271,6 +286,9 @@ class Simulator(object):
         latch = True
         while latch:
             # Check to see if in valid observation window
+
+            ### ADW: It would be good to pad these windows by a bit in
+            ### case we start early or end late
             if self.observation_windows is not None:
                 if date < self.observation_windows[0][0]:
                     date = self.observation_windows[0][0]
@@ -366,7 +384,17 @@ class Simulator(object):
         return accomplished_fields
 
     def saveAccomplishedFields(self, outfile):
-        np.savetxt(outfile, self.consolidateAccomplishedFields(), fmt='%i, %.4f, %.4f, %i, %i, %s, %.4f, %.4f, %.4f, %.4f', header='ID, RA, DEC, TILING, PRIORITY, DATE, AIRMASS, SLEW, MOONANGLE, HOURANGLE')
+        ### ADW: It would probably be better to use pylab.rec2csv or
+        ### some other standard csv creation routine. The spaces after
+        ### the commas make me worried...
+        data = self.consolidateAccomplishedFields()
+        #np.savetxt(outfile, data, fmt='%i, %.4f, %.4f, %i, %i, %s, %.4f, %.4f, %.4f, %.4f', header='ID, RA, DEC, TILING, PRIORITY, DATE, AIRMASS, SLEW, MOONANGLE, HOURANGLE')
+        formatd = dict()
+        for name,(dtype,size) in data.dtype.fields.items():
+            if dtype.kind == 'f': formatd[name] = FormatFloatForce()
+
+        print formatd
+        mlab.rec2csv(data,outfile,formatd=formatd)
 
 ############################################################
 
@@ -386,7 +414,6 @@ def main():
     #plt.hist(d['AIRMASS'], bins=31)
     plt.scatter(np.arange(len(d)), d['AIRMASS'])
     """
-    
 
 if __name__ == '__main__':
     main()

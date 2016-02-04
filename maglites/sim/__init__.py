@@ -3,3 +3,4 @@
 Simulation module
 """
 
+from .survey_simulator import Simulator

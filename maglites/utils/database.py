@@ -75,7 +75,8 @@ class Database(object):
         # Doesn't work for all data types
         data = self.execute(query)
         names = self.get_columns()
-        return np.recarray(data,dtype=names)
+        return np.rec.array(data,names=names)
+
         
 if __name__ == "__main__":
     import argparse
