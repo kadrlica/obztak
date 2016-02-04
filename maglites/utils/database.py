@@ -9,7 +9,6 @@ https://opensource.ncsa.illinois.edu/confluence/x/lwCsAw
 
 import os
 import psycopg2
-import psycopg2.extras
 import numpy as np
 import logging
 
@@ -41,17 +40,15 @@ class Database(object):
         c.read(filename)
 
         d={}
-        d['host'] = c.get(section,'server')
-        d['dbname'] = c.get(section,'name')
-        d['user'] = c.get(section,'user')
+        d['host']     = c.get(section,'server')
+        d['dbname']   = c.get(section,'name')
+        d['user']     = c.get(section,'user')
         d['password'] = c.get(section,'passwd')
-        d['port'] = c.get(section,'port')
+        d['port']     = c.get(section,'port')
         return d
 
     def connect(self):
-        #self.connection = psycopg2.connect(**CONNECTIONS[self.name])
         self.connection = psycopg2.connect(**self.conninfo)
-        #self.cursor = self.connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
         self.cursor = self.connection.cursor()
 
     def disconnect(self):

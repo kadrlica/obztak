@@ -27,7 +27,7 @@ import maglites.utils.ortho
 
 ############################################################
 
-class Simulator:
+class Simulator(object):
 
     def __init__(self, infile_target_fields, infile_observation_windows=None, infile_accomplished_fields=None):
         self.target_fields = np.recfromtxt(infile_target_fields, names=True)
