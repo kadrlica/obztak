@@ -126,9 +126,12 @@ class Simulator(object):
         # Airmass restrictions
         cut_airmass = airmass < self.f_airmass_limit(self.target_fields['DEC'])
 
+        # Declination restrictions
+        cut_declination = self.target_fields['DEC'] > -89.
+
         # Don't consider fields which have already been observed
         cut_todo = np.logical_not(np.in1d(self.target_fields['ID'], self.accomplished_field_ids))
-        cut = cut_todo & cut_hour_angle & cut_airmass & (airmass < 2.) # Now with Blanco telescope constraints
+        cut = cut_todo & cut_hour_angle & cut_airmass & cut_declination & (airmass < 2.) # Now with Blanco telescope constraints
         #cut = cut_todo & (airmass < 2.) # Original
 
         # Need to figure out what to do if there are no available fields
