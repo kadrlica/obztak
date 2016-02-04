@@ -48,6 +48,7 @@ def safeProj(proj, lon, lat):
     x, y = proj(np.asarray(lon),np.asarray(lat))
     x[x > 1e29] = None
     y[y > 1e29] = None
+    #return np.ma.array(x,mask=x>1e2),np.ma.array(y,mask=y>1e2)
     return x, y
 
 ############################################################
@@ -132,12 +133,11 @@ def drawMoon(basemap, date):
     dec_moon = np.degrees(moon.dec)
 
     proj = safeProj(basemap, np.array([ra_moon]), np.array([dec_moon]))
-    basemap.scatter(*proj, color='%.2f'%(0.01 * moon.phase), edgecolor='black', s=500)
 
-    if moon.phase > 50.:
-        color = 'black'
-    else:
-        color = 'white'
+    if np.isnan(proj[0]).all() or np.isnan(proj[1]).all(): return
+
+    basemap.scatter(*proj, color='%.2f'%(0.01 * moon.phase), edgecolor='black', s=500)
+    color = black if moon.phase > 50. else 'white'
     plt.text(proj[0], proj[1], '%.2f'%(0.01 * moon.phase), 
              fontsize=10, ha='center', va='center', color=color)
 
@@ -182,8 +182,10 @@ def makePlot(date, figsize=(10.5,8.5), dpi=80, s=50, center=None, airmass=True, 
         lon_0, lat_0 = -lon_zen, lat_zen # Center position
     else:
         lon_0, lat_0 = center[0], center[1]
+
     proj_kwargs.update(lon_0=lon_0, lat_0=lat_0)
     basemap = Basemap(**proj_kwargs)
+
     parallels = np.arange(-90.,120.,30.)
     basemap.drawparallels(parallels)
     meridians = np.arange(0.,420.,60.)
@@ -195,7 +197,6 @@ def makePlot(date, figsize=(10.5,8.5), dpi=80, s=50, center=None, airmass=True, 
         drawAirmassContour(basemap, observatory, 2., s=s)
     if moon:
         drawMoon(basemap, date)
-
     plt.title('%s UTC'%(datestring(date)))
 
     #return fig, ax, basemap
