@@ -55,7 +55,7 @@ def prepareObservationWindows(nights, horizon=-14., outfile=None):
 
 ############################################################
 
-def prepareTargetList(infile, outfile=None):
+def prepareTargetList(infile, outfile=None, plot=True):
     # Consider to remove SMASH fields?
     # How to create a dither??
 
@@ -91,10 +91,14 @@ def prepareTargetList(infile, outfile=None):
     field_id = np.arange(1, (n_effective_tilings * np.sum(cut)) + 1)
 
     #fig, ax, basemap = maglites.utils.ortho.makePlot('2016/2/11 03:00')
-    fig, basemap = maglites.utils.ortho.makePlot('2016/2/11 03:00')
+    if plot:
+        fig, basemap = maglites.utils.ortho.makePlot('2016/2/11 03:00')
 
-    proj = maglites.utils.ortho.safeProj(basemap, ra_select, dec_select)
-    basemap.scatter(*proj, color='orange', edgecolor='none', s=50)
+        proj = maglites.utils.ortho.safeProj(basemap, ra_select, dec_select)
+        basemap.scatter(*proj, color='orange', edgecolor='none', s=50)
+        if outfile:
+            outfig = os.path.splitext(outfile)[0]+'.png'
+            fig.savefig(outfig,bbox_inches='tight')
 
     if outfile:
         np.savetxt(outfile, zip(field_id, ra_select, dec_select, tiling, priority), 
@@ -108,8 +112,8 @@ def prepareTargetList(infile, outfile=None):
 
 ############################################################
 
-if __name__ == '__main__':
 
+def main():
     """
     # One season prediction
     nights = [['2016/2/10', 'second'],
@@ -146,6 +150,10 @@ if __name__ == '__main__':
     observation_windows = prepareObservationWindows(nights, outfile='observation_windows.txt')
 
     #data, data2 = prepareTargetList('smash_fields_alltiles.txt', outfile='list.txt')
-    prepareTargetList('%s/maglites/data/smash_fields_alltiles.txt'%(os.environ['MAGLITESDIR']), outfile='target_fields.txt')
+    prepareTargetList('%s/maglites/data/smash_fields_alltiles.txt'%(os.environ['MAGLITESDIR']), outfile='target_fields.txt',plot=False)
+    
+
+if __name__ == '__main__':
+    main()
 
 ############################################################
