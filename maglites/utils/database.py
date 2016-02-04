@@ -1,7 +1,10 @@
 #!/usr/bin/env python
-"""
-Simple database interface taking connection
-infromation from .desservices.ini
+"""Simple interface interface to a postgres database taking
+connection infromation from '.desservices.ini' file.
+
+For more documentation on desservices, see here:
+https://opensource.ncsa.illinois.edu/confluence/x/lwCsAw
+
 """
 
 import os
@@ -59,10 +62,23 @@ class Database(object):
 
     def execute(self,query):
         self.cursor.execute(query)      
-        return self.cursor.fetchall()
-
+        try: 
+            return self.cursor.fetchall()
+        except Exception, e:
+            self.reset()
+            raise(e)
+        
     def reset(self):
         self.connection.reset()
+
+    def get_columns(self):
+        return [d[0] for d in self.cursor.description]
+
+    def query2recarray(self,query):
+        # Doesn't work for all data types
+        data = self.execute(query)
+        names = self.get_columns()
+        return np.recarray(data,dtype=names)
         
 if __name__ == "__main__":
     import argparse
