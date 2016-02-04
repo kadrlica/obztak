@@ -367,14 +367,9 @@ class Simulator:
 
 ############################################################
 
-if __name__ == '__main__':
-
+def main():
     my_simulator = Simulator('target_fields.txt')
-    #my_simulator.selectField('2016/2/11 03:00', plot=True)
-    
     my_simulator.loadObservationWindows('observation_windows.txt')
-    #my_simulator.run('2016/2/11 03:00')
-    #my_simulator.run('2016/2/11 08:00')
     my_simulator.run(plot=False)
     my_simulator.saveAccomplishedFields('accomplished_fields_2.txt')
 
@@ -388,5 +383,9 @@ if __name__ == '__main__':
     #plt.hist(d['AIRMASS'], bins=31)
     plt.scatter(np.arange(len(d)), d['AIRMASS'])
     """
+    
+
+if __name__ == '__main__':
+    main()
 
 ############################################################
