@@ -181,6 +181,7 @@ class Simulator(object):
             ra_effective[ra_effective > 180.] = ra_effective[ra_effective > 180.] - 360.
             ra_effective[np.logical_not(cut)] = 9999.
             ra_effective += 360. * self.target_fields['TILING']
+            #ra_effective += 720. * self.target_fields['TILING']
             ra_effective += slew**2
             ra_effective += 100. * (airmass - 1.)**3
             index_select = np.argmin(ra_effective)
@@ -401,7 +402,7 @@ class Simulator(object):
 def main():
     my_simulator = Simulator('target_fields.txt')
     my_simulator.loadObservationWindows('observation_windows.txt')
-    my_simulator.run(plot=False)
+    my_simulator.run(plot=True)
     my_simulator.saveAccomplishedFields('accomplished_fields_2.txt')
 
     # Example diagnostics
