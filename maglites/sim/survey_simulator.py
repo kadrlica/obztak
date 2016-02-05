@@ -18,27 +18,14 @@ import os
 import copy
 import numpy as np
 import scipy.interpolate
+import time
 import ephem
-
 import matplotlib.pyplot as plt
-import matplotlib.mlab as mlab
-
 
 import maglites.utils.projector
 import maglites.utils.constants
 import maglites.utils.ortho
-
-
-class FormatFloatForce(mlab.FormatFormatStr): 
-    """
-    mlab not doing well...
-    """
-    def __init__(self,fmt="%.4f"): 
-        mlab.FormatFormatStr.__init__(self,fmt) 
-    def toval(self, x): 
-        return x 
-    def fromstr(self, s): 
-        return float(s) 
+import maglites.utils.fileio as fileio
 
 ############################################################
 
@@ -46,27 +33,22 @@ class Simulator(object):
 
     def __init__(self, infile_target_fields, infile_observation_windows=None, infile_accomplished_fields=None):
         self.target_fields = np.recfromtxt(infile_target_fields, names=True)
-        if not infile_accomplished_fields:
-            self.accomplished_field_ids = []
-            self.accomplished_fields = {}
-            for key in ['ID', 'RA', 'DEC', 'TILING', 'PRIORITY', 'DATE', 'AIRMASS', 'SLEW', 'MOONANGLE', 'HOURANGLE']:
-                self.accomplished_fields[key] = []
-        else:
-            self.accomplished_fields = np.recfromtxt(infile_accomplished_fields, delimiter=',', names=True)
-            
+
         self.observatory = ephem.Observer()
         self.observatory.lon = maglites.utils.constants.LON_CTIO
         self.observatory.lat = maglites.utils.constants.LAT_CTIO
         self.observatory.elevation = maglites.utils.constants.ELEVATION_CTIO
 
-        if infile_observation_windows is not None:
-            self.loadObservationWindows(infile_observation_windows)
-        else:
-            self.observation_windows = None
+        self.loadObservationWindows(infile_observation_windows)
+        self.loadAccomplishedFields(infile_accomplished_fields)
 
         self.loadBlancoConstraints()
 
-    def loadObservationWindows(self, infile_observation_windows):
+    def loadObservationWindows(self, infile_observation_windows = None):
+        if not infile_observation_windows: 
+            self.observation_windows = None            
+            return
+
         reader = open(infile_observation_windows)
         lines = reader.readlines()
         reader.close()
@@ -90,6 +72,17 @@ class Simulator(object):
         for observation_window in self.observation_windows:
             print '  %s -- %s'%(observation_window[0], observation_window[1])
 
+    def loadAccomplishedFields(self, infile_accomplished_fields = None):
+        if not infile_accomplished_fields or not len(np.recfromcsv(infile_accomplished_fields)):
+            #self.accomplished_field_ids = []
+            #self.accomplished_fields = {}
+            #for key in ['ID', 'RA', 'DEC', 'TILING', 'PRIORITY', 'DATE', 'AIRMASS', 'SLEW', 'MOONANGLE', 'HOURANGLE']:
+            #    self.accomplished_fields[key] = []
+            self.accomplished_fields = self.createAccomplishedFields()
+        else:
+            self.accomplished_fields = fileio.csv2rec(infile_accomplished_fields)
+        self.accomplished_field_ids = self.accomplished_fields['ID'].tolist()
+
     def loadBlancoConstraints(self):
         """
         Load telescope pointing constraints
@@ -104,6 +97,7 @@ class Simulator(object):
                                                              bounds_error=False, fill_value=-1.)
         self.f_airmass_limit = scipy.interpolate.interp1d(self.blanco_constraints['Dec'], self.blanco_constraints['AirmassLimit'], 
                                                           bounds_error=False, fill_value=-1.)
+
 
     def selectField(self, date, ra_previous=None, dec_previous=None, plot=False, mode='balance'):
         """
@@ -194,8 +188,10 @@ class Simulator(object):
 
         if plot:
             #fig, ax, basemap = maglites.utils.ortho.makePlot(date)
+
+            if plt.get_fignums(): plt.cla()
             fig, basemap = maglites.utils.ortho.makePlot(date)
-            
+
             """
             # Plot airmass
             cut_accomplished = np.in1d(self.target_fields['ID'], self.accomplished_field_ids)
@@ -243,7 +239,11 @@ class Simulator(object):
             basemap.scatter(*proj, c='0.75', edgecolor='none', s=50)
             """
             
-            # Plot number of tilings
+            # Plot number of tilings 
+            # ADW: Need to be careful about the size of the marker. It
+            # does not change with the size of the frame so it is
+            # really safest to scale to the size of the zenith circle
+            # (see PlotPointings). That said, s=50 is probably roughly ok.
             cut_accomplished = np.in1d(self.target_fields['ID'], self.accomplished_field_ids)
             cut_accomplished[index_select] = True
             proj = maglites.utils.ortho.safeProj(basemap, 
@@ -253,13 +253,19 @@ class Simulator(object):
             
             proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_accomplished], self.target_fields['DEC'][cut_accomplished])
             basemap.scatter(*proj, c=self.target_fields['TILING'][cut_accomplished], edgecolor='none', s=50, vmin=0, vmax=4, cmap='summer_r')
-            colorbar = plt.colorbar(label='Tiling')
-            
 
+            # Draw colorbar in existing axis
+            if len(fig.axes) == 2:
+                colorbar = plt.colorbar(label='Tiling',cax=fig.axes[-1])
+            else:
+                colorbar = plt.colorbar(label='Tiling')
+                
             # Show the selected field
             proj = maglites.utils.ortho.safeProj(basemap, [self.target_fields['RA'][index_select]], [self.target_fields['DEC'][index_select]])
             basemap.scatter(*proj, c='magenta', edgecolor='none', s=50)
 
+            plt.draw()
+            time.sleep(0.25)
 
         field_select_dict = {}
         for name in self.target_fields.dtype.names:
@@ -327,49 +333,63 @@ class Simulator(object):
                 if latch:
                     latch = (raw_input(' ...continue ([y]/n)').lower() != 'n')
                 else:
-                    raw_input(' ...continue')
+                    raw_input(' ...finish...')
                 plt.clf()
 
             date = date + (4. * ephem.minute) # 4 minutes = 90 sec exposures in g and r with 30 sec between exposures
             self.accomplished_field_ids.append(id_select)
             plot = False # Kludge to make end of night summary plots
 
+            new_field = np.empty(1,dtype=self.accomplished_fields.dtype)
             for key in field_select.keys():
-                self.accomplished_fields[key].append(field_select[key])
-                #if key not in self.accomplished_fields.keys():
-                #    self.accomplished_fields[key] = [field_select[key]]
-                #else:
-                #    self.accomplished_fields[key].append(field_select[key])
+                new_field[-1][key] = field_select[key]
 
         print len(self.accomplished_field_ids)
 
         # Clean up
         self.accomplished_field_ids = []
 
-    def consolidateAccomplishedFields(self):
-        """
-        slew = np.tile(0., len(self.accomplished_fields['RA']))
-        for ii in range(1, len(self.accomplished_fields['RA'])):
-            time_difference = ephem.Date(self.accomplished_fields['DATE'][ii]) - ephem.Date(self.accomplished_fields['DATE'][ii - 1]) 
-            angsep = maglites.utils.projector.angsep(self.accomplished_fields['RA'][ii], self.accomplished_fields['DEC'][ii], 
-                                                     self.accomplished_fields['RA'][ii - 1], self.accomplished_fields['DEC'][ii - 1])
-            if time_difference > (30. * ephem.minute):
-                angsep = 0.
-            print time_difference, angsep
-            slew[ii] = angsep
-        """
+    ### # ADW: This is unnecessary since accomplished fields is now a recarray.
+    ### def consolidateAccomplishedFields(self):
+    ###     """
+    ###     slew = np.tile(0., len(self.accomplished_fields['RA']))
+    ###     for ii in range(1, len(self.accomplished_fields['RA'])):
+    ###         time_difference = ephem.Date(self.accomplished_fields['DATE'][ii]) - ephem.Date(self.accomplished_fields['DATE'][ii - 1]) 
+    ###         angsep = maglites.utils.projector.angsep(self.accomplished_fields['RA'][ii], self.accomplished_fields['DEC'][ii], 
+    ###                                                  self.accomplished_fields['RA'][ii - 1], self.accomplished_fields['DEC'][ii - 1])
+    ###         if time_difference > (30. * ephem.minute):
+    ###             angsep = 0.
+    ###         print time_difference, angsep
+    ###         slew[ii] = angsep
+    ###     """
+    ###  
+    ###     data = zip(self.accomplished_fields['ID'],
+    ###                self.accomplished_fields['RA'],
+    ###                self.accomplished_fields['DEC'],
+    ###                self.accomplished_fields['TILING'],
+    ###                self.accomplished_fields['PRIORITY'],
+    ###                self.accomplished_fields['DATE'],
+    ###                self.accomplished_fields['AIRMASS'],
+    ###                self.accomplished_fields['SLEW'],
+    ###                self.accomplished_fields['MOONANGLE'],
+    ###                self.accomplished_fields['HOURANGLE'])
+    ###     #slew]
+    ###     dtype = [('ID', int),
+    ###              ('RA', float),
+    ###              ('DEC', float),
+    ###              ('TILING', int),
+    ###              ('PRIORITY', int),
+    ###              ('DATE', 'a20'),
+    ###              ('AIRMASS', float),
+    ###              ('SLEW', float),
+    ###              ('MOONANGLE', float),
+    ###              ('HOURANGLE', float)]
+    ###     accomplished_fields = np.array(data, dtype=dtype)
+    ###  
+    ###     return accomplished_fields
 
-        data = zip(self.accomplished_fields['ID'],
-                   self.accomplished_fields['RA'],
-                   self.accomplished_fields['DEC'],
-                   self.accomplished_fields['TILING'],
-                   self.accomplished_fields['PRIORITY'],
-                   self.accomplished_fields['DATE'],
-                   self.accomplished_fields['AIRMASS'],
-                   self.accomplished_fields['SLEW'],
-                   self.accomplished_fields['MOONANGLE'],
-                   self.accomplished_fields['HOURANGLE'])
-        #slew]
+    @classmethod
+    def createAccomplishedFields(cls):
         dtype = [('ID', int),
                  ('RA', float),
                  ('DEC', float),
@@ -380,30 +400,55 @@ class Simulator(object):
                  ('SLEW', float),
                  ('MOONANGLE', float),
                  ('HOURANGLE', float)]
-        accomplished_fields = np.array(data, dtype=dtype)
-
-        return accomplished_fields
+        return np.recarray(0, dtype=dtype)
+    
 
     def saveAccomplishedFields(self, outfile):
         ### ADW: It would probably be better to use pylab.rec2csv or
         ### some other standard csv creation routine. The spaces after
         ### the commas make me worried...
-        data = self.consolidateAccomplishedFields()
         #np.savetxt(outfile, data, fmt='%i, %.4f, %.4f, %i, %i, %s, %.4f, %.4f, %.4f, %.4f', header='ID, RA, DEC, TILING, PRIORITY, DATE, AIRMASS, SLEW, MOONANGLE, HOURANGLE')
-        formatd = dict()
-        for name,(dtype,size) in data.dtype.fields.items():
-            if dtype.kind == 'f': formatd[name] = FormatFloatForce()
+        base,ext = os.path.splitext(outfile)
+        data = self.accomplished_fields
 
-        print formatd
-        mlab.rec2csv(data,outfile,formatd=formatd)
+        if ext in ('.csv'):
+            fileio.rec2csv(outfile,data)
+        elif ext in ('.json'):
+            fileio.write_json(outfile,data)
+        else:
+            msg = 'Unrecognized file type'
+            raise Exception(msg)
+
+    @classmethod
+    def parser(cls):
+        import argparse
+        description = __doc__
+        parser = argparse.ArgumentParser(description=description)
+        parser.add_argument('fields',nargs='?',default='target_fields.txt',
+                            help='List of all target fields.')
+        parser.add_argument('-w','--windows',default='observation_windows.txt',
+                            help='List of observation windows.')
+        parser.add_argument('-d','--done',
+                            help="List of fields that have been observed.")
+        parser.add_argument('-p','--plot',action='store_true',
+                            help='Plot output.')
+        parser.add_argument('-v','--verbose',action='store_true',
+                            help='Output verbosity.')
+        parser.add_argument('-o','--outfile',default='accomplished_fields.txt',
+                            help='Save output fields surveyed.')
+        return parser
+
 
 ############################################################
 
+
 def main():
-    my_simulator = Simulator('target_fields.txt')
-    my_simulator.loadObservationWindows('observation_windows.txt')
-    my_simulator.run(plot=True)
-    my_simulator.saveAccomplishedFields('accomplished_fields_2.txt')
+    args = Simulator.parser().parse_args()
+
+    fields = os.
+    my_simulator = Simulator(args.fields,args.windows,args.done)
+    my_simulator.run(plot=args.plot)
+    my_simulator.saveAccomplishedFields(args.outfile)
 
     # Example diagnostics
     """

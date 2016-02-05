@@ -18,8 +18,9 @@ class Observer(Simulator):
 
     def __init__(self, infile_target_fields):
         super(Observer,self).__init__(infile_target_fields)
-        self.accomplished_fields = self.getObservedFields()
-
+        observed_fields = self.getObservedFields()
+        if observed_fields:
+            self.accomplished_fields = observed_fields
         
     def run(self, tstart=None, tstop=None, plot=True):
         # If no tstop, run for 90 minutes
@@ -47,7 +48,6 @@ class Observer(Simulator):
                     msg = 'Date is outside  nominal observing window: %s'%datestring(date)
                     logging.warning(msg)
 
-            if date > tstop: latch = False
 
             if plot:
                 print '  %s'%(datestring(date)),
@@ -69,25 +69,27 @@ class Observer(Simulator):
             id_select = field_select['ID']
 
             date = date + constants.FIELDTIME
+
             self.accomplished_field_ids.append(id_select)
 
+            new_field = np.empty(1,dtype=self.accomplished_fields.dtype)
             for key in field_select.keys():
-                self.accomplished_fields[key].append(field_select[key])
-                #if key not in self.accomplished_fields.keys():
-                #    self.accomplished_fields[key] = [field_select[key]]
-                #else:
-                #    self.accomplished_fields[key].append(field_select[key])
+                new_field[-1][key] = field_select[key]
+
+            self.accomplished_fields = np.append(self.accomplished_fields,new_field)
+
+            if date > tstop: break
 
         print len(self.accomplished_field_ids)
 
         # Clean up
         self.accomplished_field_ids = []
 
-    def getObservedFields(self):
+    def getObservedFields(self, **kwargs):
         """
         Get the fields that have been observed from the telemetry DB.
         """
-        defaults = dict(propid = '2016A-0366', limit = '',dbname='db-fnal')
+        defaults = dict(propid='2016A-0366', limit='', dbname='db-fnal')
         
         params = dict(defaults)
         #if opts is not None: params.update(vars(opts))
@@ -95,9 +97,12 @@ class Observer(Simulator):
         db = Database()
         db.connect()
 
+        #From survey_simulator, the expected columns are:
+        # ['ID', 'RA', 'DEC', 'TILING', 'PRIORITY', 'DATE', 'AIRMASS', 'SLEW', 'MOONANGLE', 'HOURANGLE']
         query ="""
         select object as ID, telra as RA, teldec as DEC, 
-        1 as TILING, 1 as PRIORITY, utc_beg AS DATE, 
+        1 as TILING, 1 as PRIORITY, 
+        to_char(utc_beg, 'YYYY/MM/DD HH24:MI:SS') AS DATE, 
         COALESCE(airmass,-1) as AIRMASS, COALESCE(moonangl,-1) as MOONANGLE, 
         COALESCE(ha,-1) as HOURANGLE, COALESCE(slewangl,-1) as SLEW 
         from exposure where propid = '%(propid)s' %(limit)s
@@ -107,23 +112,36 @@ class Observer(Simulator):
         names = map(str.upper,db.get_columns())
 
         if len(data): ret = np.rec.array(data,names=names)
-        else:         ret = np.rec.recarray(0,names=names)
+        else:         ret = None
+        return ret
 
     @classmethod
     def write_json_script(self):
         pass
 
+def parser():
+    import argparse
+    description = __doc__
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument('--tstart',help="Start time for observation.")
+    parser.add_argument('--tstop',help="Stop time for observation.")
+    parser.add_argument('-f','--fields',help='List of all target fields.')
+    parser.add_argument('-w','--windows',help='List of observation windows.')
+    parser.add_argument('-d','--done',help="List of fields that have been observed.")
+    return parser
+    
+
 
 def main():
-    tstart = '2016/2/11 05:20:28'
-    tstop = '2016/2/11 06:20:28'
+    tstart = '2016/2/11 05:20:00'
+    tstop  = '2016/2/11 06:20:00'
     fields = 'target_fields.txt'
     windows = 'observation_windows.txt'
     obs = Observer(fields)
     obs.loadObservationWindows(windows)
-    obs.saveAccomplishedFields('accomplished_fields.txt')
+    obs.loadAccomplishedFields('accomplished_fields_2.txt')
     obs.run(tstart,tstop,plot=True)
-    obs.saveAccomplishedFields('accomplished_fields_2.txt')
+    obs.saveAccomplishedFields('accomplished_fields_3.txt')
 
 if __name__ == "__main__":
     import argparse
