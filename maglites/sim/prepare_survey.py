@@ -2,9 +2,11 @@
 Decide which fields to observe and time windows to observe.
 """
 
-import os
+import os,sys
 import numpy as np
 import ephem
+import logging
+import pylab as plt
 
 import maglites.utils.projector
 import maglites.utils.constants
@@ -74,7 +76,7 @@ def prepareTargetList(infile, outfile=None, plot=True):
     cut = cut | ((dec < -65.) & (ra > 300.) & (ra < 360.)) # SMC
     cut = cut | (dec < -80.)
 
-    print np.sum(cut)
+    #print np.sum(cut)
 
     ra_select = ra[cut]
     dec_select = dec[cut]
@@ -99,8 +101,13 @@ def prepareTargetList(infile, outfile=None, plot=True):
         if outfile:
             outfig = os.path.splitext(outfile)[0]+'.png'
             fig.savefig(outfig,bbox_inches='tight')
+        if not sys.flags.interactive:
+            plt.show(block=True)
 
+
+    logging.info("Number of target fields: %d"%len(field_id))
     if outfile:
+        ### ADW: Shouldn't this be a csv file to be consistent?
         np.savetxt(outfile, zip(field_id, ra_select, dec_select, tiling, priority), 
                    fmt='%12i%12.4f%12.4f%12i%12i', 
                    header='%10s%12s%12s%12s%12s'%('ID', 'RA', 'DEC', 'TILING', 'PRIORITY'))
@@ -147,13 +154,27 @@ def main():
               ['2017/6/28', 'full'],
               ['2017/6/29', 'full']]
 
-    outfile = 'observation_windows.txt'
-    observation_windows = prepareObservationWindows(nights, outfile=outfile)
+    args = parser().parse_args()
+
+    observation_windows = prepareObservationWindows(nights, outfile=args.windows)
 
     #data, data2 = prepareTargetList('smash_fields_alltiles.txt', outfile='list.txt')
-    outfile = 'target_fields.txt'
-    prepareTargetList('%s/maglites/data/smash_fields_alltiles.txt'%(os.environ['MAGLITESDIR']), outfile=outfile,plot=False)
+    prepareTargetList('%s/maglites/data/smash_fields_alltiles.txt'%(os.environ['MAGLITESDIR']), outfile=args.fields,plot=args.plot)
     
+
+def parser():
+    import argparse
+    description = __doc__
+    formatter = argparse.ArgumentDefaultsHelpFormatter
+    parser = argparse.ArgumentParser(description=description,
+                                     formatter_class=formatter)
+    parser.add_argument('-p','--plot',action='store_true',
+                        help='Plot output.')
+    parser.add_argument('-f','--fields',default='target_fields.txt',
+                        help='List of all target fields.')
+    parser.add_argument('-w','--windows',default='observation_windows.txt',
+                        help='List of observation windows.')
+    return parser
 
 if __name__ == '__main__':
     main()

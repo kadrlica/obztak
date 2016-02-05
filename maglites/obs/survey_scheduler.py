@@ -12,15 +12,14 @@ from maglites.sim import Simulator
 from maglites.utils import Database, datestring
 import maglites.utils.constants as constants
 
-import json
-
-class Observer(Simulator):
+class Scheduler(Simulator):
 
     def __init__(self, infile_target_fields):
-        super(Observer,self).__init__(infile_target_fields)
+        super(Scheduler,self).__init__(infile_target_fields)
         observed_fields = self.getObservedFields()
         if observed_fields:
             self.accomplished_fields = np.append(self.accomplished_fields,observed_fields)
+        self.scheduled_fields = self.createFieldArray()
         
     def run(self, tstart=None, tstop=None, plot=True):
         # If no tstop, run for 90 minutes
@@ -33,6 +32,9 @@ class Observer(Simulator):
             tstart = ephem.Date(tstart)
         if isinstance(tstop,basestring):
             tstop = ephem.Date(tstop)
+
+        msg = "Previously accomplished fields: %i"%len(self.accomplished_fields)
+        logging.info(msg)
 
         date = tstart
         latch = True
@@ -71,18 +73,17 @@ class Observer(Simulator):
             date = date + constants.FIELDTIME
 
             self.accomplished_field_ids.append(id_select)
-
-            new_field = np.empty(1,dtype=self.accomplished_fields.dtype)
+            new_field = self.createFieldArray(1)
             for key in field_select.keys():
                 new_field[-1][key] = field_select[key]
 
             self.accomplished_fields = np.append(self.accomplished_fields,new_field)
+            self.scheduled_fields = np.append(self.scheduled_fields,new_field)
 
             if date > tstop: break
+        print "Newly scheduled fields: %i"%len(self.scheduled_fields)
+        return self.scheduled_fields
 
-        print len(self.accomplished_field_ids)
-
-        # Clean up
         self.accomplished_field_ids = []
 
     def getObservedFields(self, **kwargs):
@@ -128,13 +129,14 @@ class Observer(Simulator):
 
 
 def main():
-    args = Observer.parser().parse_args()
+    args = Scheduler.parser().parse_args()
 
-    obs = Observer(args.fields)
+    obs = Scheduler(args.fields)
     obs.loadObservationWindows(args.windows)
     obs.loadAccomplishedFields(args.done)
     obs.run(args.tstart,args.tstop,plot=args.plot)
-    if args.outfile: obs.saveAccomplishedFields(args.outfile)
+    if args.outfile: 
+        obs.saveFields(args.outfile,obs.scheduled_fields)
 
     if not sys.flags.interactive and args.plot:
         raw_input(' ...finish...')

@@ -41,3 +41,18 @@ SISPI_DICT = odict([
     ("program", "maglites"),
     ("wait",    "False"),
 ])
+
+def FIELD2OBJECT(field):
+    return OBJECT_FMT%(field)
+
+def OBJECT2FIELD(object_str):
+    ID,TILING,PRIORITY = map(int,object_str.split(' - ')[-1].split('.'))
+    return dict(ID=ID,TILING=TILING,PRIORITY=PRIORITY)
+
+def FIELD2SEQID(field):
+    return SEQID_FMT%(field)
+
+def SEQID2FIELD(seqid_str):
+    DATE = str(seqid_str.split(' - ')[-1].strip())
+    return dict(DATE=DATE)
+

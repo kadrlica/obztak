@@ -74,14 +74,10 @@ class Simulator(object):
             print '  %s -- %s'%(observation_window[0], observation_window[1])
 
     def loadAccomplishedFields(self, infile_accomplished_fields = None):
-        if not infile_accomplished_fields or not len(np.recfromcsv(infile_accomplished_fields)):
-            #self.accomplished_field_ids = []
-            #self.accomplished_fields = {}
-            #for key in ['ID', 'RA', 'DEC', 'TILING', 'PRIORITY', 'DATE', 'AIRMASS', 'SLEW', 'MOONANGLE', 'HOURANGLE']:
-            #    self.accomplished_fields[key] = []
-            self.accomplished_fields = self.createAccomplishedFields()
+        if not infile_accomplished_fields:
+            self.accomplished_fields = self.createFieldArray()
         else:
-            self.accomplished_fields = fileio.csv2rec(infile_accomplished_fields)
+            self.accomplished_fields = self.loadFields(infile_accomplished_fields)
         self.accomplished_field_ids = self.accomplished_fields['ID'].tolist()
 
     def loadBlancoConstraints(self):
@@ -341,7 +337,7 @@ class Simulator(object):
             self.accomplished_field_ids.append(id_select)
             plot = False # Kludge to make end of night summary plots
 
-            new_field = np.empty(1,dtype=self.accomplished_fields.dtype)
+            new_field = self.createFieldArray(1)
             for key in field_select.keys():
                 new_field[-1][key] = field_select[key]
 
@@ -350,47 +346,8 @@ class Simulator(object):
         # Clean up
         self.accomplished_field_ids = []
 
-    ### # ADW: This is unnecessary since accomplished fields is now a recarray.
-    ### def consolidateAccomplishedFields(self):
-    ###     """
-    ###     slew = np.tile(0., len(self.accomplished_fields['RA']))
-    ###     for ii in range(1, len(self.accomplished_fields['RA'])):
-    ###         time_difference = ephem.Date(self.accomplished_fields['DATE'][ii]) - ephem.Date(self.accomplished_fields['DATE'][ii - 1]) 
-    ###         angsep = maglites.utils.projector.angsep(self.accomplished_fields['RA'][ii], self.accomplished_fields['DEC'][ii], 
-    ###                                                  self.accomplished_fields['RA'][ii - 1], self.accomplished_fields['DEC'][ii - 1])
-    ###         if time_difference > (30. * ephem.minute):
-    ###             angsep = 0.
-    ###         print time_difference, angsep
-    ###         slew[ii] = angsep
-    ###     """
-    ###  
-    ###     data = zip(self.accomplished_fields['ID'],
-    ###                self.accomplished_fields['RA'],
-    ###                self.accomplished_fields['DEC'],
-    ###                self.accomplished_fields['TILING'],
-    ###                self.accomplished_fields['PRIORITY'],
-    ###                self.accomplished_fields['DATE'],
-    ###                self.accomplished_fields['AIRMASS'],
-    ###                self.accomplished_fields['SLEW'],
-    ###                self.accomplished_fields['MOONANGLE'],
-    ###                self.accomplished_fields['HOURANGLE'])
-    ###     #slew]
-    ###     dtype = [('ID', int),
-    ###              ('RA', float),
-    ###              ('DEC', float),
-    ###              ('TILING', int),
-    ###              ('PRIORITY', int),
-    ###              ('DATE', 'a20'),
-    ###              ('AIRMASS', float),
-    ###              ('SLEW', float),
-    ###              ('MOONANGLE', float),
-    ###              ('HOURANGLE', float)]
-    ###     accomplished_fields = np.array(data, dtype=dtype)
-    ###  
-    ###     return accomplished_fields
-
     @classmethod
-    def createAccomplishedFields(cls):
+    def createFieldArray(cls,size=0):
         dtype = [('ID', int),
                  ('RA', float),
                  ('DEC', float),
@@ -401,26 +358,44 @@ class Simulator(object):
                  ('SLEW', float),
                  ('MOONANGLE', float),
                  ('HOURANGLE', float)]
-        return np.recarray(0, dtype=dtype)
+        return np.recarray(size, dtype=dtype)
     
-
-    def saveAccomplishedFields(self, outfile):
-        ### ADW: It would probably be better to use pylab.rec2csv or
-        ### some other standard csv creation routine. The spaces after
-        ### the commas make me worried...
-        #np.savetxt(outfile, data, fmt='%i, %.4f, %.4f, %i, %i, %s, %.4f, %.4f, %.4f, %.4f', header='ID, RA, DEC, TILING, PRIORITY, DATE, AIRMASS, SLEW, MOONANGLE, HOURANGLE')
-        base,ext = os.path.splitext(outfile)
-        fields = self.accomplished_fields
-
+    @classmethod
+    def saveFields(cls, filename, fields):
+        base,ext = os.path.splitext(filename)
         if ext in ('.csv','.txt','.dat'):
             outdata = fields
-            fileio.rec2csv(outfile,outdata)
+            fileio.rec2csv(filename,outdata)
         elif ext in ('.json'):
-            outdata = self.fields2sispi(fields)
-            fileio.write_json(outfile,outdata)
+            outdata = cls.fields2sispi(fields)
+            fileio.write_json(filename,outdata)
         else:
             msg = 'Unrecognized file type'
             raise Exception(msg)
+
+    @classmethod
+    def loadFields(cls, filename):
+        base,ext = os.path.splitext(filename)
+
+        orig = cls.createFieldArray()
+        dtype = copy.deepcopy(orig.dtype)
+
+        if ext in ('.csv','.txt','.dat'):
+            load = np.genfromtxt(filename,delimiter=',',names=True,dtype=dtype)
+        elif ext in ('.json'):
+            load = cls.sispi2fields(fileio.read_json(filename))
+
+        orig_names = np.char.array(orig.dtype.names)
+        load_names = np.char.array(load.dtype.names)
+        print load_names
+        print orig_names
+        print load_names == orig_names
+        if np.any(load_names != orig_names):
+            msg =  "Unexpected input name:\n"
+            msg += str(load_names[load_names != orig_names])
+            raise Exception(msg)
+
+        return load
 
     @classmethod
     def fields2sispi(cls,fields):
@@ -440,15 +415,64 @@ class Simulator(object):
         return out_dicts
 
     @classmethod
+    def sispi2fields(cls,sispi):
+        fields = cls.createFieldArray()
+        for row in sispi:
+            if row['seqnum'] > 1: continue
+
+            row.update(constants.SEQID2FIELD(row['seqid']))
+            row.update(constants.OBJECT2FIELD(row['object']))
+            
+            row = dict([(str(k.upper()),v) for k,v in row.items()])
+            print row
+
+            field = cls.createFieldArray(1)
+            for key in field.dtype.names:
+                print key, row[key]
+                field[key] = row[key]
+            fields.append(field)
+
+        return fields
+
+
+    @classmethod
     def common_parser(cls):
+        import logging
         import argparse
+
+        class VerboseAction(argparse._StoreTrueAction):
+
+            def __call__(self, parser, namespace, values, option_string=None):
+                super(VerboseAction,self).__call__(parser, namespace, values, option_string)
+                #setattr(namespace, self.dest, self.const)
+                if self.const: logging.getLogger().setLevel(logging.DEBUG)
+
+        class SpecialFormatter(logging.Formatter):
+            """
+            Class for overloading log formatting based on level.
+            """
+            FORMATS = {'DEFAULT'       : "%(message)s",
+                       logging.WARNING : "WARNING: %(message)s",
+                       logging.ERROR   : "ERROR: %(message)s",
+                       logging.DEBUG   : "DEBUG: %(message)s"}
+         
+            def format(self, record):
+                self._fmt = self.FORMATS.get(record.levelno, self.FORMATS['DEFAULT'])
+                return logging.Formatter.format(self, record)
+         
+        logger = logging.getLogger()
+        handler = logging.StreamHandler()
+        handler.setFormatter(SpecialFormatter())
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+
         description = __doc__
         parser = argparse.ArgumentParser(description=description)
-        parser.add_argument('-v','--verbose',action='store_true',
+        parser.add_argument('-v','--verbose',action=VerboseAction,
                             help='Output verbosity.')
         parser.add_argument('-p','--plot',action='store_true',
                             help='Plot output.')
-        parser.add_argument('-fields','--fields',default='target_fields.txt',
+        parser.add_argument('-f','--fields',default='target_fields.txt',
                             help='List of all target fields.')
         parser.add_argument('-w','--windows',default='observation_windows.txt',
                             help='List of observation windows.')
@@ -456,6 +480,7 @@ class Simulator(object):
                             help="List of fields that have been observed.")
         parser.add_argument('-o','--outfile',default='accomplished_fields.txt',
                             help='Save output fields surveyed.')
+
         return parser
 
     @classmethod
@@ -470,7 +495,8 @@ def main():
 
     sim = Simulator(args.fields,args.windows,args.done)
     sim.run(plot=args.plot)
-    if args.outfile: sim.saveAccomplishedFields(args.outfile)
+    if args.outfile: 
+        sim.saveFields(args.outfile,sim.accomplished_fields)
     
     # Example diagnostics
     """

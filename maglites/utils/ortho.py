@@ -22,12 +22,14 @@ params = {
     'xtick.minor.size': 1.5,    # minor tick size in points
     'xtick.major.size': 3,      # major tick size in points
     'xtick.minor.size': 1.5,    # minor tick size in points
-    'text.usetex': True,
+    #'text.usetex': True,       # ADW: Slow and no reason for tex right now
+    #'font.family':'serif',
+    #'font.serif':'Computer Modern Roman',
     #'figure.figsize': fig_size,
-    'font.family':'serif',
-    'font.serif':'Computer Modern Roman',
     'font.size': 12
     }
+
+
 
 matplotlib.rcParams.update(params)
 

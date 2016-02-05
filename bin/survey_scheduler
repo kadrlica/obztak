@@ -2,7 +2,7 @@
 """
 Executable for simulating the survey.
 """
-from maglites.obs import survey_observer
+from maglites.obs import survey_scheduler
 
 if __name__ == "__main__":
-    survey_observer.main()
+    survey_scheduler.main()

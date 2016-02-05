@@ -41,7 +41,12 @@ def write_json(outfile,data,**kwargs):
     with open(outfile,'w') as out:
         out.write(json.dumps(data,**kwargs))
 
-
+def read_json(filename,**kwargs):
+    with open(filename,'r') as f:
+        return json.loads(f.read(),**kwargs)
+            
+    
+    
 if __name__ == "__main__":
     import argparse
     description = __doc__
