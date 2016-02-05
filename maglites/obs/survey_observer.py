@@ -12,9 +12,15 @@ from maglites.sim import Simulator
 from maglites.utils import Database, datestring
 import maglites.utils.constants as constants
 
+import json
 
 class Observer(Simulator):
 
+    def __init__(self, infile_target_fields):
+        super(Observer,self).__init__(infile_target_fields)
+        self.accomplished_fields = self.getObservedFields()
+
+        
     def run(self, tstart=None, tstop=None, plot=True):
         # If no tstop, run for 90 minutes
         timedelta = 90*ephem.minute
@@ -31,7 +37,6 @@ class Observer(Simulator):
         latch = True
         while latch:
             # Check to see if in valid observation window
-
             if self.observation_windows is not None:
                 inside = False
                 for window in self.observation_windows:
@@ -65,7 +70,6 @@ class Observer(Simulator):
 
             date = date + constants.FIELDTIME
             self.accomplished_field_ids.append(id_select)
-            plot = False # Kludge to make end of night summary plots
 
             for key in field_select.keys():
                 self.accomplished_fields[key].append(field_select[key])
@@ -79,13 +83,11 @@ class Observer(Simulator):
         # Clean up
         self.accomplished_field_ids = []
 
-
-
-    def consolidateAccomplishedFields(self):
+    def getObservedFields(self):
         """
-        Get accomplished fields from the telemetry DB.
+        Get the fields that have been observed from the telemetry DB.
         """
-        defaults = dict(propid = '2012B-0001', limit = 'LIMIT 100',dbname='db-fnal')
+        defaults = dict(propid = '2016A-0366', limit = '',dbname='db-fnal')
         
         params = dict(defaults)
         #if opts is not None: params.update(vars(opts))
@@ -94,8 +96,8 @@ class Observer(Simulator):
         db.connect()
 
         query ="""
-        select object as ID, 1 as TILING, 1 as PRIORITY,
-        telra as RA, teldec as DEC, utc_beg AS DATE, 
+        select object as ID, telra as RA, teldec as DEC, 
+        1 as TILING, 1 as PRIORITY, utc_beg AS DATE, 
         COALESCE(airmass,-1) as AIRMASS, COALESCE(moonangl,-1) as MOONANGLE, 
         COALESCE(ha,-1) as HOURANGLE, COALESCE(slewangl,-1) as SLEW 
         from exposure where propid = '%(propid)s' %(limit)s
@@ -103,10 +105,14 @@ class Observer(Simulator):
 
         data = db.execute(query)
         names = map(str.upper,db.get_columns())
-        return np.rec.array(data,names=names)
 
+        if len(data): ret = np.rec.array(data,names=names)
+        else:         ret = np.rec.recarray(0,names=names)
+
+    @classmethod
     def write_json_script(self):
         pass
+
 
 def main():
     tstart = '2016/2/11 05:20:28'

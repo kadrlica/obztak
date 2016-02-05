@@ -20,3 +20,6 @@ EXPTIME   = 90*ephem.second # Exposure time
 DOWNTIME  = 30*ephem.second # Time between exposures from readout/slew
 NEXP      = 2 # Number of exposures taken in a row
 FIELDTIME = NEXP*(EXPTIME+DOWNTIME)
+
+# Object formatting
+OBJECT_FMT = "MAGLITES field - %d.%d.%d"
