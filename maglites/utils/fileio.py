@@ -5,12 +5,15 @@ Deal with fileio...
 from collections import OrderedDict as odict
 from matplotlib import mlab
 import numpy as np
+import json
+
+from maglites.utils.constants import FLOAT_FMT
 
 class FormatFloatForce(mlab.FormatFormatStr): 
     """
     mlab not doing well...
     """
-    def __init__(self,fmt="%.4f"): 
+    def __init__(self,fmt=FLOAT_FMT): 
         mlab.FormatFormatStr.__init__(self,fmt) 
     def toval(self, x): 
         return x 
@@ -32,13 +35,11 @@ def rec2csv(outfile,data,**kwargs):
 
     mlab.rec2csv(data,outfile,formatd=formatd,**kwargs)
 
-def write_json(outfile,data,indent=4):
-    # SISPI-compatible json output
-    
-    template = odict([
-        
-    ])
-
+def write_json(outfile,data,**kwargs):
+    kwargs.setdefault('indent',4)
+    json.encoder.FLOAT_REPR = lambda o: format(o, '.4f')
+    with open(outfile,'w') as out:
+        out.write(json.dumps(data,**kwargs))
 
 
 if __name__ == "__main__":

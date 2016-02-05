@@ -14,7 +14,7 @@
 # * Select next sequence of exposures from a given start time
 # * Visualize (afterburner?)
 
-import os
+import os,sys
 import copy
 import numpy as np
 import scipy.interpolate
@@ -24,6 +24,7 @@ import matplotlib.pyplot as plt
 
 import maglites.utils.projector
 import maglites.utils.constants
+import maglites.utils.constants as constants
 import maglites.utils.ortho
 import maglites.utils.fileio as fileio
 
@@ -265,7 +266,7 @@ class Simulator(object):
             basemap.scatter(*proj, c='magenta', edgecolor='none', s=50)
 
             plt.draw()
-            time.sleep(0.25)
+            time.sleep(0.2)
 
         field_select_dict = {}
         for name in self.target_fields.dtype.names:
@@ -409,35 +410,57 @@ class Simulator(object):
         ### the commas make me worried...
         #np.savetxt(outfile, data, fmt='%i, %.4f, %.4f, %i, %i, %s, %.4f, %.4f, %.4f, %.4f', header='ID, RA, DEC, TILING, PRIORITY, DATE, AIRMASS, SLEW, MOONANGLE, HOURANGLE')
         base,ext = os.path.splitext(outfile)
-        data = self.accomplished_fields
+        fields = self.accomplished_fields
 
-        if ext in ('.csv'):
-            fileio.rec2csv(outfile,data)
+        if ext in ('.csv','.txt','.dat'):
+            outdata = fields
+            fileio.rec2csv(outfile,outdata)
         elif ext in ('.json'):
-            fileio.write_json(outfile,data)
+            outdata = self.fields2sispi(fields)
+            fileio.write_json(outfile,outdata)
         else:
             msg = 'Unrecognized file type'
             raise Exception(msg)
 
     @classmethod
-    def parser(cls):
+    def fields2sispi(cls,fields):
+        out_dicts = []
+        for field in fields:
+            object_name = constants.OBJECT_FMT%(field)
+            seqid = constants.SEQID_FMT%(field)
+            for i,band in enumerate(constants.BANDS):
+                sispi_dict = copy.deepcopy(constants.SISPI_DICT)
+                sispi_dict['seqnum'] = i+1
+                sispi_dict['seqid'] = seqid
+                sispi_dict['object'] = object_name
+                sispi_dict['RA'] = field['RA']
+                sispi_dict['dec'] = field['DEC']
+                sispi_dict['filter'] = band
+                out_dicts.append(sispi_dict)
+        return out_dicts
+
+    @classmethod
+    def common_parser(cls):
         import argparse
         description = __doc__
         parser = argparse.ArgumentParser(description=description)
-        parser.add_argument('fields',nargs='?',default='target_fields.txt',
+        parser.add_argument('-v','--verbose',action='store_true',
+                            help='Output verbosity.')
+        parser.add_argument('-p','--plot',action='store_true',
+                            help='Plot output.')
+        parser.add_argument('-fields','--fields',default='target_fields.txt',
                             help='List of all target fields.')
         parser.add_argument('-w','--windows',default='observation_windows.txt',
                             help='List of observation windows.')
         parser.add_argument('-d','--done',
                             help="List of fields that have been observed.")
-        parser.add_argument('-p','--plot',action='store_true',
-                            help='Plot output.')
-        parser.add_argument('-v','--verbose',action='store_true',
-                            help='Output verbosity.')
         parser.add_argument('-o','--outfile',default='accomplished_fields.txt',
                             help='Save output fields surveyed.')
         return parser
 
+    @classmethod
+    def parser(cls):
+        return cls.common_parser()
 
 ############################################################
 
@@ -445,11 +468,10 @@ class Simulator(object):
 def main():
     args = Simulator.parser().parse_args()
 
-    fields = os.
-    my_simulator = Simulator(args.fields,args.windows,args.done)
-    my_simulator.run(plot=args.plot)
-    my_simulator.saveAccomplishedFields(args.outfile)
-
+    sim = Simulator(args.fields,args.windows,args.done)
+    sim.run(plot=args.plot)
+    if args.outfile: sim.saveAccomplishedFields(args.outfile)
+    
     # Example diagnostics
     """
     d = np.recfromtxt('accomplished_fields_2.txt', delimiter=',', names=True)

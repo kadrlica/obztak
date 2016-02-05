@@ -2,9 +2,9 @@
 """
 Module for running survey operations.
 """
-from datetime import datetime
+import os,sys
 import logging
-
+import copy
 import numpy as np
 import ephem
 
@@ -20,7 +20,7 @@ class Observer(Simulator):
         super(Observer,self).__init__(infile_target_fields)
         observed_fields = self.getObservedFields()
         if observed_fields:
-            self.accomplished_fields = observed_fields
+            self.accomplished_fields = np.append(self.accomplished_fields,observed_fields)
         
     def run(self, tstart=None, tstop=None, plot=True):
         # If no tstop, run for 90 minutes
@@ -116,32 +116,28 @@ class Observer(Simulator):
         return ret
 
     @classmethod
-    def write_json_script(self):
-        pass
+    def parser(cls):
+        parser = cls.common_parser()
+        parser.add_argument('--tstart',
+                            help="Start time for observation.")
+        parser.add_argument('--tstop' ,
+                            help="Stop time for observation.")
 
-def parser():
-    import argparse
-    description = __doc__
-    parser = argparse.ArgumentParser(description=description)
-    parser.add_argument('--tstart',help="Start time for observation.")
-    parser.add_argument('--tstop',help="Stop time for observation.")
-    parser.add_argument('-f','--fields',help='List of all target fields.')
-    parser.add_argument('-w','--windows',help='List of observation windows.')
-    parser.add_argument('-d','--done',help="List of fields that have been observed.")
-    return parser
+        return parser
     
 
 
 def main():
-    tstart = '2016/2/11 05:20:00'
-    tstop  = '2016/2/11 06:20:00'
-    fields = 'target_fields.txt'
-    windows = 'observation_windows.txt'
-    obs = Observer(fields)
-    obs.loadObservationWindows(windows)
-    obs.loadAccomplishedFields('accomplished_fields_2.txt')
-    obs.run(tstart,tstop,plot=True)
-    obs.saveAccomplishedFields('accomplished_fields_3.txt')
+    args = Observer.parser().parse_args()
+
+    obs = Observer(args.fields)
+    obs.loadObservationWindows(args.windows)
+    obs.loadAccomplishedFields(args.done)
+    obs.run(args.tstart,args.tstop,plot=args.plot)
+    if args.outfile: obs.saveAccomplishedFields(args.outfile)
+
+    if not sys.flags.interactive and args.plot:
+        raw_input(' ...finish...')
 
 if __name__ == "__main__":
     import argparse

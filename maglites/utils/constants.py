@@ -2,6 +2,7 @@
 Constants.
 """
 import ephem
+from collections import OrderedDict as odict
 
 RA_LMC = 80.8939
 DEC_LMC = -69.7561
@@ -20,7 +21,23 @@ EXPTIME   = 90*ephem.second # Exposure time
 DOWNTIME  = 30*ephem.second # Time between exposures from readout/slew
 NEXP      = 2 # Number of exposures taken in a row
 FIELDTIME = NEXP*(EXPTIME+DOWNTIME)
+BANDS     = ('g','r')
 
-# Object formatting
-OBJECT_FMT = "MAGLITES field - %d.%d.%d"
-
+# SISPI json template formatting
+OBJECT_FMT = "MAGLITES field - %(ID)d.%(TILING)d.%(PRIORITY)d"
+SEQID_FMT = "MAGLITES scheduled - %(DATE)s"
+FLOAT_FMT = '%.4f'
+SISPI_DICT = odict([
+    ("seqtot",  2),
+    ("seqnum",  None), # 1-indexed
+    ("seqid",   None),
+    ("object",  None),
+    ("exptime", 90),
+    ("RA",      None),
+    ("dec",     None),
+    ("filter",  None),
+    ("count",   1),
+    ("expType", "object"),
+    ("program", "maglites"),
+    ("wait",    "False"),
+])
