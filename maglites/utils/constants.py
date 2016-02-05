@@ -23,3 +23,4 @@ FIELDTIME = NEXP*(EXPTIME+DOWNTIME)
 
 # Object formatting
 OBJECT_FMT = "MAGLITES field - %d.%d.%d"
+

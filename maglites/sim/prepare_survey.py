@@ -147,10 +147,12 @@ def main():
               ['2017/6/28', 'full'],
               ['2017/6/29', 'full']]
 
-    observation_windows = prepareObservationWindows(nights, outfile='observation_windows.txt')
+    outfile = 'observation_windows.txt'
+    observation_windows = prepareObservationWindows(nights, outfile=outfile)
 
     #data, data2 = prepareTargetList('smash_fields_alltiles.txt', outfile='list.txt')
-    prepareTargetList('%s/maglites/data/smash_fields_alltiles.txt'%(os.environ['MAGLITESDIR']), outfile='target_fields.txt',plot=False)
+    outfile = 'target_fields.txt'
+    prepareTargetList('%s/maglites/data/smash_fields_alltiles.txt'%(os.environ['MAGLITESDIR']), outfile=outfile,plot=False)
     
 
 if __name__ == '__main__':
