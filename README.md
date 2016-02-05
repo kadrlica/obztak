@@ -7,8 +7,26 @@ Planning observations for the Magellanic Satellites Survey
 
 ## Running
 
-There are two pimary executables: `survey_simulator` and `survey_observer`. Both use the same underlying architecture, but the `survey_simulator` simulates the entire survey while `survey_observer` is used to simulate only a specific chuck of the survey and create an output json file. Both have the `-p` option for real-time plotting.
+The first step is to run `prepare_surve` to set up the necessary survey characterization files. Specifically, this script builds a list of survey fields and a list of expected time windows. These files will be written to the current directory by default.
+```
+> ./bin/prepare_survey --help
+usage: prepare_survey [-h] [-p] [-f FIELDS] [-w WINDOWS]
 
+Decide which fields to observe and time windows to observe.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -p, --plot            Plot output. (default: False)
+  -f FIELDS, --fields FIELDS
+                        List of all target fields. (default:
+                        target_fields.txt)
+  -w WINDOWS, --windows WINDOWS
+                        List of observation windows. (default:
+                        observation_windows.txt)
+```
+
+
+There are two pimary executables: `survey_simulator` and `survey_observer`. Both use the same underlying architecture, but the `survey_simulator` simulates the entire survey while `survey_observer` is used to simulate only a specific chuck of the survey and create an output json file. Both have the `-p` option for real-time plotting.
 ```
 > ./bin/survey_simulator --help
 usage: survey_simulator [-h] [-v] [-p] [-fields FIELDS] [-w WINDOWS] [-d DONE]
