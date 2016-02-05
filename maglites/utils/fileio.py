@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Deal with fileio...
+Deal with file input/output
 """
 from collections import OrderedDict as odict
 from matplotlib import mlab

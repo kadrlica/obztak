@@ -17,7 +17,6 @@
 import os,sys
 import copy
 import numpy as np
-import scipy.interpolate
 import time
 import ephem
 import matplotlib.pyplot as plt
@@ -80,10 +79,28 @@ class Simulator(object):
             self.accomplished_fields = self.loadFields(infile_accomplished_fields)
         self.accomplished_field_ids = self.accomplished_fields['ID'].tolist()
 
+
     def loadBlancoConstraints(self):
         """
         Load telescope pointing constraints
         """
+        # Updated to remove the dependence on scipy (which is broken on the mountain)
+        data = np.recfromtxt('%s/maglites/data/blanco_hour_angle_limits.dat'%(os.environ['MAGLITESDIR']), names=True)
+        self.blanco_constraints = data
+        ha_degrees = np.tile(0., len(self.blanco_constraints['HA']))
+        for ii in range(0, len(self.blanco_constraints['HA'])):
+            ha_degrees[ii] = maglites.utils.projector.hms2dec(self.blanco_constraints['HA'][ii])
+        
+        self.f_hour_angle_limit = lambda dec: np.interp(dec,self.blanco_constraints['Dec'], ha_degrees, left=-1, right=-1)
+        self.f_airmass_limit = lambda dec: np.interp(dec,self.blanco_constraints['Dec'], self.blanco_constraints['AirmassLimit'], left=-1, right=-1)
+
+        return self.f_hour_angle_limit,self.f_airmass_limit
+
+    def loadBlancoConstraints2(self):
+        """
+        Load telescope pointing constraints
+        """
+        import scipy.interpolate
         data = np.recfromtxt('%s/maglites/data/blanco_hour_angle_limits.dat'%(os.environ['MAGLITESDIR']), names=True)
         self.blanco_constraints = data
         ha_degrees = np.tile(0., len(self.blanco_constraints['HA']))
@@ -92,8 +109,11 @@ class Simulator(object):
 
         self.f_hour_angle_limit = scipy.interpolate.interp1d(self.blanco_constraints['Dec'], ha_degrees, 
                                                              bounds_error=False, fill_value=-1.)
+        
         self.f_airmass_limit = scipy.interpolate.interp1d(self.blanco_constraints['Dec'], self.blanco_constraints['AirmassLimit'], 
                                                           bounds_error=False, fill_value=-1.)
+
+        return self.f_hour_angle_limit,self.f_airmass_limit
 
 
     def selectField(self, date, ra_previous=None, dec_previous=None, plot=False, mode='balance'):
@@ -387,9 +407,6 @@ class Simulator(object):
 
         orig_names = np.char.array(orig.dtype.names)
         load_names = np.char.array(load.dtype.names)
-        print load_names
-        print orig_names
-        print load_names == orig_names
         if np.any(load_names != orig_names):
             msg =  "Unexpected input name:\n"
             msg += str(load_names[load_names != orig_names])
@@ -420,17 +437,20 @@ class Simulator(object):
         for row in sispi:
             if row['seqnum'] > 1: continue
 
-            row.update(constants.SEQID2FIELD(row['seqid']))
             row.update(constants.OBJECT2FIELD(row['object']))
+            row.update(constants.SEQID2FIELD(row['seqid']))
             
             row = dict([(str(k.upper()),v) for k,v in row.items()])
-            print row
+            row['AIRMASS']   = None
+            row['SLEW']      = None
+            row['MOONANGLE'] = None
+            row['HOURANGLE'] = None
 
             field = cls.createFieldArray(1)
             for key in field.dtype.names:
                 print key, row[key]
                 field[key] = row[key]
-            fields.append(field)
+            fields = np.append(fields,field)
 
         return fields
 
@@ -492,22 +512,12 @@ class Simulator(object):
 
 def main():
     args = Simulator.parser().parse_args()
-
     sim = Simulator(args.fields,args.windows,args.done)
     sim.run(plot=args.plot)
     if args.outfile: 
         sim.saveFields(args.outfile,sim.accomplished_fields)
     
-    # Example diagnostics
-    """
-    d = np.recfromtxt('accomplished_fields_2.txt', delimiter=',', names=True)
-    plt.figure()
-    plt.scatter(np.arange(len(d)), d['SLEW'])
-
-    plt.figure()
-    #plt.hist(d['AIRMASS'], bins=31)
-    plt.scatter(np.arange(len(d)), d['AIRMASS'])
-    """
+    return sim
 
 if __name__ == '__main__':
     main()
