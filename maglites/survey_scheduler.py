@@ -8,7 +8,7 @@ import copy
 import numpy as np
 import ephem
 
-from maglites.sim import Simulator
+from maglites import Simulator
 from maglites.utils import Database, datestring
 import maglites.utils.constants as constants
 

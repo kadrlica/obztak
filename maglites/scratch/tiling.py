@@ -31,9 +31,10 @@ def smash_dither(dx,dy,ra=d['RA'],dec=d['DEC']):
     return R1.rotate(ra2,dec2,invert=True)
 
 def decam_dither(dx,dy,ra=d['RA'],dec=d['DEC']):
-    out=[SphericalRotator(_ra,_dec).rotate(dx,dy,invert=True) for _ra,_dec in zip(ra,dec)] 
+    out = []
+    for _ra,_dec in zip(ra,dec):
+        out.append(SphericalRotator(_ra,_dec).rotate(dx,dy,invert=True))
     return np.array(out).T
-
 
 def smash_rotate(dx,dy,ra=d['RA'],dec=d['DEC']):
     ra0,dec0 = SMASH_POLE

@@ -1,9 +1,10 @@
+import os
 import numpy as np
 import pylab
 import matplotlib.path
 from matplotlib.collections import PolyCollection
 
-import ugali.utils.projector
+import maglites.utils.projector
 
 pylab.ion()
 
@@ -31,8 +32,8 @@ matplotlib.rcParams.update(params)
 ############################################################
 
 def rotateFocalPlane(ccd_array, ra_center, dec_center, ra_field, dec_field):
-    proj_center = ugali.utils.projector.Projector(ra_center, dec_center)
-    proj_field = ugali.utils.projector.Projector(ra_field, dec_field)
+    proj_center = maglites.utils.projector.Projector(ra_center, dec_center)
+    proj_field = maglites.utils.projector.Projector(ra_field, dec_field)
     
     ccd_array_new = []
     for ii in range(0, len(ccd_array)):
@@ -53,17 +54,18 @@ def plotFocalPlane(ccd_array, ra_center, dec_center, ra_field, dec_field, ax):
 ############################################################
 
 def applyDither(ra, dec, x, y):
-    proj = ugali.utils.projector.Projector(ra, dec)
+    proj = maglites.utils.projector.Projector(ra, dec)
     ra_dither, dec_dither = proj.imageToSphere(x, y)
     return ra_dither, dec_dither
 
 ############################################################
 
-X_CCD = 0.2986
-Y_CCD = 0.1497
+X_CCD = 0.29878 # This is the FITS y-axis
+Y_CCD = 0.14939 # This is the FITS x-axis
 
 #ra_center, dec_center = 182., -88.0
 ra_center, dec_center = 182., -68.0
+ra_center, dec_center = 178., -80.0
 #ra_center, dec_center = 351.6670, -72.0863
 #ra_center, dec_center = 351.6670, -89.
 
@@ -77,6 +79,7 @@ elif pattern == 'small':
     dither_array = [[1 * X_CCD / 3., 1. * Y_CCD / 3.],
                     [2. * X_CCD / 3., -1 * Y_CCD / 3.]]
 elif pattern == 'alex':
+    ### ADW: The pattern suggested is actually in SMASH coordinates not celestial.
     dither_array = [[0.75, 0.75],
                     [-0.75, 0.75]]
 #dither_array = [[4 * X_CCD / 3., 4. * Y_CCD / 3.],
@@ -91,15 +94,15 @@ if mode == 'fill':
     angsep_max = 3.
 
 # This should use the environment variable MAGLITESDIR to define the path
-data_alltiles = np.recfromtxt('/Users/keithbechtol/Documents/DES/projects/mw_substructure/des/magellanic_satellites_survey/code/maglites/data/smash_fields_alltiles.txt', names=True)
+filename  = os.path.expandvars('$MAGLITESDIR/maglites/data/smash_fields_alltiles.txt')
+data_alltiles = np.recfromtxt(filename, names=True)
 
-data = eval(''.join(open('ccd_corners_xy_fill.dat').readlines()))
+filename = os.path.expandvars('$MAGLITESDIR/maglites/scratch/ccd_corners_xy_fill.dat')
+data = eval(''.join(open(filename).readlines()))
 ccd_array = []
 for key in data.keys():
     #ccd_array.append(matplotlib.path.Path(data[key]))
     ccd_array.append(data[key])
-
-
 
 """
 n = 400
@@ -124,7 +127,7 @@ fig, ax = pylab.subplots(figsize=(8, 8))
 #plotFocalPlane(ccd_array, ra_center, dec_center, ra_center, dec_center, ax)
 #plotFocalPlane(ccd_array, ra_center, dec_center, ra_center, dec_center + 0.1, ax)
 
-angsep = ugali.utils.projector.angsep(ra_center, dec_center, data_alltiles['RA'], data_alltiles['DEC'])
+angsep = maglites.utils.projector.angsep(ra_center, dec_center, data_alltiles['RA'], data_alltiles['DEC'])
 for ii in np.nonzero(angsep < (np.min(angsep) + 0.01 + angsep_max))[0]:
     plotFocalPlane(ccd_array, ra_center, dec_center, data_alltiles['RA'][ii], data_alltiles['DEC'][ii], ax)
     

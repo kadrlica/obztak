@@ -186,6 +186,80 @@ class SphericalRotator:
 
 ############################################################
 
+class Projector:
+    """
+    Class for performing two-dimensional map projections from the celestial sphere.
+    """
+
+    def __init__(self, lon_ref, lat_ref, proj_type = 'ait'):
+        self.lon_ref = lon_ref
+        self.lat_ref = lat_ref
+        self.proj_type = proj_type
+
+        if proj_type.lower() == 'ait':
+            self.rotator = SphericalRotator(lon_ref, lat_ref, zenithal=False)
+            self.sphere_to_image_func = aitoffSphereToImage
+            self.image_to_sphere_func = aitoffImageToSphere
+        elif proj_type.lower() == 'tan':
+            self.rotator = SphericalRotator(lon_ref, lat_ref, zenithal=True)
+            self.sphere_to_image_func = gnomonicSphereToImage
+            self.image_to_sphere_func = gnomonicImageToSphere
+        elif proj_type.lower() == 'car':
+            def rotate(lon,lat,invert=False):
+                if invert:
+                    return lon + np.array([lon_ref]), lat + np.array([lat_ref])
+                else:
+                    return lon - np.array([lon_ref]), lat - np.array([lat_ref])
+            self.rotator = SphericalRotator(lon_ref, lat_ref, zenithal=False)
+            # Monkey patch the rotate function
+            self.rotator.rotate = rotate 
+            self.sphere_to_image_func = cartesianSphereToImage
+            self.image_to_sphere_func = cartesianImageToSphere
+        else:
+            print 'WARNING: %s not recognized'%(proj_type)
+
+    def sphereToImage(self, lon, lat):
+        lon_rotated, lat_rotated = self.rotator.rotate(lon, lat)
+        return self.sphere_to_image_func(lon_rotated, lat_rotated)
+
+    sphere2image = sphereToImage
+        
+    def imageToSphere(self, x, y):
+        lon_rotated, lat_rotated = self.image_to_sphere_func(x, y)
+        return self.rotator.rotate(lon_rotated, lat_rotated, invert = True)
+
+    image2sphere = imageToSphere
+
+def aitoffSphereToImage(lon, lat):
+    """
+    Hammer-Aitoff projection (deg).
+    """
+    lon = lon - 360.*(lon>180)
+    lon = np.radians(lon)
+    lat = np.radians(lat)
+
+    half_lon = lon/2.
+    cos_lat = np.cos(lat)
+     
+    gamma = (180. / np.pi) * np.sqrt(2. / (1. + (cos_lat * np.cos(half_lon))))
+    x = 2. * gamma * cos_lat * np.sin(half_lon)
+    y = gamma * np.sin(lat)
+    return x, y
+
+def aitoffImageToSphere(x, y):
+    """
+    Inverse Hammer-Aitoff projection (deg).
+    """
+    x = x - 360.*(x>180)
+    x = np.asarray(np.radians(x))
+    y = np.asarray(np.radians(y))
+    z = np.sqrt(1. - (x / 4.)**2 - (y / 2.)**2) # rad
+    lon = 2. * np.arctan2((2. * z**2) - 1, (z / 2.) * x)
+    lat = np.arcsin( y * z)
+    return ((180. - np.degrees(lon)) % 360.), np.degrees(lat)
+
+############################################################
+
 def match(lon1, lat1, lon2, lat2, tol=None, nnearest=1):
     """
     Adapted from Eric Tollerud.
