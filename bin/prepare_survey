@@ -2,7 +2,7 @@
 """
 """
 
-from maglites.sim import prepare_survey
+from maglites import survey_prepare
 
 if __name__ == "__main__":
-    prepare_survey.main()
+    survey_prepare.main()
