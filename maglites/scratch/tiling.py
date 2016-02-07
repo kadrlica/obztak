@@ -30,6 +30,11 @@ def smash_dither(dx,dy,ra=d['RA'],dec=d['DEC']):
     # Rotate back to the original frame (keeping R2)
     return R1.rotate(ra2,dec2,invert=True)
 
+def decam_dither(dx,dy,ra=d['RA'],dec=d['DEC']):
+    out=[SphericalRotator(_ra,_dec).rotate(dx,dy,invert=True) for _ra,_dec in zip(ra,dec)] 
+    return np.array(out).T
+
+
 def smash_rotate(dx,dy,ra=d['RA'],dec=d['DEC']):
     ra0,dec0 = SMASH_POLE
     # Rotate the pole at SMASH_POLE to (0,-90)
@@ -70,6 +75,7 @@ kwargs = dict(date='2016/02/11 03:00:00',center=(0,-90),airmass=False,moon=False
 sc_kwargs = dict(edgecolor='none',s=50,vmin=0.3,vmax=1.6)
 sc_kwargs = dict(edgecolor='none',s=50)
 
+"""
 # Make some plots for the original tilings
 fig,basemap=makePlot(**kwargs)
 ra,dec =d['RA'],d['DEC']
@@ -100,7 +106,7 @@ plt.hist(sep,bins=np.linspace(0,2,50),lw='2',histtype='step',color='k')
 plt.xlabel('Minimum Separation (deg)')
 plt.ylabel('Number of Fields')
 plt.savefig('smash_hist.png',bbox_inches='tight')
-
+"""
 
 # Make the tilings
 ra_list,dec_list = [],[]
@@ -109,6 +115,7 @@ for i,tiling in enumerate(tilings):
     sel = footprint(_ra,_dec)
     ra_list.append(_ra[sel]); dec_list.append(_dec[sel])
 
+"""
 # Plot the tilings
 ra,dec = [],[]
 fig_hist = plt.figure('hist')
@@ -136,6 +143,7 @@ plt.legend(loc='upper right',fontsize=12)
 plt.xlabel('Minimum Separation (deg)')
 plt.ylabel('Normalized Number of Fields')
 plt.savefig('maglites_hist.png',bbox_inches='tight')
+"""
 
 fig,basemap = makePlot(**kwargs)
 for i,(_ra,_dec) in enumerate(zip(ra_list,dec_list)):
@@ -150,6 +158,40 @@ for i,(_ra,_dec) in enumerate(zip(ra_list,dec_list)):
     plt.savefig('tiling_position_%i_zoom.png'%num,bbox_inches='tight')
     plt.gca().relim()
     plt.gca().autoscale()
+
+
+fig,basemap = makePlot(**kwargs)
+PIXSCALE=0.2626
+CCD = [4096*PIXSCALE/3600.,2048*PIXSCALE/3600.]
+
+tilings2 = [(0,0),(8/3.*CCD[0],-11/3.*CCD[1]),(-8/3.*CCD[0],+11/3.*CCD[1])]
+tilings2 = [(0,0),(8/3.*CCD[0],-11/3.*CCD[1]),(+8/3.*CCD[0],+11/3.*CCD[1])]
+tilings2 = [(0,0),(8/3.*CCD[0],-11/3.*CCD[1]),(+5/3.*CCD[0],+8/3.*CCD[1])]
+
+sel = footprint(d['RA'],d['DEC'])
+ra,dec = d['RA'][sel],d['DEC'][sel]
+
+ra_list2,dec_list2 = [],[]
+for i,tiling in enumerate(tilings2):
+    _ra,_dec=decam_dither(*tiling,ra=ra,dec=dec)
+    ra_list2.append(_ra); dec_list2.append(_dec)
+
+
+for i,(_ra,_dec) in enumerate(zip(ra_list2,dec_list2)):
+    num = i+1
+    _x,_y = safeProj(basemap,_ra,_dec)
+    basemap.scatter(_x,_y,facecolor='none',edgecolor=colors[i],s=50,label='Tiling %i'%num)
+
+    plt.legend(loc='lower left',fontsize=10)
+    plt.title('Tiling %s'%(i+1))
+    plt.savefig('decam_tiling_position_%i.png'%num,bbox_inches='tight')
+    zoom()
+    plt.savefig('decam_tiling_position_%i_zoom.png'%num,bbox_inches='tight')
+    plt.gca().relim()
+    plt.gca().autoscale()
+
+
+
 
 """
 for x2 in np.arange(-90,90,30):

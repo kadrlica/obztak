@@ -7,6 +7,7 @@ import numpy as np
 import ephem
 import logging
 import pylab as plt
+import numpy.lib.recfunctions as recfunc
 
 import maglites.utils.projector
 import maglites.utils.constants
@@ -63,6 +64,8 @@ def prepareTargetList(infile, outfile=None, plot=True):
 
     #data = np.recfromtxt('smash_fields_alltiles.txt', names=['RA', 'DEC'])
     data = np.recfromtxt('%s/maglites/data/smash_fields_alltiles.txt'%(os.environ['MAGLITESDIR']), names=True)
+    
+    smash_id = data['ID']
     ra = data['RA']
     dec = data['DEC']
     l, b = maglites.utils.projector.celToGal(ra, dec)
@@ -77,7 +80,7 @@ def prepareTargetList(infile, outfile=None, plot=True):
     cut = cut | (dec < -80.)
 
     #print np.sum(cut)
-
+    smash_id_select = smash_id[cut]
     ra_select = ra[cut]
     dec_select = dec[cut]
     tiling = np.tile(1, np.sum(cut))
@@ -86,12 +89,16 @@ def prepareTargetList(infile, outfile=None, plot=True):
 
     # Kludge to make 3 effective tilings
     n_effective_tilings = 4
+    smash_id = np.tile(smash_id_select, n_effective_tilings)
     ra_select = np.tile(ra_select, n_effective_tilings)
     dec_select = np.tile(dec_select, n_effective_tilings)
     tiling = np.tile(np.arange(1, n_effective_tilings + 1), np.sum(cut)).reshape(np.sum(cut), n_effective_tilings).transpose().flatten()
     priority = np.tile(1, n_effective_tilings * np.sum(cut))
     field_id = np.arange(1, (n_effective_tilings * np.sum(cut)) + 1)
+    
 
+    FIELDS = ['ID', 'SMASH_ID', 'NAME', 'RA', 'DEC', 'TILING', 'PRIORITY']
+    
     #fig, ax, basemap = maglites.utils.ortho.makePlot('2016/2/11 03:00')
     if plot:
         fig, basemap = maglites.utils.ortho.makePlot('2016/2/11 03:00')
@@ -116,6 +123,22 @@ def prepareTargetList(infile, outfile=None, plot=True):
 
     #return data, data2
     #return data
+
+
+def dither_fields(ra,dec,offset=(0.4482,0.5975)):
+    """
+    ra     : RA of nominal field center
+    dec    : Dec of nominal field center
+    offset : Units of CCD dimension
+    """
+    pixel_scale = 0.2626 # arcsec
+
+    # note that North is in the -x direction in FITS coordintes
+    nx,ny = 4096,2048 
+
+    DECAM = (7,12) # CCD dimensions
+    ccdsize = (nx*pixel_scale,ny*pixel_scale)
+
 
 ############################################################
 

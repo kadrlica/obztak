@@ -207,7 +207,7 @@ class Simulator(object):
             #fig, ax, basemap = maglites.utils.ortho.makePlot(date)
 
             if plt.get_fignums(): plt.cla()
-            fig, basemap = maglites.utils.ortho.makePlot(date)
+            fig, basemap = maglites.utils.ortho.makePlot(date,name='ortho')
 
             """
             # Plot airmass

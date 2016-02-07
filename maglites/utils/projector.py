@@ -1,6 +1,7 @@
 import re
 import numpy as np
 
+import maglites.utils.constants
 ############################################################
 
 def angsep(lon1,lat1,lon2,lat2):
@@ -119,3 +120,179 @@ def hms2dec(hms):
     return decimal
 
 ############################################################
+
+class SphericalRotator:
+    """
+    Base class for rotating points on a sphere.
+
+    The input is a fiducial point (deg) which becomes (0, 0) in rotated coordinates.
+    """
+
+    def __init__(self, lon_ref, lat_ref, zenithal=False):
+        self.setReference(lon_ref, lat_ref, zenithal)
+
+    def setReference(self, lon_ref, lat_ref, zenithal=False):
+
+        if zenithal:
+            phi = (np.pi / 2.) + np.radians(lon_ref)
+            theta = (np.pi / 2.) - np.radians(lat_ref)
+            psi = 0.
+        if not zenithal:
+            phi = (-np.pi / 2.) + np.radians(lon_ref)
+            theta = np.radians(lat_ref)
+            psi = np.radians(90.) # psi = 90 corresponds to (0, 0) psi = -90 corresponds to (180, 0)
+        
+
+        cos_psi,sin_psi = np.cos(psi),np.sin(psi)
+        cos_phi,sin_phi = np.cos(phi),np.sin(phi)
+        cos_theta,sin_theta = np.cos(theta),np.sin(theta)
+
+        self.rotation_matrix = np.matrix([
+            [cos_psi * cos_phi - cos_theta * sin_phi * sin_psi,
+             cos_psi * sin_phi + cos_theta * cos_phi * sin_psi,
+             sin_psi * sin_theta],
+            [-sin_psi * cos_phi - cos_theta * sin_phi * cos_psi,
+             -sin_psi * sin_phi + cos_theta * cos_phi * cos_psi,
+             cos_psi * sin_theta],
+            [sin_theta * sin_phi,
+             -sin_theta * cos_phi,
+             cos_theta]
+        ])
+        
+        self.inverted_rotation_matrix = np.linalg.inv(self.rotation_matrix)
+
+    def cartesian(self,lon,lat):
+        lon = np.radians(lon)
+        lat = np.radians(lat) 
+        
+        x = np.cos(lat) * np.cos(lon)
+        y = np.cos(lat) * np.sin(lon)
+        z =  np.sin(lat)
+        return np.array([x,y,z])
+        
+
+    def rotate(self, lon, lat, invert=False):
+        vec = self.cartesian(lon,lat)
+
+        if invert:
+            vec_prime = np.dot(np.array(self.inverted_rotation_matrix), vec)
+        else:        
+            vec_prime = np.dot(np.array(self.rotation_matrix), vec)
+
+        lon_prime = np.arctan2(vec_prime[1], vec_prime[0])
+        lat_prime = np.arcsin(vec_prime[2])
+
+        return (np.degrees(lon_prime) % 360.), np.degrees(lat_prime)
+
+############################################################
+
+def match(lon1, lat1, lon2, lat2, tol=None, nnearest=1):
+    """
+    Adapted from Eric Tollerud.
+    Finds matches in one catalog to another.
+ 
+    Parameters
+    lon1 : array-like
+        Longitude of the first catalog (degrees)
+    lat1 : array-like
+        Latitude of the first catalog (shape of array must match `lon1`)
+    lon2 : array-like
+        Longitude of the second catalog
+    lat2 : array-like
+        Latitude of the second catalog (shape of array must match `lon2`)
+    tol : float or None, optional
+        Proximity (degrees) of a match to count as a match.  If None,
+        all nearest neighbors for the first catalog will be returned.
+    nnearest : int, optional
+        The nth neighbor to find.  E.g., 1 for the nearest nearby, 2 for the
+        second nearest neighbor, etc.  Particularly useful if you want to get
+        the nearest *non-self* neighbor of a catalog.  To do this, use:
+        ``spherematch(lon, lat, lon, lat, nnearest=2)``
+ 
+    Returns
+    -------
+    idx1 : int array
+        Indices into the first catalog of the matches. Will never be
+        larger than `lon1`/`lat1`.
+    idx2 : int array
+        Indices into the second catalog of the matches. Will never be
+        larger than `lon2`/`lat2`.
+    ds : float array
+        Distance (in degrees) between the matches
+    """
+    from scipy.spatial import cKDTree
+ 
+    lon1 = np.asarray(lon1)
+    lat1 = np.asarray(lat1)
+    lon2 = np.asarray(lon2)
+    lat2 = np.asarray(lat2)
+ 
+    if lon1.shape != lat1.shape:
+        raise ValueError('lon1 and lat1 do not match!')
+    if lon2.shape != lat2.shape:
+        raise ValueError('lon2 and lat2 do not match!')
+
+    rotator = SphericalRotator(0,0)
+
+ 
+    # This is equivalent, but faster than just doing np.array([x1, y1, z1]).T
+    x1, y1, z1 = rotator.cartesian(lon1.ravel(),lat1.ravel())
+    coords1 = np.empty((x1.size, 3))
+    coords1[:, 0] = x1
+    coords1[:, 1] = y1
+    coords1[:, 2] = z1
+ 
+    x2, y2, z2 = rotator.cartesian(lon2.ravel(),lat2.ravel())
+    coords2 = np.empty((x2.size, 3))
+    coords2[:, 0] = x2
+    coords2[:, 1] = y2
+    coords2[:, 2] = z2
+ 
+    tree = cKDTree(coords2)
+    if nnearest == 1:
+        idxs2 = tree.query(coords1)[1]
+    elif nnearest > 1:
+        idxs2 = tree.query(coords1, nnearest)[1][:, -1]
+    else:
+        raise ValueError('invalid nnearest ' + str(nnearest))
+ 
+    ds = angsep(lon1, lat1, lon2[idxs2], lat2[idxs2])
+ 
+    idxs1 = np.arange(lon1.size)
+ 
+    if tol is not None:
+        msk = ds < tol
+        idxs1 = idxs1[msk]
+        idxs2 = idxs2[msk]
+        ds = ds[msk]
+ 
+    return idxs1, idxs2, ds
+
+def footprint(ra,dec):
+    l, b = celToGal(ra, dec)
+
+    angsep_lmc = maglites.utils.projector.angsep(maglites.utils.constants.RA_LMC, maglites.utils.constants.DEC_LMC, ra, dec)
+    angsep_smc = maglites.utils.projector.angsep(maglites.utils.constants.RA_SMC, maglites.utils.constants.DEC_SMC, ra, dec)
+    cut = (np.fabs(b) > 10.) \
+          & ((angsep_lmc < 30.) | (angsep_smc < 30.)) \
+          & (dec < -55.) & (ra > 100.) & (ra < 300.)
+    #cut = cut | ((dec < -65.) & (angsep_lmc > 5.) & (angsep_smc > 5.))
+    cut = cut | ((dec < -65.) & (ra > 300.) & (ra < 360.)) # SMC
+    cut = cut | (dec < -80.)
+
+    return cut
+
+def footprint(ra,dec):
+    l, b = celToGal(ra, dec)
+
+    angsep_lmc = maglites.utils.projector.angsep(maglites.utils.constants.RA_LMC, maglites.utils.constants.DEC_LMC, ra, dec)
+    angsep_smc = maglites.utils.projector.angsep(maglites.utils.constants.RA_SMC, maglites.utils.constants.DEC_SMC, ra, dec)
+    cut = (np.fabs(b) > 10.) \
+          & ((angsep_lmc < 30.) | (angsep_smc < 30.)) \
+          & (dec < -55.) & (ra > 100.) & (ra < 300.)
+    #cut = cut | ((dec < -65.) & (angsep_lmc > 5.) & (angsep_smc > 5.))
+    cut = cut | ((dec < -65.) & (ra > 300.) & (ra < 360.)) # SMC
+    cut = cut | (dec < -80.)
+
+    return cut
+

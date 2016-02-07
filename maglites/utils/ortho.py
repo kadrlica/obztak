@@ -104,6 +104,31 @@ def drawSMASH(basemap, s=50):
 
     #basemap.scatter(ra_smash, dec_smash, latlon=True, edgecolor='black', color='none', marker='h', s=50)
 
+
+############################################################
+
+def drawMAGLITES(basemap):
+    infile = '%s/maglites/data/maglites-poly.txt'%(os.environ['MAGLITESDIR'])
+    reader_poly = open(infile)
+    lines_poly = reader_poly.readlines()
+    reader_poly.close()
+
+    ra_poly = []
+    dec_poly = []
+    for line in lines_poly:
+        if '#' in line:
+            continue
+        parts = line.split()
+        if len(parts) != 2:
+            continue
+        ra_poly.append(float(parts[0]))
+        dec_poly.append(float(parts[1]))
+
+    l_poly, b_poly = maglites.utils.projector.celToGal(ra_poly, dec_poly)
+
+    proj = safeProj(basemap, ra_poly, dec_poly)
+    basemap.plot(*proj, color='blue', lw=2)
+
 ############################################################
 
 def drawAirmassContour(basemap, observatory, airmass, n=360, s=50):
@@ -152,7 +177,7 @@ def datestring(date):
 
 ############################################################
 
-def makePlot(date, figsize=(10.5,8.5), dpi=80, s=50, center=None, airmass=True, moon=True):
+def makePlot(date, name=None, figsize=(10.5,8.5), dpi=80, s=50, center=None, airmass=True, moon=True, des=True, smash=True, maglites=True):
     """
     Create map in orthographic projection
     """
@@ -168,7 +193,7 @@ def makePlot(date, figsize=(10.5,8.5), dpi=80, s=50, center=None, airmass=True, 
     #fig, ax = plt.subplots(fig='ortho', figsize=FIGSIZE, dpi=DPI)
     #fig = plt.figure('ortho')
     #ax = plt.subplots(figure=fig, figsize=FIGSIZE, dpi=DPI)
-    fig = plt.figure('ortho', figsize=figsize, dpi=dpi)
+    fig = plt.figure(name, figsize=figsize, dpi=dpi)
 
     ra_zenith, dec_zenith = observatory.radec_of(0, '90') # RA and Dec of zenith
     ra_zenith = np.degrees(ra_zenith)
@@ -193,12 +218,11 @@ def makePlot(date, figsize=(10.5,8.5), dpi=80, s=50, center=None, airmass=True, 
     meridians = np.arange(0.,420.,60.)
     basemap.drawmeridians(meridians)
 
-    drawDES(basemap)
-    drawSMASH(basemap, s=s)
-    if airmass:
-        drawAirmassContour(basemap, observatory, 2., s=s)
-    if moon:
-        drawMoon(basemap, date)
+    if des:   drawDES(basemap)
+    if smash: drawSMASH(basemap, s=s)
+    if maglites: drawMAGLITES(basemap)
+    if airmass: drawAirmassContour(basemap, observatory, 2., s=s)
+    if moon: drawMoon(basemap, date)
     plt.title('%s UTC'%(datestring(date)))
 
     #return fig, ax, basemap

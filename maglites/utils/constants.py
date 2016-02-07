@@ -15,6 +15,10 @@ LON_CTIO = '-70:48:23.49'
 LAT_CTIO = '-30:10:10.78'
 ELEVATION_CTIO = 2206.8 # m
 
+# Pole of the SMASH fields
+SMASH_POLE = (10,-30)
+
+
 # Characteristics of the survey
 # 4 minutes = 90 sec exposures in g and r with 30 sec between exposures
 EXPTIME   = 90*ephem.second # Exposure time
