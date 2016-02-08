@@ -1,0 +1,18 @@
+#!/usr/bin/env python
+"""
+Convert a csv field file to a SISPI json file.
+"""
+from os.path import splitext
+
+from maglites.field import fields2sispi
+from maglites.utils.parser import Parser
+
+parser = Parser(description=__doc__)
+parser.add_argument('infile',help='Input file (csv format).')
+parser.add_argument('-f','--force',action='store_true',
+                    help='Input file (csv format).')
+    
+if __name__ == "__main__":
+    args = parser.parse_args()    
+    fields2sispi(args.infile,force=args.force)
+    

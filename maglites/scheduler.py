@@ -22,18 +22,18 @@ from maglites.field import FieldArray
 
 class Scheduler(object):
 
-    def __init__(self, target_fields, observation_windows=None, accomplished_fields=None):
+    def __init__(self, target_fields, observation_windows=None, completed_fields=None):
         if isinstance(target_fields,basestring):
             self.target_fields = FieldArray.read(target_fields)
         else:
             self.target_fields = target_fields
 
         self.loadObservationWindows(observation_windows)
-        self.loadAccomplishedFields(accomplished_fields)
+        self.loadCompletedFields(completed_fields)
         
         self.scheduled_fields = FieldArray()
         self.observed_fields  = self.loadObservedFields()
-        self.accomplished_fields = self.accomplished_fields + self.observed_fields
+        self.completed_fields = self.completed_fields + self.observed_fields
 
         self.observatory = ephem.Observer()
         self.observatory.lon = maglites.utils.constants.LON_CTIO
@@ -67,17 +67,17 @@ class Scheduler(object):
             logging.info('  %s -- %s'%(start,end))
         logging.info(30*'-')
 
-    def loadAccomplishedFields(self, accomplished_fields = None):
-        if not accomplished_fields:
-            self.accomplished_fields = FieldArray()
-        if isinstance(accomplished_fields,basestring):
-            accomplished_fields = [accomplished_fields]
+    def loadCompletedFields(self, completed_fields = None):
+        if not completed_fields:
+            self.completed_fields = FieldArray()
+        if isinstance(completed_fields,basestring):
+            completed_fields = [completed_fields]
 
-        if isinstance(accomplished_fields,list):
+        if isinstance(completed_fields,list):
             fields = FieldArray()
-            for filename in accomplished_fields:
+            for filename in completed_fields:
                 fields = fields + FieldArray.read(filename)
-            self.accomplished_fields = fields
+            self.completed_fields = fields
 
     def loadObservedFields(self, **kwargs):
         """
@@ -166,7 +166,7 @@ class Scheduler(object):
         cut_declination = self.target_fields['DEC'] > -89.
 
         # Don't consider fields which have already been observed
-        cut_todo = np.logical_not(np.in1d(self.target_fields['ID'], self.accomplished_fields['ID']))
+        cut_todo = np.logical_not(np.in1d(self.target_fields['ID'], self.completed_fields['ID']))
         cut = cut_todo & cut_hour_angle & cut_airmass & cut_declination & (airmass < 2.) # Now with Blanco telescope constraints
         #cut = cut_todo & (airmass < 2.) # Original
 
@@ -234,8 +234,8 @@ class Scheduler(object):
 
         """
         # Plot airmass
-        cut_accomplished = np.in1d(self.target_fields['ID'], self.accomplished_field_ids)
-        proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_accomplished], self.target_fields['DEC'][cut_accomplished])
+        cut_completed = np.in1d(self.target_fields['ID'], self.completed_field_ids)
+        proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_completed], self.target_fields['DEC'][cut_completed])
         basemap.scatter(*proj, c='0.75', edgecolor='none', s=50)
         
         proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_todo], self.target_fields['DEC'][cut_todo])
@@ -245,8 +245,8 @@ class Scheduler(object):
         """
         """
         # Plot hour angle
-        cut_accomplished = np.in1d(self.target_fields['ID'], self.accomplished_field_ids)
-        proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_accomplished], self.target_fields['DEC'][cut_accomplished])
+        cut_completed = np.in1d(self.target_fields['ID'], self.completed_field_ids)
+        proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_completed], self.target_fields['DEC'][cut_completed])
         basemap.scatter(*proj, c='0.75', edgecolor='none', s=50)
         
         proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_todo], self.target_fields['DEC'][cut_todo])
@@ -262,8 +262,8 @@ class Scheduler(object):
         basemap.scatter(*proj, c=ra_effective, edgecolor='none', s=50, cmap='summer_r')
         colorbar = plt.colorbar(label='RA')
 
-        cut_accomplished = np.in1d(self.target_fields['ID'], self.accomplished_field_ids)
-        proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_accomplished], self.target_fields['DEC'][cut_accomplished])
+        cut_completed = np.in1d(self.target_fields['ID'], self.completed_field_ids)
+        proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_completed], self.target_fields['DEC'][cut_completed])
         basemap.scatter(*proj, c='0.75', edgecolor='none', s=50)
         """
         """
@@ -274,8 +274,8 @@ class Scheduler(object):
         basemap.scatter(*proj, c=ra_effective[cut_todo][index_sort], edgecolor='none', s=50, vmin=weight_min, vmax=weight_min + 100., cmap='summer_r')
         colorbar = plt.colorbar(label='Weight')
 
-        cut_accomplished = np.in1d(self.target_fields['ID'], self.accomplished_field_ids)
-        proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_accomplished], self.target_fields['DEC'][cut_accomplished])
+        cut_completed = np.in1d(self.target_fields['ID'], self.completed_field_ids)
+        proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_completed], self.target_fields['DEC'][cut_completed])
         basemap.scatter(*proj, c='0.75', edgecolor='none', s=50)
         """
 
@@ -285,14 +285,14 @@ class Scheduler(object):
         # (see PlotPointings). That said, s=50 is probably roughly ok.
         
         # Plot number of tilings 
-        cut_accomplished = np.in1d(self.target_fields['ID'],self.accomplished_fields['ID'])
+        cut_completed = np.in1d(self.target_fields['ID'],self.completed_fields['ID'])
         proj = maglites.utils.ortho.safeProj(basemap, 
-                                             self.target_fields['RA'][~cut_accomplished], 
-                                             self.target_fields['DEC'][~cut_accomplished])
-        basemap.scatter(*proj, c=np.tile(0, np.sum(np.logical_not(cut_accomplished))), edgecolor='none', s=50, vmin=0, vmax=4, cmap='summer_r')
+                                             self.target_fields['RA'][~cut_completed], 
+                                             self.target_fields['DEC'][~cut_completed])
+        basemap.scatter(*proj, c=np.tile(0, np.sum(np.logical_not(cut_completed))), edgecolor='none', s=50, vmin=0, vmax=4, cmap='summer_r')
         
-        proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_accomplished], self.target_fields['DEC'][cut_accomplished])
-        basemap.scatter(*proj, c=self.target_fields['TILING'][cut_accomplished], edgecolor='none', s=50, vmin=0, vmax=4, cmap='summer_r')
+        proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_completed], self.target_fields['DEC'][cut_completed])
+        basemap.scatter(*proj, c=self.target_fields['TILING'][cut_completed], edgecolor='none', s=50, vmin=0, vmax=4, cmap='summer_r')
 
         # Draw colorbar in existing axis
         if len(fig.axes) == 2:
@@ -321,7 +321,7 @@ class Scheduler(object):
         if isinstance(tstop,basestring):
             tstop = ephem.Date(tstop)
 
-        msg = "Previously accomplished fields: %i"%len(self.accomplished_fields)
+        msg = "Previously completed fields: %i"%len(self.completed_fields)
         logging.info(msg)
 
         date = tstart
@@ -342,13 +342,13 @@ class Scheduler(object):
 
             # Check 
             compute_slew = True
-            if len(self.accomplished_fields['ID']) == 0:
+            if len(self.completed_fields['ID']) == 0:
                 compute_slew = False
             else:
-                if (date - ephem.Date(self.accomplished_fields['DATE'][-1])) > (30. * ephem.minute):
+                if (date - ephem.Date(self.completed_fields['DATE'][-1])) > (30. * ephem.minute):
                     compute_slew = False
             if compute_slew:
-                field_select = self.selectField(date, ra_previous=self.accomplished_fields['RA'][-1], dec_previous=self.accomplished_fields['DEC'][-1], plot=plot)
+                field_select = self.selectField(date, ra_previous=self.completed_fields['RA'][-1], dec_previous=self.completed_fields['DEC'][-1], plot=plot)
             else:
                 field_select = self.selectField(date, plot=plot)
 
@@ -356,7 +356,7 @@ class Scheduler(object):
             id_select = field_select['ID']
             date = date + len(field_select)*constants.FIELDTIME
 
-            self.accomplished_fields = self.accomplished_fields + field_select
+            self.completed_fields = self.completed_fields + field_select
             self.scheduled_fields    = self.scheduled_fields + field_select
 
             if plot: self.plotField(date, field_select)
@@ -370,53 +370,24 @@ class Scheduler(object):
 
     @classmethod
     def common_parser(cls):
-        import logging
-        import argparse
-
-        class VerboseAction(argparse._StoreTrueAction):
-
-            def __call__(self, parser, namespace, values, option_string=None):
-                super(VerboseAction,self).__call__(parser, namespace, values, option_string)
-                #setattr(namespace, self.dest, self.const)
-                if self.const: logging.getLogger().setLevel(logging.DEBUG)
-
-        class SpecialFormatter(logging.Formatter):
-            """
-            Class for overloading log formatting based on level.
-            """
-            FORMATS = {'DEFAULT'       : "%(message)s",
-                       logging.WARNING : "WARNING: %(message)s",
-                       logging.ERROR   : "ERROR: %(message)s",
-                       logging.DEBUG   : "DEBUG: %(message)s"}
-         
-            def format(self, record):
-                self._fmt = self.FORMATS.get(record.levelno, self.FORMATS['DEFAULT'])
-                return logging.Formatter.format(self, record)
-         
-        logger = logging.getLogger()
-        handler = logging.StreamHandler()
-        handler.setFormatter(SpecialFormatter())
-        logger.addHandler(handler)
-        logger.setLevel(logging.INFO)
+        from maglites.utils.parser import Parser
 
         description = __doc__
-        parser = argparse.ArgumentParser(description=description)
-        parser.add_argument('-v','--verbose',action=VerboseAction,
-                            help='Output verbosity.')
+        parser = Parser(description=description)
         parser.add_argument('-p','--plot',action='store_true',
-                            help='Plot output.')
+                            help='create visual output.')
         parser.add_argument('--utc-start',
-                            help="Start time for observation.")
+                            help="start time for observation.")
         parser.add_argument('--utc-end',
-                            help="End time for observation.")
+                            help="end time for observation.")
         parser.add_argument('-f','--fields',default='target_fields.csv',
-                            help='List of all target fields.')
+                            help='list of all target fields.')
         parser.add_argument('-w','--windows',default='observation_windows.csv',
-                            help='List of observation windows.')
-        parser.add_argument('-a','--accomplish',action='append',
-                            help="List of fields that have been accomplished.")
+                            help='list of observation windows.')
+        parser.add_argument('-c','--complete',action='append',
+                            help="list of fields that have been completed.")
         parser.add_argument('-o','--outfile',default='scheduled_fields.csv',
-                            help='Save output file of scheduled fields.')
+                            help='save output file of scheduled fields.')
 
         return parser
 

@@ -5,6 +5,7 @@ Module for working with survey fields.
 import os
 import copy
 from collections import OrderedDict as odict
+import logging
 
 import numpy as np
 
@@ -169,6 +170,18 @@ class FieldArray(np.recarray):
         else:
             msg = "Unrecognized file extension: %s"%ext
             raise IOError(msg)
+
+
+def fields2sispi(infile,outfile=None,force=False):
+    if not outfile: outfile = os.path.splitext(infile)[0]+'.json'
+    fields = FieldArray.read(infile)
+    if os.path.exists(outfile) and not force:
+        msg = "Output file already exists: %s"%(outfile)
+        raise IOError(msg)
+    logging.debug("Writing %s..."%outfile)
+    fields.write(outfile)
+    return outfile
+
             
 if __name__ == "__main__":
     import argparse
