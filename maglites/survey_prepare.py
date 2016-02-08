@@ -12,6 +12,9 @@ import numpy.lib.recfunctions as recfunc
 import maglites.utils.projector
 import maglites.utils.constants
 import maglites.utils.ortho
+from maglites.field import FieldArray
+from maglites.utils.constants import BANDS
+from maglites.utils import fileio
 
 ############################################################
 
@@ -44,66 +47,66 @@ def prepareObservationWindows(nights, horizon=-14., outfile=None):
         elif mode == 'second':
             observation_windows.append([time_midpoint, time_rising])
 
-        #print date
-        #print observation_windows[-1]
-        #print type(observation_windows[-1][0])
+    dtype=[('UTC_START','S20'),('UTC_END','S20')]
+    observation_windows = np.rec.fromrecords(observation_windows,dtype=dtype)
 
     if outfile:
-        writer = open(outfile, 'w')
-        for observation_window in observation_windows:
-            writer.write('%s, %s\n'%(observation_window[0], observation_window[1]))
-        writer.close()
+        fileio.rec2csv(outfile,observation_windows)
 
     return observation_windows
 
 ############################################################
 
-def prepareTargetList(infile, outfile=None, plot=True):
-    # Consider to remove SMASH fields?
-    # How to create a dither??
+def prepareTargetList(infile=None, outfile=None, plot=True):
 
+    DECAM_DITHERS = [[0,0],[8/3.,11/3.],[-8/3.,-11/3.],[8/3.,0]]
+
+    # Import the dither function here...
+    def dither(ra,dec):
+        return ra,dec
+
+    if infile is None:
+        infile = os.path.expandvars('$MAGLITESDIR/maglites/data/smash_fields_alltiles.txt')
     #data = np.recfromtxt('smash_fields_alltiles.txt', names=['RA', 'DEC'])
-    data = np.recfromtxt('%s/maglites/data/smash_fields_alltiles.txt'%(os.environ['MAGLITESDIR']), names=True)
-    
-    smash_id = data['ID']
-    ra = data['RA']
-    dec = data['DEC']
-    l, b = maglites.utils.projector.celToGal(ra, dec)
-
-    angsep_lmc = maglites.utils.projector.angsep(maglites.utils.constants.RA_LMC, maglites.utils.constants.DEC_LMC, ra, dec)
-    angsep_smc = maglites.utils.projector.angsep(maglites.utils.constants.RA_SMC, maglites.utils.constants.DEC_SMC, ra, dec)
-    cut = (np.fabs(b) > 10.) \
-          & ((angsep_lmc < 30.) | (angsep_smc < 30.)) \
-          & (dec < -55.) & (ra > 100.) & (ra < 300.)
-    #cut = cut | ((dec < -65.) & (angsep_lmc > 5.) & (angsep_smc > 5.))
-    cut = cut | ((dec < -65.) & (ra > 300.) & (ra < 360.)) # SMC
-    cut = cut | (dec < -80.)
-
-    #print np.sum(cut)
-    smash_id_select = smash_id[cut]
-    ra_select = ra[cut]
-    dec_select = dec[cut]
-    tiling = np.tile(1, np.sum(cut))
-    priority = np.tile(1, np.sum(cut))
-    field_id = np.arange(1, np.sum(cut) + 1)
-
-    # Kludge to make 3 effective tilings
-    n_effective_tilings = 4
-    smash_id = np.tile(smash_id_select, n_effective_tilings)
-    ra_select = np.tile(ra_select, n_effective_tilings)
-    dec_select = np.tile(dec_select, n_effective_tilings)
-    tiling = np.tile(np.arange(1, n_effective_tilings + 1), np.sum(cut)).reshape(np.sum(cut), n_effective_tilings).transpose().flatten()
-    priority = np.tile(1, n_effective_tilings * np.sum(cut))
-    field_id = np.arange(1, (n_effective_tilings * np.sum(cut)) + 1)
+    data = np.recfromtxt(infile, names=True)
     
 
-    FIELDS = ['ID', 'SMASH_ID', 'NAME', 'RA', 'DEC', 'TILING', 'PRIORITY']
+    sel = maglites.utils.projector.footprint(data['RA'],data['DEC'])
+
+    # The selection could be done after the dither...
+    smash_id = data['ID'][sel]
+    ra       = data['RA'][sel]
+    dec      = data['DEC'][sel]
+
+    nhexes = sel.sum()
+    ntilings = len(DECAM_DITHERS)
+    nbands = len(BANDS)
+    nfields = nhexes*nbands*ntilings
+
+    logging.info("Number of hexes: %d"%nhexes)
+    logging.info("Number of tilings: %d"%ntilings)
+    logging.info("Number of filters: %d"%nbands)
     
-    #fig, ax, basemap = maglites.utils.ortho.makePlot('2016/2/11 03:00')
+    fields = FieldArray(nfields)
+    fields['ID'] = np.arange(1,nfields+1)
+    fields['SMASH_ID'] = np.tile(np.repeat(smash_id,nbands),ntilings)
+    fields['PRIORITY'].fill(1)
+    fields['TILING'] = np.repeat(np.arange(1,ntilings+1),nhexes*nbands)
+    fields['FILTER'] = np.tile(BANDS,nhexes*ntilings)
+
+    for i in range(ntilings):
+        idx0 = i*nhexes*nbands
+        idx1 = idx0+nhexes*nbands
+        ra_dither,dec_dither = dither(ra,dec)
+        fields['RA'][idx0:idx1] = np.repeat(ra_dither,nbands)
+        fields['DEC'][idx0:idx1] = np.repeat(dec_dither,nbands)
+
+    logging.info("Number of target fields: %d"%len(fields))
+
     if plot:
-        fig, basemap = maglites.utils.ortho.makePlot('2016/2/11 03:00')
+        fig, basemap = maglites.utils.ortho.makePlot('2016/2/11 03:00',center=(0,-90),airmass=False,moon=False)
 
-        proj = maglites.utils.ortho.safeProj(basemap, ra_select, dec_select)
+        proj = maglites.utils.ortho.safeProj(basemap,fields['RA'],fields['DEC'])
         basemap.scatter(*proj, color='orange', edgecolor='none', s=50)
         if outfile:
             outfig = os.path.splitext(outfile)[0]+'.png'
@@ -111,19 +114,9 @@ def prepareTargetList(infile, outfile=None, plot=True):
         if not sys.flags.interactive:
             plt.show(block=True)
 
+    if outfile: fields.write(outfile)
 
-    logging.info("Number of target fields: %d"%len(field_id))
-    if outfile:
-        ### ADW: Shouldn't this be a csv file to be consistent?
-        np.savetxt(outfile, zip(field_id, ra_select, dec_select, tiling, priority), 
-                   fmt='%12i%12.4f%12.4f%12i%12i', 
-                   header='%10s%12s%12s%12s%12s'%('ID', 'RA', 'DEC', 'TILING', 'PRIORITY'))
-        #data2 = np.recfromtxt(outfile, names=True)
-        #print data2
-
-    #return data, data2
-    #return data
-
+    return fields
 
 def dither_fields(ra,dec,offset=(0.4482,0.5975)):
     """
@@ -193,9 +186,9 @@ def parser():
                                      formatter_class=formatter)
     parser.add_argument('-p','--plot',action='store_true',
                         help='Plot output.')
-    parser.add_argument('-f','--fields',default='target_fields.txt',
+    parser.add_argument('-f','--fields',default='target_fields.csv',
                         help='List of all target fields.')
-    parser.add_argument('-w','--windows',default='observation_windows.txt',
+    parser.add_argument('-w','--windows',default='observation_windows.csv',
                         help='List of observation windows.')
     return parser
 
