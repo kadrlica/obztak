@@ -13,9 +13,18 @@ def main():
     else:
         windows = scheduler.observation_windows
 
+    ##If you want to plot with each field (every 2 exposures):
+    #for i,(start,end) in enumerate(windows):
+    #    print start,end
+    #    scheduler.run(tstart=start,tstop=end,plot=args.plot)
+    #    if (raw_input(' ...continue ([y]/n)').lower()=='n'): break
+
+    # If you want to plot only at the end of the night:
     for i,(start,end) in enumerate(windows):
         print start,end
-        scheduler.run(tstart=start,tstop=end,plot=args.plot)
+        scheduler.run(tstart=start,tstop=end,plot=False)
+        field_select = scheduler.scheduled_fields[-1]
+        scheduler.plotField(end,field_select)
         if (raw_input(' ...continue ([y]/n)').lower()=='n'): break
 
     raw_input(' ...finish...')
