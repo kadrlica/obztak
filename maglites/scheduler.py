@@ -18,7 +18,6 @@ import maglites.utils.fileio as fileio
 
 from maglites.utils.ortho import datestring
 from maglites.field import FieldArray
-from maglites.utils import Database
 ############################################################
 
 class Scheduler(object):
@@ -84,10 +83,15 @@ class Scheduler(object):
         """
         Get the fields that have been observed from the telemetry DB.
         """
+        try: 
+            from maglites.utils import Database
+        except ImportError: 
+            return FieldArray(0)
+
         defaults = dict(propid='2016A-0366', limit='', dbname='db-fnal')
         params = copy.deepcopy(defaults)
         params.update(kwargs)
-
+            
         db = Database()
         db.connect()
 
