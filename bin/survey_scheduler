@@ -2,7 +2,7 @@
 """
 Executable for simulating the survey.
 """
-from maglites import survey_scheduler
+from maglites.scheduler import Scheduler
 
 if __name__ == "__main__":
-    survey_scheduler.main()
+    Scheduler.main()
