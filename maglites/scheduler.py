@@ -83,35 +83,14 @@ class Scheduler(object):
         """
         Get the fields that have been observed from the telemetry DB.
         """
+
+        from maglites.field import FieldArray
         try: 
-            from maglites.utils import Database
-        except ImportError: 
+            fields = FieldArray.from_database()
+            return fields
+        except Exception, e: 
+            logging.warning(e)
             return FieldArray(0)
-
-        defaults = dict(propid='2016A-0366', limit='', dbname='db-fnal')
-        params = copy.deepcopy(defaults)
-        params.update(kwargs)
-            
-        db = Database()
-        db.connect()
-
-        query ="""
-        select object as OBJECT, seqid as SEQID, seqnum as SEQNUM,
-        telra as RA, teldec as DEC, 
-        to_char(utc_beg, 'YYYY/MM/DD HH24:MI:SS') AS DATE, 
-        COALESCE(airmass,-1) as AIRMASS, COALESCE(moonangl,-1) as MOONANGLE, 
-        COALESCE(ha,-1) as HOURANGLE, COALESCE(slewangl,-1) as SLEW 
-        from exposure where propid = '%(propid)s' %(limit)s
-        """%params
-
-        data = db.execute(query)
-        names = map(str.upper,db.get_columns())
-        
-        if not len(data): return FieldArray(0)
-
-        fields = FieldArray.load_recarray(recarray)
-        fields.from_object(recarray['OBJECT'])
-        return fields
 
     def loadBlancoConstraints(self):
         """
@@ -398,7 +377,7 @@ class Scheduler(object):
     @classmethod
     def main(cls):
         args = cls.parser().parse_args()
-        scheduler = cls(args.fields,args.windows,args.accomplish)
+        scheduler = cls(args.fields,args.windows,args.complete)
         scheduler.run(plot=args.plot)
         if args.outfile: 
             scheduler.scheduled_fields.write(args.outfile)

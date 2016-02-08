@@ -144,6 +144,40 @@ class FieldArray(np.recarray):
             fields[k] = recarray[keys[k]]
         return fields
 
+    @classmethod
+    def load_database(cls,database = None):
+        """
+        Get the fields that have been observed from the telemetry DB.
+        """
+        from maglites.utils import Database
+
+        if not isinstance(database,Database):
+            database = Database(database)
+            database.connect()
+
+        defaults = dict(propid='2016A-0366', limit='', dbname='db-fnal')
+        params = copy.deepcopy(defaults)
+        params.update(kwargs)
+            
+        db = Database()
+        db.connect()
+
+        query ="""
+        select object, seqid, seqnum, telra as RA, teldec as dec, 
+        expTime, filter, to_char(utc_beg, 'YYYY/MM/DD HH24:MI:SS') AS DATE, 
+        COALESCE(airmass,-1) as AIRMASS, COALESCE(moonangl,-1) as MOONANGLE, 
+        COALESCE(ha,-1) as HOURANGLE, COALESCE(slewangl,-1) as SLEW,
+        from exposure where propid = '%(propid)s' %(limit)s
+        """%params
+
+        data = database.execute(query)
+        names = map(str.upper,database.get_columns())
+        
+        if not len(data): return FieldArray(0)
+        sispi = np.recarray(data,names=names)
+
+        fields = self.load_sispi(sispi)
+        return fields
         
     @classmethod
     def read(cls, filename):
