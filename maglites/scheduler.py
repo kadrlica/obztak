@@ -301,7 +301,7 @@ class Scheduler(object):
         basemap.scatter(*proj, c='magenta', edgecolor='none', s=50)
 
         plt.draw()
-        time.sleep(0.2)
+        time.sleep(0.1)
 
 
     def run(self, tstart=None, tstop=None, plot=True):

@@ -2,7 +2,29 @@
 """
 Executable for simulating the survey.
 """
-from maglites import survey_simulator
+from maglites.scheduler import Scheduler
+
+def main():
+    args = Scheduler.parser().parse_args()
+    scheduler = Scheduler(args.fields,args.windows,args.accomplish)
+
+    if args.utc_start and args.utc_end:
+        windows = [[args.utc_start,args.utc_end]]
+    else:
+        windows = scheduler.observation_windows
+
+    for i,(start,end) in enumerate(windows):
+        print start,end
+        scheduler.run(tstart=start,tstop=end,plot=args.plot)
+        if (raw_input(' ...continue ([y]/n)').lower()=='n'): break
+
+    raw_input(' ...finish...')
+
+    if args.outfile: 
+        scheduler.scheduled_fields.write(args.outfile)
+        
+    return scheduler
+
 
 if __name__ == "__main__":
-    survey_simulator.main()
+    main()
