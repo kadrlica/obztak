@@ -1,0 +1,40 @@
+#!/usr/bin/env python
+"""
+Executable for simulating the survey.
+"""
+import os
+import logging
+import ephem
+
+from maglites.scheduler import Scheduler
+from maglites.utils.parser import Parser
+
+def main():
+    parser = Scheduler.parser()
+    parser.add_argument('-k','--chunk',default=60,type=int,
+                        help='scheduling chunk (minutes)')
+    args = parser.parse_args()
+
+    scheduler = Scheduler(args.fields,args.windows,args.complete)
+    survey = scheduler.schedule_survey(chunk=args.chunk,plot=args.plot)
+
+    basedir = args.outfile if args.outfile else 'survey'
+
+    if not os.path.exists(basedir):
+        os.makedirs(basedir)
+
+    for nite,chunks in survey.items():
+        outdir = os.path.join(basedir,nite)
+        if not os.path.exists(outdir): os.makedirs(outdir)
+        outfile = os.path.join(outdir,nite+'.json')
+        base,ext = os.path.splitext(outfile)
+
+        for i,chunk in enumerate(chunks):
+            if len(chunks) > 1:
+                outfile = base+'_%02d'%i+ext
+            logging.debug("Writing %s..."%outfile)
+            chunk.write(outfile)
+        
+
+if __name__ == "__main__":
+    main()

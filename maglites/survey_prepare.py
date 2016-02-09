@@ -62,7 +62,7 @@ def prepareTargetList(infile=None, outfile=None, plot=True):
     DECAM_DITHERS = [[0,0],[8/3.,11/3.],[-8/3.,-11/3.],[8/3.,0]]
 
     # Import the dither function here...
-    def dither(ra,dec):
+    def dither(ra,dec,dx,dy):
         return ra,dec
 
     if infile is None:
@@ -97,7 +97,7 @@ def prepareTargetList(infile=None, outfile=None, plot=True):
     for i in range(ntilings):
         idx0 = i*nhexes*nbands
         idx1 = idx0+nhexes*nbands
-        ra_dither,dec_dither = dither(ra,dec)
+        ra_dither,dec_dither = dither(ra,dec,0,0)
         fields['RA'][idx0:idx1] = np.repeat(ra_dither,nbands)
         fields['DEC'][idx0:idx1] = np.repeat(dec_dither,nbands)
 
@@ -132,6 +132,7 @@ def dither_fields(ra,dec,offset=(0.4482,0.5975)):
     DECAM = (7,12) # CCD dimensions
     ccdsize = (nx*pixel_scale,ny*pixel_scale)
 
+MAGLITES_DITHER = [[0,0],[1,1],[1,0],[0,1]]
 
 ############################################################
 

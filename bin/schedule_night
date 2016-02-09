@@ -1,0 +1,37 @@
+#!/usr/bin/env python
+"""
+Executable for simulating the survey.
+"""
+import ephem
+
+from maglites.scheduler import Scheduler
+from maglites.utils.parser import Parser
+
+def main():
+    parser = Scheduler.parser()
+    parser.add_argument('-n','--nite',
+                        help='night to schedule')
+    parser.add_argument('-k','--chunk',default=60,type=int,
+                        help='scheduling chunk (minutes)')
+    args = parser.parse_args()
+
+
+    nite = ephem.date(args.nite) if args.nite else ephem.now()
+
+
+    scheduler = Scheduler(args.fields,args.windows,args.complete)
+    chunks = scheduler.schedule_nite(args.nite,chunk=args.chunk,plot=args.plot)
+
+    if not args.outfile:
+        outfile = '%d%02d%02d.json'%nite.tuple()[:3]
+
+    for i,chunk in enumerate(chunks):
+        if len(chunks) > 1:
+            base,ext = os.path.splitext(outfile)
+            outfile = base+'_02d'%i+ext
+        logging.debut("Writing %s..."%outfile)
+        chunk.write(outfile)
+        
+
+if __name__ == "__main__":
+    main()

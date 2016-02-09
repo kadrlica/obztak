@@ -36,9 +36,9 @@ VALUES = odict([(k,v['value']) for k,v in DEFAULTS.items()])
 
 SEPARATOR = ' : '
 OBJECT_PREFIX = 'MAGLITES field'
-OBJECT_FMT = OBJECT_PREFIX + SEPARATOR + '%(ID)i,%(TILING)1i'
+OBJECT_FMT = OBJECT_PREFIX + SEPARATOR + '%s'
 SEQID_PREFIX = 'MAGLITES sequence'
-SEQID_FMT = OBJECT_PREFIX + SEPARATOR + '%(DATE)s'
+SEQID_FMT = SEQID_PREFIX + SEPARATOR + '%(DATE)s'
 
 SISPI_DICT = odict([
     ("seqtot",  2),
@@ -84,19 +84,25 @@ class FieldArray(np.recarray):
     def keys(self):
         return self.dtype.names
 
-    def to_object(self):
-        return np.char.mod(OBJECT_FMT,self).astype('S80')
+    def index(self):
+        return np.char.mod('%(SMASH_ID)i.%(TILING)02d',self)
 
-    def to_seqid(self):
+    def object(self):
+        return np.char.mod(OBJECT_FMT,self.index).astype('S80')
+
+    def seqid(self):
         return np.char.mod(SEQID_FMT,self).astype('S80')
 
-    def to_seqnum(self):
+    def seqnum(self):
         return np.array([constants.BANDS.index(f)+1 for f in self['FILTER']],dtype=int)
 
+    def from_index(self,string):
+        smash_id,tiling = map(int,string.split('.'))
+        self['SMASH_ID'] = smash_id
+        self['TILING'] = tiling
+
     def from_object(self,string):
-        id,tiling = string.split(SEPARATOR)[-1].split(',')
-        self['ID'] = int(id)
-        self['TILING'] = int(tiling)
+        self.from_index(string.split(SEPARATOR)[-1])
 
     def from_seqid(self, string):
         date = string.split(SEPARATOR)[-1].split(',')
@@ -107,9 +113,9 @@ class FieldArray(np.recarray):
 
     def to_sispi(self):
         sispi = []
-        object = self.to_object()
-        seqnum = self.to_seqnum()
-        seqid = self.to_seqid()
+        object = self.object()
+        seqnum = self.seqnum()
+        seqid = self.seqid()
         for i,r in enumerate(self):
             sispi_dict = copy.deepcopy(SISPI_DICT)
             for sispi_key,field_key in SISPI_MAP.items():
@@ -128,6 +134,7 @@ class FieldArray(np.recarray):
             for sispi_key,field_key in SISPI_MAP.items():
                 f[field_key] = s[sispi_key]
             f.from_object(s['object'])
+            # Only do this if DATE is not present
             f.from_seqid(s['seqid'])
             fields = fields + f
         return fields
