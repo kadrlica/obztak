@@ -25,10 +25,10 @@ DEFAULTS = odict([
     ('TILING',    dict(dtype=int,value=0)),
     ('PRIORITY',  dict(dtype=int,value=1)),
     ('DATE',      dict(dtype='S20',value='')),
-    ('AIRMASS',   dict(dtype=float,value=None)),
-    ('SLEW',      dict(dtype=float,value=None)),
-    ('MOONANGLE', dict(dtype=float,value=None)),
-    ('HOURANGLE', dict(dtype=float,value=None)),
+    ('AIRMASS',   dict(dtype=float,value=-1.0)),
+    ('SLEW',      dict(dtype=float,value=-1.0)),
+    ('MOONANGLE', dict(dtype=float,value=-1.0)),
+    ('HOURANGLE', dict(dtype=float,value=-1.0)),
 ])
 
 DTYPES = odict([(k,v['dtype']) for k,v in DEFAULTS.items()])
@@ -187,7 +187,7 @@ class FieldArray(np.recarray):
             return cls().load_sispi(sispi)
         elif ext in ('.csv','.txt'):
             dtype = DTYPES.items()
-            recarray = np.genfromtxt(filename,delimiter=',',names=True,dtype=dtype)
+            recarray = fileio.csv2rec(filename,dtype=dtype)
             return cls().load_recarray(recarray)
         else:
             msg = "Unrecognized file extension: %s"%ext

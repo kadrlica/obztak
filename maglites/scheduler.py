@@ -22,7 +22,7 @@ from maglites.field import FieldArray
 
 class Scheduler(object):
 
-    def __init__(self, target_fields, observation_windows=None, completed_fields=None):
+    def __init__(self,target_fields,observation_windows=None,completed_fields=None):
         if isinstance(target_fields,basestring):
             self.target_fields = FieldArray.read(target_fields)
         else:
@@ -48,7 +48,7 @@ class Scheduler(object):
             return
         
         if isinstance(observation_windows,basestring):
-            observation_windows = np.recfromcsv(observation_windows)
+            observation_windows = fileio.csv2rec(observation_windows)
             
         self.observation_windows = []
         for start,end in observation_windows:
@@ -81,7 +81,7 @@ class Scheduler(object):
 
     def loadObservedFields(self, **kwargs):
         """
-        Get the fields that have been observed from the telemetry DB.
+        Get observed fields from the telemetry database.
         """
 
         from maglites.field import FieldArray
@@ -207,6 +207,9 @@ class Scheduler(object):
         return field_select
 
 
+        
+
+
     def plotField(self, date, field_select):
         if plt.get_fignums(): plt.cla()
         fig, basemap = maglites.utils.ortho.makePlot(date,name='ortho')
@@ -288,6 +291,8 @@ class Scheduler(object):
 
 
     def run(self, tstart=None, tstop=None, plot=True):
+        # Reset the scheduled fields
+        self.scheduled_fields = FieldArray(0)
 
         # If no tstop, run for 90 minutes
         timedelta = 90*ephem.minute
@@ -344,6 +349,41 @@ class Scheduler(object):
         print "Newly scheduled fields: %i"%len(self.scheduled_fields)
         return self.scheduled_fields
 
+    def schedule_nite(self,nite=None,chunk=60.,outfile=None,plot=False):
+
+        # Create the nite
+        nite = ephem.Date(nite) if nite else ephem.now()
+        nite_tuple = nite.tuple()[:3]
+
+        # Convert chunk to MJD
+        if chunk > 1: chunk = chunk*ephem.minute
+
+        nites = [w[0] for w in self.observation_windows]
+        nite_tuples = [n.tuple()[:3] for n in nites]
+
+        try:
+            idx = nite_tuples.index(nite_tuple)
+        except ValueError:
+            msg = "Requested nite not found in windows:\n"
+            msg += "%s/%s/%s : "%nite_tuple
+            msg += '['+', '.join(['%s/%s/%s'%t for t in nite_tuples])+']'
+            logging.warning(msg)
+        start,finish = self.observation_windows[idx]
+
+        i = 0
+        while start < finish:
+            i+=1
+            msg = "Scheduling %s -- Chunk %i"%(start,i)
+            logging.debug(msg)
+            end = start+chunk
+            scheduled_fields = self.run(start, end, plot=plot)
+            if outfile:
+                base,ext = os.path.splitext(outfile)
+                filename = base + '_%i'%i + ext
+                scheduled_fields.write(filename)
+            start = end
+        
+
     def write(self,filename):
         self.scheduled_fields.write(filename)
 
@@ -378,7 +418,7 @@ class Scheduler(object):
     def main(cls):
         args = cls.parser().parse_args()
         scheduler = cls(args.fields,args.windows,args.complete)
-        scheduler.run(plot=args.plot)
+        scheduler.run(tstart=args.utc_start,tstop=args.utc_end,plot=args.plot)
         if args.outfile: 
             scheduler.scheduled_fields.write(args.outfile)
          

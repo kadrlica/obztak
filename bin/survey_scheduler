@@ -5,4 +5,4 @@ Executable for simulating the survey.
 from maglites.scheduler import Scheduler
 
 if __name__ == "__main__":
-    Scheduler.main()
+    scheduler = Scheduler.main()

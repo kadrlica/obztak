@@ -9,7 +9,9 @@ import numpy as np
 import json
 import logging
 
+from maglites import __version__
 from maglites.utils.constants import FLOAT_FMT
+
 #from maglites.field import FieldArray
 
 class FormatFloatForce(mlab.FormatFormatStr): 
@@ -23,23 +25,54 @@ class FormatFloatForce(mlab.FormatFormatStr):
     def fromstr(self, s): 
         return float(s) 
 
-def csv2rec(infile, **kwargs):
+def csv2rec(filename, **kwargs):
     #mlab.csv2rec(infile)
-    data = np.recfromcsv(infile,**kwargs)
-    data.dtype.names = map(str.upper,data.dtype.names)
-    return data
+    #data = np.recfromcsv(filename,**kwargs)
+    #data.dtype.names = map(str.upper,data.dtype.names)
+    
+    import pandas as pd
 
-def rec2csv(outfile,data,**kwargs):
-    formatd = dict()
-    for name,(dtype,size) in data.dtype.fields.items():
-        if dtype.kind == 'f': formatd[name] = FormatFloatForce()
-    formatd.update(kwargs.pop('formatd',dict()))
-    mlab.rec2csv(data,outfile,formatd=formatd,**kwargs)
+    kwargs.setdefault('skip_blank_lines',True)
+    kwargs.setdefault('parse_dates',False)
+    kwargs.setdefault('as_recarray',True)
+    kwargs.setdefault('comment','#')
+
+    return pd.read_csv(filename,**kwargs)
+
+def rec2csv(filename,data,**kwargs):
+    """
+    Wrapper around numpy.savetxt
+
+    Also see mlab.rec2csv (which is terrible...)
+    """
+    #formatd = dict()
+    #for name,(dtype,size) in data.dtype.fields.items():
+    #    if dtype.kind == 'f': formatd[name] = FormatFloatForce()
+    #formatd.update(kwargs.pop('formatd',dict()))
+    #
+    #mlab.rec2csv(data,out,formatd=formatd,**kwargs)        
+
+    import pandas as pd
+    df = pd.DataFrame(data)
+
+    kwargs.setdefault('float_format','%.4f')
+    kwargs.setdefault('index',False)
+    kwargs.setdefault('mode','w')
+    kwargs.setdefault('na_rep','nan')
+    
+    with open(filename,'wb') as out:
+        out.write(header())
+        df.to_csv(out,**kwargs)
+
+    #mlab.rec2csv(data,outfile,formatd=formatd,**kwargs)
+    
 
 def write_json(outfile,data,**kwargs):
     kwargs.setdefault('indent',4)
     json.encoder.FLOAT_REPR = lambda o: format(o, '.4f')
-    with open(outfile,'w') as out:
+
+    with open(outfile,'wb') as out:
+        out.write(header())
         out.write(json.dumps(data,**kwargs))
 
 def read_json(filename,**kwargs):
@@ -55,6 +88,12 @@ def fields2sispi(infile,outfile=None,force=False):
     logging.debug("Writing %s..."%outfile)
     fields.write(outfile)
     return outfile
+
+def header():    
+    import ephem
+    now = ephem.now()
+    header = "# Written on %s \n# maglites: v%s\n"%(now,__version__)
+    return header
     
 if __name__ == "__main__":
     import argparse
