@@ -140,6 +140,7 @@ class Scheduler(object):
         ra_zenith = np.degrees(ra_zenith)
         dec_zenith = np.degrees(dec_zenith)
         airmass = maglites.utils.projector.airmass(ra_zenith, dec_zenith, self.target_fields['RA'], self.target_fields['DEC'])
+        airmass_next = maglites.utils.projector.airmass(ra_zenith + 15., dec_zenith, self.target_fields['RA'], self.target_fields['DEC'])
 
         # Include moon angle
         moon = ephem.Moon()
@@ -151,12 +152,19 @@ class Scheduler(object):
         # Slew from the previous pointing
         if ra_previous is not None and dec_previous is not None:
             slew = maglites.utils.projector.angsep(ra_previous, dec_previous, self.target_fields['RA'], self.target_fields['DEC'])
+            slew_ra = np.fabs(ra_previous - self.target_fields['RA'])
+            slew_dec = np.fabs(dec_previous - self.target_fields['DEC'])
         else:
             slew = np.tile(0., len(self.target_fields['RA']))
+            slew_ra = np.tile(0., len(self.target_fields['RA']))
+            slew_dec = np.tile(0., len(self.target_fields['RA']))
 
         # Hour angle restrictions
+        #hour_angle_degree = copy.copy(self.target_fields['RA']) - ra_zenith # BUG
+        #hour_angle_degree[hour_angle_degree > 180.] = hour_angle_degree[hour_angle_degree > 180.] - 360. # BUG
         hour_angle_degree = copy.copy(self.target_fields['RA']) - ra_zenith
-        hour_angle_degree[hour_angle_degree > 180.] = hour_angle_degree[hour_angle_degree > 180.] - 360.
+        hour_angle_degree[hour_angle_degree < -180.] += 360.
+        hour_angle_degree[hour_angle_degree > 180.] -= 360.
         cut_hour_angle = np.fabs(hour_angle_degree) < self.f_hour_angle_limit(self.target_fields['DEC']) # Check the hour angle restrictions at south pole
         
         # Airmass restrictions
@@ -198,6 +206,7 @@ class Scheduler(object):
             #ra_effective += 2. * slew
             index_select = np.argmin(ra_effective)
         elif mode == 'balance':
+            """
             ra_effective = copy.copy(self.target_fields['RA']) - ra_zenith
             ra_effective[ra_effective > 180.] = ra_effective[ra_effective > 180.] - 360.
             ra_effective[np.logical_not(cut)] = 9999.
@@ -205,15 +214,37 @@ class Scheduler(object):
             #ra_effective += 720. * self.target_fields['TILING']
             ra_effective += slew**2
             ra_effective += 100. * (airmass - 1.)**3
-            index_select = np.argmin(ra_effective)
+            weight = ra_effective
+            index_select = np.argmin(weight)
+            weight = hour_angle_degree
+            """
+            weight = copy.copy(hour_angle_degree)
+            weight[np.logical_not(cut)] = 9999.
+            weight += 3. * 360. * self.target_fields['TILING']
+            weight += slew**3 # slew**2
+            weight += 100. * (airmass - 1.)**3
+            index_select = np.argmin(weight)
+        elif mode == 'balance2':
+            weight = copy.copy(hour_angle_degree)
+            weight[np.logical_not(cut)] = 9999.
+            weight += 360. * self.target_fields['TILING']
+            weight += slew_ra**2
+            weight += slew_dec
+            weight += 100. * (airmass - 1.)**3
+            index_select = np.argmin(weight)
+        elif mode == 'airmass2':
+            weight = 200. * (airmass - airmass_next)
+            weight[np.logical_not(cut)] = 9999.
+            weight += 360. * self.target_fields['TILING']
+            weight += 100. * (airmass - 1.)**3
+            weight += slew**2
+            index_select = np.argmin(weight)
 
         # Search for other exposures in the same field
         field_id = self.target_fields['SMASH_ID'][index_select]
         tiling = self.target_fields['TILING'][index_select]        
         index_select = np.nonzero( (self.target_fields['SMASH_ID']==field_id) & \
                                    (self.target_fields['TILING']==tiling) & cut)[0]
-
-
 
         field_select = self.target_fields[index_select]
         field_select['AIRMASS'] = airmass[index_select]
@@ -225,8 +256,51 @@ class Scheduler(object):
         print np.sum(cut), len(field_select), field_select['FILTER'], 
         print np.unique(field_select['AIRMASS']), np.unique(field_select['SLEW'])
 
+        # For diagnostic purposes
+        #if len(self.accomplished_fields) % 10 == 0:
+        #    self.plotWeight(date, field_select, weight)
+        #    raw_input('WAIT')
+
         return field_select
 
+
+    def plotWeight(self, date, field_select, weight):
+        if plt.get_fignums(): plt.cla()
+        fig, basemap = maglites.utils.ortho.makePlot(date,name='weight')
+        
+        index_sort = np.argsort(weight)[::-1]
+        proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][index_sort], self.target_fields['DEC'][index_sort])
+        weight_min = np.min(weight)
+        basemap.scatter(*proj, c=weight[index_sort], edgecolor='none', s=50, vmin=weight_min, vmax=weight_min + 300., cmap='Spectral')
+        #colorbar = plt.colorbar(label='Weight')
+
+        #cut_accomplished = np.in1d(self.target_fields['ID'], self.accomplished_field_ids)
+        #proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_accomplished], self.target_fields['DEC'][cut_accomplished])
+        #basemap.scatter(*proj, c='0.75', edgecolor='none', s=50)
+        
+        """
+        cut_accomplished = np.in1d(self.target_fields['ID'],self.accomplished_fields['ID'])
+        proj = maglites.utils.ortho.safeProj(basemap, 
+                                             self.target_fields['RA'][~cut_accomplished], 
+                                             self.target_fields['DEC'][~cut_accomplished])
+        basemap.scatter(*proj, c=np.tile(0, np.sum(np.logical_not(cut_accomplished))), edgecolor='none', s=50, vmin=0, vmax=4, cmap='summer_r')
+        
+        proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_accomplished], self.target_fields['DEC'][cut_accomplished])
+        basemap.scatter(*proj, c=self.target_fields['TILING'][cut_accomplished], edgecolor='none', s=50, vmin=0, vmax=4, cmap='summer_r')
+        """
+
+        # Draw colorbar in existing axis
+        if len(fig.axes) == 2:
+            colorbar = plt.colorbar(label='Weight',cax=fig.axes[-1])
+        else:
+            colorbar = plt.colorbar(label='Weight')
+            
+        # Show the selected field
+        proj = maglites.utils.ortho.safeProj(basemap, [field_select['RA']], [field_select['DEC']])
+        basemap.scatter(*proj, c='magenta', edgecolor='none', s=50)
+
+        plt.draw()
+        time.sleep(0.) # 0.1
 
     def plotField(self, date, field_select):
         if plt.get_fignums(): plt.cla()

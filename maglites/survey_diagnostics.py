@@ -98,6 +98,53 @@ def slew(infile_accomplished_fields, save=False):
 
 ############################################################
 
+def slewAnalysis(infile_accomplished_fields):
+    accomplished_fields = np.recfromtxt(infile_accomplished_fields, delimiter=',', names=True)
+
+    cut = accomplished_fields['SLEW'] > 10.
+
+    for index in np.nonzero(cut)[0]:
+        date = accomplished_fields['DATE'][index]
+        fig, basemap = maglites.utils.ortho.makePlot(date, figsize=(10.5, 8.5), s=50, dpi=80, airmass=False, moon=False, center=(0., -90.), name='ortho')
+    
+        index_min = max(0, index - 10)
+        index_max = min(len(accomplished_fields['DATE']), index + 11)
+
+        proj = maglites.utils.ortho.safeProj(basemap, 
+                                             accomplished_fields['RA'][index_min:index_max],
+                                             accomplished_fields['DEC'][index_min:index_max])
+        basemap.scatter(*proj, c=np.arange(index_min, index_max), edgecolor='none', s=50, vmin=index_min, vmax=index_max, cmap='Spectral')
+        colorbar = plt.colorbar(label='Index')
+
+        raw_input('%i %.1f'%(index, accomplished_fields['SLEW'][index]))
+        plt.clf()
+
+############################################################
+
+def hourAngle(infile_accomplished_fields, save=False):
+    accomplished_fields = np.recfromtxt(infile_accomplished_fields, delimiter=',', names=True)
+    
+    plt.figure()
+    #plt.scatter(np.arange(len(accomplished_fields['SLEW'])), accomplished_fields['SLEW'], edgecolor='none', alpha=0.33)
+    plt.scatter(np.arange(len(accomplished_fields['HOURANGLE'])), accomplished_fields['HOURANGLE'], marker='x')
+    plt.xlabel('Sequential Field Observed')
+    plt.ylabel('Hour Angle (deg)')
+    plt.xlim(0., len(accomplished_fields['HOURANGLE']) + 1)
+    #plt.ylim(300., 420.)
+    if save:
+        plt.savefig('hour_angle_sequential.pdf')
+        
+    plt.figure()
+    plt.scatter(accomplished_fields['RA'], accomplished_fields['HOURANGLE'], c=np.arange(len(accomplished_fields['HOURANGLE'])), marker='x')
+    plt.xlabel('RA (deg)')
+    plt.ylabel('Hour Angle (deg)')
+    #plt.xlim(0., len(accomplished_fields['HOURANGLE']) + 1)
+    #plt.ylim(300., 420.)
+    if save:
+        plt.savefig('ra_hour_angle.pdf')
+
+############################################################
+
 def airmass(infile_accomplished_fields, save=False):
     accomplished_fields = np.recfromtxt(infile_accomplished_fields, delimiter=',', names=True)
 
@@ -141,7 +188,7 @@ def progress(infile_accomplished_fields, date, infile_target_fields=None, save=F
     fig, basemap = maglites.utils.ortho.makePlot(date, figsize=(10.5, 8.5), s=50, dpi=80, airmass=False, moon=False, center=(0., -90.))
     
     if infile_target_fields is not None:
-        target_fields = np.recfromtxt(infile_target_fields, names=True)
+        target_fields = np.recfromtxt(infile_target_fields, delimiter=',', names=True)
         proj = maglites.utils.ortho.safeProj(basemap, 
                                              target_fields['RA'][np.logical_not(cut_accomplished)],
                                              target_fields['DEC'][np.logical_not(cut_accomplished)])
@@ -163,6 +210,12 @@ if __name__ == '__main__':
     #slew('accomplished_fields.txt')
     #airmass('accomplished_fields.txt')
     #progress('accomplished_fields.txt', '2016/6/30 10:32:50', infile_target_fields='target_fields.txt')
-    progress('accomplished_fields.txt', '2017/6/30 10:32:51', infile_target_fields='target_fields.txt')
+    #progress('accomplished_fields.txt', '2017/6/30 10:32:51', infile_target_fields='target_fields.txt')
+   
+    #progress('scheduled_fields.csv', '2017/6/30 10:32:51', infile_target_fields='target_fields.csv')
+    #slew('scheduled_fields.csv')
+    #slewAnalysis('scheduled_fields.csv')
+    airmass('scheduled_fields.csv')
+    #hourAngle('scheduled_fields.csv')
 
 ############################################################
