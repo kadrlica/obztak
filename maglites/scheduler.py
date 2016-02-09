@@ -9,6 +9,7 @@ import time
 import ephem
 import matplotlib.pyplot as plt
 import logging
+from collections import OrderedDict as odict
 
 import maglites.utils.projector
 import maglites.utils.constants
@@ -86,11 +87,10 @@ class Scheduler(object):
 
         from maglites.field import FieldArray
         try: 
-            fields = FieldArray.from_database()
-            return fields
-        except Exception, e: 
-            logging.warning(e)
-            return FieldArray(0)
+            fields = FieldArray.load_database()
+        except: 
+            fields = FieldArray()
+        return fields
 
     def loadBlancoConstraints(self):
         """
@@ -205,9 +205,6 @@ class Scheduler(object):
         print np.unique(field_select['AIRMASS']), np.unique(field_select['SLEW'])
 
         return field_select
-
-
-        
 
 
     def plotField(self, date, field_select):
@@ -349,8 +346,9 @@ class Scheduler(object):
         print "Newly scheduled fields: %i"%len(self.scheduled_fields)
         return self.scheduled_fields
 
-    def schedule_nite(self,nite=None,chunk=60.,outfile=None,plot=False):
+    schedule_chunk = run
 
+    def schedule_nite(self,nite=None,chunk=60.,plot=False):
         # Create the nite
         nite = ephem.Date(nite) if nite else ephem.now()
         nite_tuple = nite.tuple()[:3]
@@ -358,17 +356,25 @@ class Scheduler(object):
         # Convert chunk to MJD
         if chunk > 1: chunk = chunk*ephem.minute
 
-        nites = [w[0] for w in self.observation_windows]
-        nite_tuples = [n.tuple()[:3] for n in nites]
-
         try:
+            nites = [w[0] for w in self.observation_windows]
+            nite_tuples = [n.tuple()[:3] for n in nites]
             idx = nite_tuples.index(nite_tuple)
-        except ValueError:
+            start,finish = self.observation_windows[idx]
+        except (TypeError, ValueError):
             msg = "Requested nite not found in windows:\n"
             msg += "%s/%s/%s : "%nite_tuple
             msg += '['+', '.join(['%s/%s/%s'%t for t in nite_tuples])+']'
             logging.warning(msg)
-        start,finish = self.observation_windows[idx]
+
+            observatory = copy.deepcopy(self.observatory)
+            observatory.date = '%s/%s/%s 03:00'%(nite_tuple)
+            observatory.date = observatory.date + 24. * ephem.hour
+            sun = ephem.Sun()
+            start = observatory.previous_setting(sun)
+            finish = observatory.next_rising(sun)
+
+        chunks = []
 
         i = 0
         while start < finish:
@@ -376,13 +382,31 @@ class Scheduler(object):
             msg = "Scheduling %s -- Chunk %i"%(start,i)
             logging.debug(msg)
             end = start+chunk
-            scheduled_fields = self.run(start, end, plot=plot)
-            if outfile:
-                base,ext = os.path.splitext(outfile)
-                filename = base + '_%i'%i + ext
-                scheduled_fields.write(filename)
+            scheduled_fields = self.run(start, end, plot=False)
+            if plot:
+                field_select = scheduled_fields[-1]
+                self.plotField(end,field_select)
+                if (raw_input(' ...continue ([y]/n)').lower()=='n'): 
+                    break
+            chunks.append(scheduled_fields)
             start = end
-        
+
+        return chunks
+
+    def schedule_survey(self, chunk=60., plot=False):
+        nites = odict()
+
+        for start,end in self.observation_windows:
+            chunks = self.schedule_nite(start,chunk,plot=False)
+            nite_name = '%d%02d%02d'%start.tuple()[:3]
+            nites[nite_name] = chunks
+
+            field_select = self.completed_fields[-1]
+            self.plotField(end,field_select)
+            if (raw_input(' ...continue ([y]/n)').lower()=='n'): 
+                break
+            
+        return nites
 
     def write(self,filename):
         self.scheduled_fields.write(filename)
@@ -405,7 +429,7 @@ class Scheduler(object):
                             help='list of observation windows.')
         parser.add_argument('-c','--complete',action='append',
                             help="list of fields that have been completed.")
-        parser.add_argument('-o','--outfile',default='scheduled_fields.csv',
+        parser.add_argument('-o','--outfile',default=None,
                             help='save output file of scheduled fields.')
 
         return parser

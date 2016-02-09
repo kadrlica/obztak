@@ -145,7 +145,7 @@ class FieldArray(np.recarray):
         return fields
 
     @classmethod
-    def load_database(cls,database = None):
+    def load_database(cls,database='db-fnal'):
         """
         Get the fields that have been observed from the telemetry DB.
         """

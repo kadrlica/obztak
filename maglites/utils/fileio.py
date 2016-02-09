@@ -72,7 +72,8 @@ def write_json(outfile,data,**kwargs):
     json.encoder.FLOAT_REPR = lambda o: format(o, '.4f')
 
     with open(outfile,'wb') as out:
-        out.write(header())
+        # It'd be nice to have a header
+        #out.write(header())
         out.write(json.dumps(data,**kwargs))
 
 def read_json(filename,**kwargs):
