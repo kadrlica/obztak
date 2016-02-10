@@ -27,7 +27,7 @@ def main():
     base,ext = os.path.splitext(outfile)
     for i,chunk in enumerate(chunks):
         if len(chunks) > 1:
-            outfile = base+'_%02d'%i+ext
+            outfile = base+'_%02d'%(i+1)+ext
         logging.debug("Writing %s..."%outfile)
         chunk.write(outfile)
         

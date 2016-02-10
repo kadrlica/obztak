@@ -37,7 +37,7 @@ VALUES = odict([(k,v['value']) for k,v in DEFAULTS.items()])
 SEPARATOR = ' : '
 OBJECT_PREFIX = 'MAGLITES field'
 OBJECT_FMT = OBJECT_PREFIX + SEPARATOR + '%s'
-SEQID_PREFIX = 'MAGLITES sequence'
+SEQID_PREFIX = 'MAGLITES scheduled'
 SEQID_FMT = SEQID_PREFIX + SEPARATOR + '%(DATE)s'
 
 SISPI_DICT = odict([

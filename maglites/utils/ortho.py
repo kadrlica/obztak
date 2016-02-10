@@ -4,6 +4,7 @@ import numpy as np
 import ephem
 import matplotlib.pyplot as plt
 import matplotlib
+import time
 
 import maglites.utils.projector
 import constants
@@ -28,9 +29,6 @@ params = {
     #'figure.figsize': fig_size,
     'font.size': 12
     }
-
-
-
 matplotlib.rcParams.update(params)
 
 ############################################################
@@ -229,6 +227,42 @@ def makePlot(date, name=None, figsize=(10.5,8.5), dpi=80, s=50, center=None, air
 
     #return fig, ax, basemap
     return fig, basemap
+
+def plotFields(fields, step = 1):
+    # ADW: Need to be careful about the size of the marker. It
+    # does not change with the size of the frame so it is
+    # really safest to scale to the size of the zenith circle
+    # (see PlotPointings). That said, s=50 is probably roughly ok.
+
+    ra,dec = fields['RA'],fields['DEC']
+
+    completed = []
+
+    kwargs = dict(edgecolor='none', s=50, vmin=0, vmax=4, cmap='summer_r')
+    for i,field in enumerate(fields):
+        print i
+        if plt.get_fignums(): plt.cla()
+        fig, basemap = maglites.utils.ortho.makePlot(field['DATE'],name='ortho')
+        
+        proj = maglites.utils.ortho.safeProj(basemap, ra, dec)
+        basemap.scatter(*proj, c=np.zeros(len(ra)), **kwargs)
+    
+        proj = maglites.utils.ortho.safeProj(basemap, ra[:i+1], dec[:i+1])
+        basemap.scatter(*proj, c=fields['TILING'][:i+1], **kwargs)
+
+        # Draw colorbar in existing axis
+        if len(fig.axes) == 2:
+            colorbar = plt.colorbar(label='Tiling',cax=fig.axes[-1])
+        else:
+            colorbar = plt.colorbar(label='Tiling')
+
+        # Show the selected field
+        proj = maglites.utils.ortho.safeProj(basemap, ra[i:i+1], dec[i:i+1])
+        basemap.scatter(*proj, c='magenta', edgecolor='none', s=50)
+            
+        plt.draw()
+        time.sleep(0.01)
+    
 
 ############################################################
 

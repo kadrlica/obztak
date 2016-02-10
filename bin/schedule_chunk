@@ -18,7 +18,7 @@ def main():
     scheduler.run(start,end,plot=args.plot)
 
     if not args.outfile:
-        outfile = str(start).replace(' ','T')+'.json'
+        outfile = str(start).replace(' ','_').replace(':','.')+'.json'
 
 if __name__ == "__main__":
     main()

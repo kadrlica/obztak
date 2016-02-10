@@ -68,9 +68,11 @@ class Scheduler(object):
             logging.info('  %s -- %s'%(start,end))
         logging.info(30*'-')
 
-    def loadCompletedFields(self, completed_fields = None):
+    def loadCompletedFields(self, completed_fields=None):
         if not completed_fields:
             self.completed_fields = FieldArray()
+            return
+
         if isinstance(completed_fields,basestring):
             completed_fields = [completed_fields]
 
