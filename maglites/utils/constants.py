@@ -26,6 +26,17 @@ NEXP      = 2 # Number of exposures taken in a row
 FIELDTIME = EXPTIME+DOWNTIME
 BANDS     = ('g','r')
 
+# Characteristics of DECam
+ARCSEC_TO_DEGREE = 1. / (60. * 60.)
+PIXEL_SCALE = 0.2626 * ARCSEC_TO_DEGREE
+NPIX_X = 4096
+NPIX_Y = 2048
+CCD_X = NPIX_X * PIXEL_SCALE # degree
+CCD_Y = NPIX_Y * PIXEL_SCALE # degree
+
+# Blanco characteritics
+SOUTHERN_REACH = -89.
+
 # SISPI json template formatting
 OBJECT_FMT = "MAGLITES field - %(ID)d.%(TILING)d.%(PRIORITY)d"
 SEQID_FMT = "MAGLITES scheduled - %(DATE)s"
