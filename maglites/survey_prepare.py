@@ -102,8 +102,7 @@ def prepareTargetList(infile=None, outfile=None, plot=True):
     logging.info("Number of filters: %d"%nbands)
     
     fields = FieldArray(nfields)
-    fields['ID'] = np.arange(1,nfields+1)
-    fields['SMASH_ID'] = np.tile(np.repeat(smash_id,nbands),ntilings)
+    fields['HEX'] = np.tile(np.repeat(smash_id,nbands),ntilings)
     fields['PRIORITY'].fill(1)
     fields['TILING'] = np.repeat(np.arange(1,ntilings+1),nhexes*nbands)
     fields['FILTER'] = np.tile(BANDS,nhexes*ntilings)

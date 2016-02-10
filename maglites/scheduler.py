@@ -222,14 +222,15 @@ class Scheduler(object):
             index_select = np.argmin(weight)
 
         # Search for other exposures in the same field
-        field_id = self.target_fields['SMASH_ID'][index_select]
+        field_id = self.target_fields['HEX'][index_select]
         tiling = self.target_fields['TILING'][index_select]        
-        index_select = np.nonzero( (self.target_fields['SMASH_ID']==field_id) & \
+        index_select = np.nonzero( (self.target_fields['HEX']==field_id) & \
                                    (self.target_fields['TILING']==tiling) & cut)[0]
 
+        timedelta = constants.FIELDTIME*np.arange(len(index_select))
         field_select = self.target_fields[index_select]
         field_select['AIRMASS'] = airmass[index_select]
-        field_select['DATE'] = maglites.utils.ortho.datestring(date)
+        field_select['DATE'] = map(datestring,date+timedelta)
         field_select['SLEW'] = slew[index_select]
         field_select['MOONANGLE'] = moon_angle[index_select]
         field_select['HOURANGLE'] = hour_angle_degree[index_select]
@@ -340,7 +341,8 @@ class Scheduler(object):
         # (see PlotPointings). That said, s=50 is probably roughly ok.
         
         # Plot number of tilings 
-        cut_completed = np.in1d(self.target_fields['ID'],self.completed_fields['ID'])
+        cut_completed = np.in1d(self.target_fields['ID'],
+                                self.completed_fields['ID'])
         proj = maglites.utils.ortho.safeProj(basemap, 
                                              self.target_fields['RA'][~cut_completed], 
                                              self.target_fields['DEC'][~cut_completed])
@@ -399,7 +401,7 @@ class Scheduler(object):
 
             # Check 
             compute_slew = True
-            if len(self.completed_fields['ID']) == 0:
+            if len(self.completed_fields) == 0:
                 compute_slew = False
             else:
                 if (date - ephem.Date(self.completed_fields['DATE'][-1])) > (30. * ephem.minute):

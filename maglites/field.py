@@ -8,7 +8,7 @@ from collections import OrderedDict as odict
 import logging
 
 import numpy as np
-
+from maglites import __version__
 from maglites.utils import constants
 from maglites.utils import fileio
 
@@ -34,17 +34,16 @@ DEFAULTS = odict([
 DTYPES = odict([(k,v['dtype']) for k,v in DEFAULTS.items()])
 VALUES = odict([(k,v['value']) for k,v in DEFAULTS.items()])
 
-SEPARATOR = ' : '
-OBJECT_PREFIX = 'MAGLITES field'
-OBJECT_FMT = OBJECT_PREFIX + SEPARATOR + '%s'
-SEQID_PREFIX = 'MAGLITES scheduled'
-SEQID_FMT = SEQID_PREFIX + SEPARATOR + '%(DATE)s'
+OBJECT_PREFIX = 'MAGLITES field: '
+OBJECT_FMT = OBJECT_PREFIX + '%s'
+SEQID_PREFIX = 'MAGLITES scheduled: '
+SEQID_FMT = SEQID_PREFIX + '%(DATE)s'
 
 SISPI_DICT = odict([
-    ("seqtot",  2),
-    ("seqnum",  None), # 1-indexed
-    ("seqid",   None),
     ("object",  None),
+    ("seqnum",  None), # 1-indexed
+    ("seqtot",  2),
+    ("seqid",   None),
     ("expTime", 90),
     ("RA",      None),
     ("dec",     None),
@@ -54,6 +53,7 @@ SISPI_DICT = odict([
     ("program", "maglites"),
     ("wait",    "False"),
     ("propid",  "2016A-0366"),
+    ("comment", ""),
 ])
 
 SISPI_MAP = odict([ 
@@ -76,6 +76,12 @@ class FieldArray(np.recarray):
     def __add__(self, other):
         return np.concatenate([self,other]).view(self.__class__)
 
+    def __getitem__(self,key):
+        if key == 'ID':
+            return self.unique_id
+        else:
+            return super(FieldArray,self).__getitem__(key)
+
     def append(self,other):
         return np.concatenate([self,other]).view(self.__class__)
 
@@ -83,12 +89,12 @@ class FieldArray(np.recarray):
         return self.dtype.names
 
     @property
-    def index(self):
-        return np.char.mod('%(HEX)i.%(TILING)02d',self)
+    def unique_id(self):
+        return np.char.mod('%(HEX)i-%(TILING)02d-%(FILTER)s',self)
 
     @property
     def object(self):
-        return np.char.mod(OBJECT_FMT,self.index).astype('S80')
+        return np.char.mod(OBJECT_FMT,self.unique_id).astype('S80')
 
     @property
     def seqid(self):
@@ -98,16 +104,26 @@ class FieldArray(np.recarray):
     def seqnum(self):
         return np.array([constants.BANDS.index(f)+1 for f in self['FILTER']],dtype=int)
 
-    def from_index(self,string):
-        smash_id,tiling = map(int,string.split('.'))
-        self['HEX'] = smash_id
+    @property
+    def comment(self):
+        comment = 'MAGLITES v%s: '%__version__
+        comment += 'PRIORITY=%(PRIORITY)i, '
+
+        fmt = '%s=%%(%s).4f'
+        names = ['AIRMASS','SLEW','MOONANGLE','HOURANGLE']
+        comment += ', '.join([fmt%(n,n) for n in names])
+        return np.char.mod(comment,self)
+
+    def from_unique_id(self,string):
+        hex,tiling = map(int,string.split('-')[:2])
+        self['HEX'] = hex
         self['TILING'] = tiling
 
     def from_object(self,string):
-        self.from_index(string.split(SEPARATOR)[-1])
+        self.from_unique_id(string.lstrip(OBJECT_PREFIX))
 
     def from_seqid(self, string):
-        date = string.split(SEPARATOR)[-1].split(',')
+        date = string.lstrip(SEQID_PREFIX)
         self['DATE'] = date
 
     def to_recarray(self):
@@ -118,6 +134,7 @@ class FieldArray(np.recarray):
         objects = self.object
         seqnums = self.seqnum
         seqids = self.seqid
+        comments = self.comment
         for i,r in enumerate(self):
             sispi_dict = copy.deepcopy(SISPI_DICT)
             for sispi_key,field_key in SISPI_MAP.items():
@@ -125,6 +142,7 @@ class FieldArray(np.recarray):
             sispi_dict['object'] = objects[i]
             sispi_dict['seqnum'] = seqnums[i]
             sispi_dict['seqid']  = seqids[i]
+            sispi_dict['comment'] = comments[i]
             sispi.append(sispi_dict)
         return sispi
 
@@ -136,8 +154,9 @@ class FieldArray(np.recarray):
             for sispi_key,field_key in SISPI_MAP.items():
                 f[field_key] = s[sispi_key]
             f.from_object(s['object'])
-            # Only do this if DATE is not present
-            f.from_seqid(s['seqid'])
+            # Parse scheduled date if date is not present
+            if 'date' in s: f['DATE'] = 'date'
+            else: f.from_seqid(s['seqid'])
             fields = fields + f
         return fields
 
@@ -164,7 +183,7 @@ class FieldArray(np.recarray):
             database = Database(database)
             database.connect()
 
-        defaults = dict(propid='2016A-0366', limit='', dbname='db-fnal')
+        defaults = dict(propid='2016A-0366', limit='')
         params = copy.deepcopy(defaults)
         params.update(kwargs)
             
@@ -174,7 +193,7 @@ class FieldArray(np.recarray):
         query ="""
         select object, seqid, seqnum, telra as RA, teldec as dec, 
         expTime, filter, to_char(utc_beg, 'YYYY/MM/DD HH24:MI:SS') AS DATE, 
-        COALESCE(airmass,-1) as AIRMASS, COALESCE(moonangl,-1) as MOONANGLE, 
+        COALESCE(airmass,-1) as AIRMASS, COALESCE(moonangl,-1) as MOONANGLE,
         COALESCE(ha,-1) as HOURANGLE, COALESCE(slewangl,-1) as SLEW,
         from exposure where propid = '%(propid)s' %(limit)s
         """%params

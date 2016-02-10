@@ -5,6 +5,7 @@ import ephem
 import matplotlib.pyplot as plt
 import matplotlib
 import time
+import logging
 
 import maglites.utils.projector
 import constants
@@ -177,10 +178,11 @@ def datestring(date):
 
 ############################################################
 
-def makePlot(date, name=None, figsize=(10.5,8.5), dpi=80, s=50, center=None, airmass=True, moon=True, des=True, smash=True, maglites=True):
+def makePlot(date=None, name=None, figsize=(10.5,8.5), dpi=80, s=50, center=None, airmass=True, moon=True, des=True, smash=True, maglites=True):
     """
     Create map in orthographic projection
     """
+    if date is None: date = ephem.now()
     if type(date) != ephem.Date:
         date = ephem.Date(date)
 
@@ -239,10 +241,12 @@ def plotFields(fields, step = 1):
     completed = []
 
     kwargs = dict(edgecolor='none', s=50, vmin=0, vmax=4, cmap='summer_r')
-    for i,field in enumerate(fields):
-        print i
+    for i,f in enumerate(fields):
+        msg = "%s: "%fields['ID'][i]
+        msg +="ra=%(RA)-8.4f, dec=%(DEC)-8.4f, exptime=%(EXPTIME).0f"%f
+        logging.info(msg)
         if plt.get_fignums(): plt.cla()
-        fig, basemap = maglites.utils.ortho.makePlot(field['DATE'],name='ortho')
+        fig, basemap = maglites.utils.ortho.makePlot(f['DATE'],name='ortho')
         
         proj = maglites.utils.ortho.safeProj(basemap, ra, dec)
         basemap.scatter(*proj, c=np.zeros(len(ra)), **kwargs)

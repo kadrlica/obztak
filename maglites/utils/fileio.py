@@ -2,6 +2,7 @@
 """
 Deal with file input/output
 """
+import os,pwd
 from os.path import splitext, exists, join
 from collections import OrderedDict as odict
 from matplotlib import mlab
@@ -13,6 +14,14 @@ from maglites import __version__
 from maglites.utils.constants import FLOAT_FMT
 
 #from maglites.field import FieldArray
+
+def get_username():
+    import os,pwd
+    return pwd.getpwuid( os.getuid() )[ 0 ]
+
+def get_hostname():
+    import platform
+    return platform.node()
 
 class FormatFloatForce(mlab.FormatFormatStr): 
     """
@@ -93,7 +102,9 @@ def fields2sispi(infile,outfile=None,force=False):
 def header():    
     import ephem
     now = ephem.now()
-    header = "# Written on %s \n# maglites: v%s\n"%(now,__version__)
+    header  = "# author: %s@%s\n"%(get_username(),get_hostname())
+    header += "# date: %s UTC\n"%(ephem.now())
+    header += "# version: maglites v%s\n"%(__version__)
     return header
     
 if __name__ == "__main__":

@@ -7,9 +7,9 @@ import pylab as plt
 
 from maglites.field import FieldArray
 from maglites.utils.ortho import plotFields
-
+from maglites.utils.parser import Parser
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = Parser(description=__doc__)
     parser.add_argument('infiles',nargs='+',help='Input files')
     args = parser.parse_args()
 
@@ -18,4 +18,4 @@ if __name__ == "__main__":
         fields = fields + FieldArray.read(filename)
 
     plotFields(fields)
-    plt.show(block=True)
+    raw_input(' ...finish...')
