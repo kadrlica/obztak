@@ -153,7 +153,7 @@ class Scheduler(object):
         cut_airmass = airmass < self.f_airmass_limit(self.target_fields['DEC'])
 
         # Declination restrictions
-        cut_declination = self.target_fields['DEC'] > -89.
+        cut_declination = self.target_fields['DEC'] > maglites.utils.constants.SOUTHERN_REACH
 
         # Don't consider fields which have already been observed
         cut_todo = np.logical_not(np.in1d(self.target_fields['ID'], self.completed_fields['ID']))
