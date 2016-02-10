@@ -13,8 +13,8 @@ from maglites.utils import constants
 from maglites.utils import fileio
 
 DEFAULTS = odict([
-    ('ID',        dict(dtype=int,value=0)),
-    ('SMASH_ID',  dict(dtype=int,value=0)),
+    #('ID',        dict(dtype=int,value=0)),
+    ('HEX',       dict(dtype=int,value=0)),
     #('OBJECT',    dict(dtype='S80',value='')),
     #('SEQID',     dict(dtype='S80',value='')),
     #('SEQNUM',    dict(dtype=int,value=0)),
@@ -84,7 +84,7 @@ class FieldArray(np.recarray):
 
     @property
     def index(self):
-        return np.char.mod('%(SMASH_ID)i.%(TILING)02d',self)
+        return np.char.mod('%(HEX)i.%(TILING)02d',self)
 
     @property
     def object(self):
@@ -100,7 +100,7 @@ class FieldArray(np.recarray):
 
     def from_index(self,string):
         smash_id,tiling = map(int,string.split('.'))
-        self['SMASH_ID'] = smash_id
+        self['HEX'] = smash_id
         self['TILING'] = tiling
 
     def from_object(self,string):
