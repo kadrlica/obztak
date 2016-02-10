@@ -163,7 +163,7 @@ def drawMoon(basemap, date):
     if np.isnan(proj[0]).all() or np.isnan(proj[1]).all(): return
 
     basemap.scatter(*proj, color='%.2f'%(0.01 * moon.phase), edgecolor='black', s=500)
-    color = black if moon.phase > 50. else 'white'
+    color = 'black' if moon.phase > 50. else 'white'
     plt.text(proj[0], proj[1], '%.2f'%(0.01 * moon.phase), 
              fontsize=10, ha='center', va='center', color=color)
 
