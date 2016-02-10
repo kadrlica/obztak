@@ -2,6 +2,7 @@
 Create diagnostic plots for a particular survey strategy.
 """
 
+#import sys
 import os
 import numpy as np
 import matplotlib.pyplot as plt
@@ -65,7 +66,7 @@ def movie(infile_accomplished_fields, infile_target_fields=None, outdir=None, ch
 
 ############################################################
 
-def slew(infile_accomplished_fields, save=False):
+def slew(infile_accomplished_fields, tag=None):
     #accomplished_fields = np.recfromtxt(infile_accomplished_fields, delimiter=',', names=True)
     accomplished_fields = maglites.utils.fileio.csv2rec(infile_accomplished_fields)
 
@@ -83,8 +84,8 @@ def slew(infile_accomplished_fields, save=False):
         plt.xlabel('Slew Angle (deg)')
         plt.ylabel('Number of Fields')
         plt.xlim(20., max(40., max_slew + 2.))
-    if save:
-        plt.savefig('slew_hist.pdf')
+    if tag is not None:
+        plt.savefig('slew_hist_%s.pdf'%(tag))
 
     plt.figure()
     #plt.scatter(np.arange(len(accomplished_fields['SLEW'])), accomplished_fields['SLEW'], edgecolor='none', alpha=0.33)
@@ -93,8 +94,8 @@ def slew(infile_accomplished_fields, save=False):
     plt.ylabel('Slew Angle (deg)')
     plt.xlim(0., len(accomplished_fields['SLEW']) + 1)
     plt.ylim(0., 30.)
-    if save:
-        plt.savefig('slew_sequential.pdf')
+    if tag is not None:
+        plt.savefig('slew_sequential_%s.pdf'%(tag))
 
     cut = accomplished_fields['SLEW'] > 10.
     for index in np.nonzero(cut)[0]:
@@ -126,7 +127,7 @@ def slewAnalysis(infile_accomplished_fields):
 
 ############################################################
 
-def hourAngle(infile_accomplished_fields, save=False):
+def hourAngle(infile_accomplished_fields, tag=None):
     #accomplished_fields = np.recfromtxt(infile_accomplished_fields, delimiter=',', names=True)
     accomplished_fields = maglites.utils.fileio.csv2rec(infile_accomplished_fields)
 
@@ -137,21 +138,21 @@ def hourAngle(infile_accomplished_fields, save=False):
     plt.ylabel('Hour Angle (deg)')
     plt.xlim(0., len(accomplished_fields['HOURANGLE']) + 1)
     #plt.ylim(300., 420.)
-    if save:
-        plt.savefig('hour_angle_sequential.pdf')
+    if tag is not None:
+        plt.savefig('hour_angle_sequential_%s.pdf'%(tag))
         
     plt.figure()
-    plt.scatter(accomplished_fields['RA'], accomplished_fields['HOURANGLE'], c=np.arange(len(accomplished_fields['HOURANGLE'])), marker='x')
-    plt.xlabel('RA (deg)')
+    plt.scatter(accomplished_fields['DEC'], accomplished_fields['HOURANGLE'], c=np.arange(len(accomplished_fields['HOURANGLE'])), marker='x')
+    plt.xlabel('Dec (deg)')
     plt.ylabel('Hour Angle (deg)')
     #plt.xlim(0., len(accomplished_fields['HOURANGLE']) + 1)
     #plt.ylim(300., 420.)
-    if save:
-        plt.savefig('ra_hour_angle.pdf')
+    if tag is not None:
+        plt.savefig('dec_hour_angle_%s.pdf'%(tag))
 
 ############################################################
 
-def airmass(infile_accomplished_fields, save=False):
+def airmass(infile_accomplished_fields, tag=None):
     #accomplished_fields = np.recfromtxt(infile_accomplished_fields, delimiter=',', names=True)
     accomplished_fields = maglites.utils.fileio.csv2rec(infile_accomplished_fields)
 
@@ -160,8 +161,8 @@ def airmass(infile_accomplished_fields, save=False):
     plt.xlabel('Airmass')
     plt.ylabel('Number of Fields')
     plt.xlim(1., 2.)
-    if save:
-        plt.savefig('airmass_hist.pdf')
+    if tag is not None:
+        plt.savefig('airmass_hist_%s.pdf'%(tag))
 
     plt.figure()
     plt.scatter(np.arange(len(accomplished_fields['AIRMASS'])), accomplished_fields['AIRMASS'], marker='x', color='red')
@@ -169,19 +170,19 @@ def airmass(infile_accomplished_fields, save=False):
     plt.ylabel('Airmass')
     plt.xlim(0., len(accomplished_fields['AIRMASS']) + 1)
     plt.ylim(1., 2.)
-    if save:
-        plt.savefig('airmass_sequential.pdf')
+    if tag is not None:
+        plt.savefig('airmass_sequential_%s.pdf'%(tag))
 
     fig, basemap = maglites.utils.ortho.makePlot(accomplished_fields['DATE'][0], figsize=(10.5, 8.5), s=50, dpi=80, center=(0., -90.), airmass=False, moon=False)
     proj = maglites.utils.ortho.safeProj(basemap, accomplished_fields['RA'], accomplished_fields['DEC'])
     basemap.scatter(*proj, c=accomplished_fields['AIRMASS'], edgecolor='none', s=50, alpha=0.5, vmin=np.min(accomplished_fields['AIRMASS']), vmax=2, cmap='RdYlGn_r')
     colorbar = plt.colorbar(label='Airmass')
-    if save:
-        plt.savefig('airmass_map.pdf')
+    if tag is not None:
+        plt.savefig('airmass_map_%s.pdf'%(tag))
 
 ############################################################
 
-def progress(infile_accomplished_fields, date, infile_target_fields=None, save=False):
+def progress(infile_accomplished_fields, date, infile_target_fields=None, tag=None):
     if type(date) != ephem.Date:
         date = ephem.Date(date)
         
@@ -207,12 +208,34 @@ def progress(infile_accomplished_fields, date, infile_target_fields=None, save=F
     basemap.scatter(*proj, c=accomplished_fields['TILING'][cut_accomplished], edgecolor='none', s=50, vmin=0, vmax=4, cmap='summer_r')
     colorbar = plt.colorbar(label='Tiling')
 
-    if save:
-        plt.savefig('progress_map_%s.pdf'%(maglites.utils.ortho.datestring(date).replace('/', '_').replace(':', '_').replace(' ', '_')))
+    if tag is not None:
+        plt.savefig('progress_map_%s_%s.pdf'%(maglites.utils.ortho.datestring(date).replace('/', '_').replace(':', '_').replace(' ', '_'), tag))
 
 ############################################################
 
 if __name__ == '__main__':
+    #from maglites.utils.parser import Parser
+    #description = __doc__
+    #parser = Parser(description=description)
+
+    import argparse
+    description = __doc__
+    formatter = argparse.ArgumentDefaultsHelpFormatter
+    parser = argparse.ArgumentParser(description=description,
+                                     formatter_class=formatter)
+    parser.add_argument('-s','--scheduled',default='scheduled_fields.csv',
+                        help='infile of scheduled fields')
+    parser.add_argument('-t','--tag',default=None,
+                        help='save plots with the given tag.')
+    args = parser.parse_args()
+
+    print args
+
+    #if len(sys.argv) > 1:
+    #    infile_scheduled_fields = sys.argv[1]
+    #else:
+    #    infile_scheduled_fields = 'scheduled_fields.csv'
+
     #movie('accomplished_fields.txt', infile_target_fields='target_fields.txt', outdir='movie')
     #movie('accomplished_fields.txt', infile_target_fields='target_fields.txt', outdir='movie2', chunk=2)
     #movie('accomplished_fields.txt', infile_target_fields='target_fields.txt', outdir='movie3', chunk=2)
@@ -221,10 +244,10 @@ if __name__ == '__main__':
     #progress('accomplished_fields.txt', '2016/6/30 10:32:50', infile_target_fields='target_fields.txt')
     #progress('accomplished_fields.txt', '2017/6/30 10:32:51', infile_target_fields='target_fields.txt')
    
-    progress('scheduled_fields.csv', '2017/6/30 10:32:51', infile_target_fields='target_fields.csv')
-    slew('scheduled_fields.csv')
-    #slewAnalysis('scheduled_fields.csv')
-    airmass('scheduled_fields.csv')
-    #hourAngle('scheduled_fields.csv')
+    progress(args.scheduled, '2017/6/30 10:32:51', infile_target_fields='target_fields.csv', tag=args.tag)
+    slew(args.scheduled, tag=args.tag)
+    #slewAnalysis(args.scheduled)
+    airmass(args.scheduled, tag=args.tag)
+    #hourAngle(args.scheduled)
 
 ############################################################

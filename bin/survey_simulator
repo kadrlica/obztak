@@ -12,6 +12,8 @@ def main():
     parser.description = __doc__
     parser.add_argument('--nightly',action='store_true',
                         help='Plot only at the end of the night')
+    parser.add_argument('--nonstop',action='store_true',
+                        help='Run entire survey without stops')
     args = parser.parse_args()
     scheduler = Scheduler(args.fields,args.windows,args.complete)
 
@@ -32,9 +34,11 @@ def main():
             scheduler.run(tstart=start,tstop=end,plot=args.plot)
         scheduled = scheduled + scheduler.scheduled_fields
 
-        if (raw_input(' ...continue ([y]/n)').lower()=='n'): break
+        if not args.nonstop:
+            if (raw_input(' ...continue ([y]/n)').lower()=='n'): break
 
-    raw_input(' ...finish...')
+    if not args.nonstop:
+        raw_input(' ...finish...')
 
     if args.outfile: 
         scheduled.write(args.outfile)
