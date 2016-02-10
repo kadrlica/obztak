@@ -1,0 +1,21 @@
+#!/usr/bin/env python
+"""
+Plot json files.
+"""
+import argparse
+import pylab as plt
+
+from maglites.field import FieldArray
+from maglites.utils.ortho import plotFields
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('infiles',nargs='+',help='Input files')
+    args = parser.parse_args()
+
+    fields = FieldArray()
+    for filename in args.infiles:
+        fields = fields + FieldArray.read(filename)
+
+    plotFields(fields)
+    plt.show(block=True)
