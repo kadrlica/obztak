@@ -440,13 +440,18 @@ class Scheduler(object):
             msg += "%s/%s/%s : "%nite_tuple
             msg += '['+', '.join(['%s/%s/%s'%t for t in nite_tuples])+']'
             logging.warning(msg)
-
-            observatory = copy.deepcopy(self.observatory)
-            observatory.date = '%s/%s/%s 03:00'%(nite_tuple)
-            observatory.date = observatory.date + 24. * ephem.hour
+            
             sun = ephem.Sun()
-            start = observatory.previous_setting(sun)
-            finish = observatory.next_rising(sun)
+            obs = self.observatory
+            if obs.previous_setting(sun) > obs.previous_rising(sun):
+                # We are at night
+                start = obs.previous_setting(sun) + 1*ephem.hour
+            else:
+                start = obs.next_setting(sun) + 1*ephem.hour
+            finish = obs.next_rising(sun) - 1*ephem.hour
+
+            logging.debug("Night start time: %s"%datestring(start))
+            logging.debug("Night finish time: %s"%datestring(finish))
 
         chunks = []
 
@@ -464,7 +469,7 @@ class Scheduler(object):
                     break
             chunks.append(scheduled_fields)
             start = end
-
+            
         return chunks
 
     def schedule_survey(self, chunk=60., plot=False):
@@ -497,6 +502,8 @@ class Scheduler(object):
                             help="start time for observation.")
         parser.add_argument('--utc-end',
                             help="end time for observation.")
+        parser.add_argument('-k','--chunk', default=60., type=float,
+                            help = 'time chunk')
         parser.add_argument('-f','--fields',default='target_fields.csv',
                             help='list of all target fields.')
         parser.add_argument('-w','--windows',default='observation_windows.csv',
