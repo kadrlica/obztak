@@ -26,6 +26,9 @@ NEXP      = 2 # Number of exposures taken in a row
 FIELDTIME = EXPTIME+DOWNTIME
 BANDS     = ('g','r')
 
+# Time that it takes to make standards
+STANDARDS = 10*ephem.minute
+
 # Characteristics of DECam
 ARCSEC_TO_DEGREE = 1. / (60. * 60.)
 PIXEL_SCALE = 0.2626 * ARCSEC_TO_DEGREE

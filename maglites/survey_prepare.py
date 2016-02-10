@@ -20,7 +20,7 @@ plt.ion()
 
 ############################################################
 
-def prepareObservationWindows(nights, horizon=-14., outfile=None):
+def prepareObservationWindows(nights, horizon=-14., standards=False, outfile=None):
     """
     Use -14 deg twilight as default for start and end of observation windows.
     """
@@ -45,9 +45,14 @@ def prepareObservationWindows(nights, horizon=-14., outfile=None):
         if mode == 'full':
             observation_windows.append([time_setting, time_rising])
         elif mode == 'first':
+            if standards: 
+                time_midpoint = time_midpoint - constants.STANDARDS*ephem.minute
             observation_windows.append([time_setting, time_midpoint])
         elif mode == 'second':
+            if standards: 
+                time_midpoint = time_midpoint + constants.STANDARDS*ephem.minute
             observation_windows.append([time_midpoint, time_rising])
+            
 
     dtype=[('UTC_START','S20'),('UTC_END','S20')]
     observation_windows = np.rec.fromrecords(observation_windows,dtype=dtype)
