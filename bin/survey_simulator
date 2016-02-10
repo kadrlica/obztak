@@ -3,6 +3,9 @@
 Executable for simulating the survey.
 """
 from maglites.scheduler import Scheduler
+from maglites.field import FieldArray
+
+############################################################
 
 def main():
     parser = Scheduler.parser()
@@ -38,6 +41,7 @@ def main():
         
     return scheduler
 
+############################################################
 
 if __name__ == "__main__":
     main()
