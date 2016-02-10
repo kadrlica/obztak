@@ -43,11 +43,12 @@ class Scheduler(object):
 
         self.loadBlancoConstraints()
 
-    def loadObservationWindows(self, observation_windows = None):
-        if not observation_windows: 
-            self.observation_windows = None            
-            return
-        
+    def loadObservationWindows(self, observation_windows=None):
+        if observation_windows is None: 
+            observation_windows = os.path.expandvars("$MAGLITESDIR/maglites/data/maglites-windows.csv")
+            
+            logging.warning("")
+
         if isinstance(observation_windows,basestring):
             observation_windows = fileio.csv2rec(observation_windows)
             
@@ -541,7 +542,7 @@ class Scheduler(object):
                             help = 'time chunk')
         parser.add_argument('-f','--fields',default='target_fields.csv',
                             help='list of all target fields.')
-        parser.add_argument('-w','--windows',default='observation_windows.csv',
+        parser.add_argument('-w','--windows',default=None,
                             help='list of observation windows.')
         parser.add_argument('-c','--complete',action='append',
                             help="list of fields that have been completed.")

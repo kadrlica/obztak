@@ -242,7 +242,7 @@ def plotFields(fields, step = 1):
 
     kwargs = dict(edgecolor='none', s=50, vmin=0, vmax=4, cmap='summer_r')
     for i,f in enumerate(fields):
-        msg = "%s: "%fields['ID'][i]
+        msg = "%s: time=%s, "%(fields['ID'][i],f['DATE'].split(' ')[-1])
         msg +="ra=%(RA)-8.4f, dec=%(DEC)-8.4f, exptime=%(EXPTIME).0f"%f
         logging.info(msg)
         if plt.get_fignums(): plt.cla()
