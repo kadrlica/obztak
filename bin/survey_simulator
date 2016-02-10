@@ -37,7 +37,8 @@ def main():
         if not args.nonstop:
             if (raw_input(' ...continue ([y]/n)').lower()=='n'): break
 
-    raw_input(' ...finish...')
+    if not args.nonstop:
+        raw_input(' ...finish...')
 
     if args.outfile: 
         scheduled.write(args.outfile)
