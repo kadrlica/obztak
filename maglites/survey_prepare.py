@@ -13,8 +13,14 @@ import maglites.utils.projector
 import maglites.utils.constants
 import maglites.utils.ortho
 from maglites.field import FieldArray
-from maglites.utils.constants import BANDS
+from maglites.utils.constants import BANDS, SMASH_POLE
 from maglites.utils import fileio
+
+plt.ion()
+
+############################################################
+
+MAGLITES_DITHER = [[0,0],[1,1],[1,0],[0,1]]
 
 ############################################################
 
@@ -59,19 +65,22 @@ def prepareObservationWindows(nights, horizon=-14., outfile=None):
 
 def prepareTargetList(infile=None, outfile=None, plot=True):
 
-    DECAM_DITHERS = [[0,0],[8/3.,11/3.],[-8/3.,-11/3.],[8/3.,0]]
-
     # Import the dither function here...
-    def dither(ra,dec,dx,dy):
-        return ra,dec
+    #def dither(ra,dec,dx,dy):
+    #    return ra,dec
 
+    # Tiling/dither offset in decimal degrees
+    #TILINGS = [[0,0],[8/3.,11/3.],[-8/3.,-11/3.],[8/3.,0]] # DECam dithers in units of CCD
+    TILINGS = [(0,0), (1.0,0.0), (-1.0,0.0), (0.0,0.75)] # SMASH dither
+    
     if infile is None:
         infile = os.path.expandvars('$MAGLITESDIR/maglites/data/smash_fields_alltiles.txt')
     #data = np.recfromtxt('smash_fields_alltiles.txt', names=['RA', 'DEC'])
     data = np.recfromtxt(infile, names=True)
     
-
+    # Consider to apply footprint selection after tiling/dither
     sel = maglites.utils.projector.footprint(data['RA'],data['DEC'])
+    sel = np.tile(True, len(data['RA']))
 
     # The selection could be done after the dither...
     smash_id = data['ID'][sel]
@@ -79,7 +88,8 @@ def prepareTargetList(infile=None, outfile=None, plot=True):
     dec      = data['DEC'][sel]
 
     nhexes = sel.sum()
-    ntilings = len(DECAM_DITHERS)
+    #ntilings = len(DECAM_DITHERS)
+    ntilings = len(TILINGS)
     nbands = len(BANDS)
     nfields = nhexes*nbands*ntilings
 
@@ -94,12 +104,19 @@ def prepareTargetList(infile=None, outfile=None, plot=True):
     fields['TILING'] = np.repeat(np.arange(1,ntilings+1),nhexes*nbands)
     fields['FILTER'] = np.tile(BANDS,nhexes*ntilings)
 
-    for i in range(ntilings):
+    #for i in range(ntilings):
+    for i,tiling in enumerate(TILINGS):
         idx0 = i*nhexes*nbands
         idx1 = idx0+nhexes*nbands
-        ra_dither,dec_dither = dither(ra,dec,0,0)
+        #ra_dither,dec_dither = dither(ra,dec,0,0)
+        #ra_dither,dec_dither = smash_dither(ra,dec,tiling[0],tiling[1])
+        ra_dither,dec_dither = smash_rotate(ra,dec,tiling[0],tiling[1])
         fields['RA'][idx0:idx1] = np.repeat(ra_dither,nbands)
         fields['DEC'][idx0:idx1] = np.repeat(dec_dither,nbands)
+
+    # Apply footprint selection after tiling/dither
+    sel = maglites.utils.projector.footprint(fields['RA'],fields['DEC'])
+    fields = fields[sel]
 
     logging.info("Number of target fields: %d"%len(fields))
 
@@ -107,7 +124,7 @@ def prepareTargetList(infile=None, outfile=None, plot=True):
         fig, basemap = maglites.utils.ortho.makePlot('2016/2/11 03:00',center=(0,-90),airmass=False,moon=False)
 
         proj = maglites.utils.ortho.safeProj(basemap,fields['RA'],fields['DEC'])
-        basemap.scatter(*proj, color='orange', edgecolor='none', s=50)
+        basemap.scatter(*proj, c=fields['TILING'], edgecolor='none', s=50, cmap='Spectral')
         if outfile:
             outfig = os.path.splitext(outfile)[0]+'.png'
             fig.savefig(outfig,bbox_inches='tight')
@@ -118,24 +135,70 @@ def prepareTargetList(infile=None, outfile=None, plot=True):
 
     return fields
 
-def dither_fields(ra,dec,offset=(0.4482,0.5975)):
+############################################################
+#
+#def dither_fields(ra,dec,offset=(0.4482,0.5975)):
+#    """
+#    ra     : RA of nominal field center
+#    dec    : Dec of nominal field center
+#    offset : Units of CCD dimension
+#    """
+#    pixel_scale = 0.2626 # arcsec
+#
+#    # note that North is in the -x direction in FITS coordintes
+#    nx,ny = 4096,2048 
+#
+#    DECAM = (7,12) # CCD dimensions
+#    ccdsize = (nx*pixel_scale,ny*pixel_scale)
+#
+############################################################
+
+def smash_dither(ra,dec,dx,dy):
     """
-    ra     : RA of nominal field center
-    dec    : Dec of nominal field center
-    offset : Units of CCD dimension
+    Convert to SMASH coordinates, then dither, and convert back.
+    dx, dy specify offset in decimal degrees.
     """
-    pixel_scale = 0.2626 # arcsec
-
-    # note that North is in the -x direction in FITS coordintes
-    nx,ny = 4096,2048 
-
-    DECAM = (7,12) # CCD dimensions
-    ccdsize = (nx*pixel_scale,ny*pixel_scale)
-
-MAGLITES_DITHER = [[0,0],[1,1],[1,0],[0,1]]
+    ra0,dec0 = SMASH_POLE
+    # Rotate the pole at SMASH_POLE to (0,-90)
+    R1 = maglites.utils.projector.SphericalRotator(ra0,90+dec0); 
+    ra1,dec1 = R1.rotate(ra,dec)
+    # Dither the offset 
+    ra2 = ra1+dx/np.cos(np.radians(dec1))
+    dec2 = dec1+dy
+    # Rotate back to the original frame (keeping R2)
+    return R1.rotate(ra2,dec2,invert=True)
 
 ############################################################
 
+def decam_dither(ra,dec,dx,dy):
+    """
+    Conventional dither in DECam coordinates.
+    dx, dy specify offset in decimal degrees.
+    Consider alternative DECam dither in "image" coordinates (see scratch/dither.py).
+    """
+    out = []
+    for _ra,_dec in zip(ra,dec):
+        out.append(maglites.utils.projector.SphericalRotator(_ra,_dec).rotate(dx,dy,invert=True))
+    return np.array(out).T
+
+############################################################
+
+def smash_rotate(ra,dec,dx,dy):
+    """
+    Rotate to SMASH coordinates, then rotate by desired offset, and convert back.
+    dx, dy specify offset in decimal degrees.
+    """
+    ra0,dec0 = SMASH_POLE
+    # Rotate the pole at SMASH_POLE to (0,-90)
+    R1 = maglites.utils.projector.SphericalRotator(ra0,90+dec0); 
+    ra1,dec1 = R1.rotate(ra,dec)
+    # Rotate around the SMASH pole
+    R2 = maglites.utils.projector.SphericalRotator(dx,dy)
+    ra2,dec2 = R2.rotate(ra1,dec1)
+    # Rotate back to the original frame (keeping the R2 shift)
+    return R1.rotate(ra2,dec2,invert=True)
+
+############################################################
 
 def main():
     """
@@ -178,6 +241,7 @@ def main():
     #data, data2 = prepareTargetList('smash_fields_alltiles.txt', outfile='list.txt')
     prepareTargetList('%s/maglites/data/smash_fields_alltiles.txt'%(os.environ['MAGLITESDIR']), outfile=args.fields,plot=args.plot)
     
+############################################################
 
 def parser():
     import argparse
@@ -192,6 +256,8 @@ def parser():
     parser.add_argument('-w','--windows',default='observation_windows.csv',
                         help='List of observation windows.')
     return parser
+
+############################################################
 
 if __name__ == '__main__':
     main()
