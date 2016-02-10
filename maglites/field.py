@@ -53,12 +53,10 @@ SISPI_DICT = odict([
     ("expType", "object"),
     ("program", "maglites"),
     ("wait",    "False"),
+    ("propid",  "2016A-0366"),
 ])
 
 SISPI_MAP = odict([ 
-    #('seqnum','SEQNUM'),
-    #('seqid','SEQID'),
-    #('object','OBJECT'),
     ('expTime','EXPTIME'),
     ('RA','RA'),
     ('dec','DEC'),
@@ -84,15 +82,19 @@ class FieldArray(np.recarray):
     def keys(self):
         return self.dtype.names
 
+    @property
     def index(self):
         return np.char.mod('%(SMASH_ID)i.%(TILING)02d',self)
 
+    @property
     def object(self):
         return np.char.mod(OBJECT_FMT,self.index).astype('S80')
 
+    @property
     def seqid(self):
         return np.char.mod(SEQID_FMT,self).astype('S80')
 
+    @property
     def seqnum(self):
         return np.array([constants.BANDS.index(f)+1 for f in self['FILTER']],dtype=int)
 
@@ -113,16 +115,16 @@ class FieldArray(np.recarray):
 
     def to_sispi(self):
         sispi = []
-        object = self.object()
-        seqnum = self.seqnum()
-        seqid = self.seqid()
+        objects = self.object
+        seqnums = self.seqnum
+        seqids = self.seqid
         for i,r in enumerate(self):
             sispi_dict = copy.deepcopy(SISPI_DICT)
             for sispi_key,field_key in SISPI_MAP.items():
                 sispi_dict[sispi_key] = r[field_key]
-            sispi_dict['object'] = object[i]
-            sispi_dict['seqnum'] = seqnum[i]
-            sispi_dict['seqid']  = seqid[i]
+            sispi_dict['object'] = objects[i]
+            sispi_dict['seqnum'] = seqnums[i]
+            sispi_dict['seqid']  = seqids[i]
             sispi.append(sispi_dict)
         return sispi
 

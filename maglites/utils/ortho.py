@@ -170,7 +170,9 @@ def drawMoon(basemap, date):
 
 ############################################################
 
-def datestring(date):
+def datestring(date): 
+    #return str(date)
+
     if type(date) != ephem.Date:
         date = ephem.Date(date) 
     return '%s/%s/%s %02i:%02i:%02i'%date.tuple()
