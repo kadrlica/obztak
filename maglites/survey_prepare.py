@@ -12,6 +12,9 @@ import numpy.lib.recfunctions as recfunc
 import maglites.utils.projector
 import maglites.utils.constants
 import maglites.utils.ortho
+
+from maglites.utils.constants import STANDARDS
+from maglites.utils.ortho import datestring
 from maglites.field import FieldArray
 from maglites.utils.constants import BANDS, SMASH_POLE
 from maglites.utils import fileio
@@ -20,7 +23,7 @@ plt.ion()
 
 ############################################################
 
-def prepareObservationWindows(nights, horizon=-14., standards=False, outfile=None):
+def prepareObservationWindows(nights, horizon=-14., standards=True, outfile=None):
     """
     Use -14 deg twilight as default for start and end of observation windows.
     """
@@ -46,13 +49,12 @@ def prepareObservationWindows(nights, horizon=-14., standards=False, outfile=Non
             observation_windows.append([time_setting, time_rising])
         elif mode == 'first':
             if standards: 
-                time_midpoint = time_midpoint - constants.STANDARDS*ephem.minute
+                time_midpoint = datestring(time_midpoint - STANDARDS)
             observation_windows.append([time_setting, time_midpoint])
         elif mode == 'second':
             if standards: 
-                time_midpoint = time_midpoint + constants.STANDARDS*ephem.minute
+                time_midpoint = datestring(time_midpoint + STANDARDS)
             observation_windows.append([time_midpoint, time_rising])
-            
 
     dtype=[('UTC_START','S20'),('UTC_END','S20')]
     observation_windows = np.rec.fromrecords(observation_windows,dtype=dtype)
@@ -246,7 +248,7 @@ def main():
 
     args = parser().parse_args()
 
-    observation_windows = prepareObservationWindows(nights, outfile=args.windows)
+    observation_windows = prepareObservationWindows(nights, outfile=args.windows, standards = args.standards)
 
     #data, data2 = prepareTargetList('smash_fields_alltiles.txt', outfile='list.txt')
     prepareTargetList('%s/maglites/data/smash_fields_alltiles.txt'%(os.environ['MAGLITESDIR']), outfile=args.fields,plot=args.plot)
@@ -265,6 +267,7 @@ def parser():
                         help='List of all target fields.')
     parser.add_argument('-w','--windows',default='observation_windows.csv',
                         help='List of observation windows.')
+    parser.add_argument('--no-standards',action='store_false',dest='standards', help = "Don't include time for standard star observations.")
     return parser
 
 ############################################################
