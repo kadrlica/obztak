@@ -213,6 +213,33 @@ class Scheduler(object):
             weight += slew_dec
             weight += 100. * (airmass - 1.)**3
             index_select = np.argmin(weight)
+        elif mode == 'balance3':
+            print slew
+            weight = copy.copy(hour_angle_degree)
+            weight[np.logical_not(cut)] = 9999.
+            weight += 3. * 360. * self.target_fields['TILING']
+            """
+            x_slew, y_slew = zip(*[[0., 0.],
+                                   [2.5, 10.],
+                                   [5., 30.],
+                                   [10., 150.],
+                                   [20., 250.],
+                                   [50., 500.],
+                                   [180., 5000.]])
+            """
+            x_slew, y_slew = zip(*[[0., 0.],
+                                   [2.5, 10.],
+                                   [5., 30.],
+                                   [10., 500.], # 
+                                   [20., 1000.], # 500
+                                   [50., 5000.], # 1000
+                                   [180., 5000.]])
+            #plt.figure()
+            #plt.plot(x_slew, y_slew)
+            #raw_input('WAIT')
+            weight += np.interp(slew, x_slew, y_slew, left=9999., right=9999.)
+            weight += 100. * (airmass - 1.)**3
+            index_select = np.argmin(weight)
         elif mode == 'airmass2':
             weight = 200. * (airmass - airmass_next)
             weight[np.logical_not(cut)] = 9999.
@@ -220,7 +247,7 @@ class Scheduler(object):
             weight += 100. * (airmass - 1.)**3
             weight += slew**2
             index_select = np.argmin(weight)
-
+        
         # Search for other exposures in the same field
         field_id = self.target_fields['HEX'][index_select]
         tiling = self.target_fields['TILING'][index_select]        
@@ -228,6 +255,9 @@ class Scheduler(object):
                                    (self.target_fields['TILING']==tiling) & cut)[0]
 
         timedelta = constants.FIELDTIME*np.arange(len(index_select))
+        if np.any(slew[index_select] > 5.):
+            # Apply a 30 second penalty for longer slews for more accurate predictions
+            timedelta += 30*ephem.second
         field_select = self.target_fields[index_select]
         field_select['AIRMASS'] = airmass[index_select]
         field_select['DATE'] = map(datestring,date+timedelta)
@@ -244,7 +274,6 @@ class Scheduler(object):
         #    raw_input('WAIT')
 
         return field_select
-
 
     def plotWeight(self, date, field_select, weight):
         if plt.get_fignums(): plt.cla()
@@ -411,12 +440,14 @@ class Scheduler(object):
             else:
                 field_select = self.selectField(date, plot=plot)
 
-                
             id_select = field_select['ID']
-            date = date + len(field_select)*constants.FIELDTIME
+            # Previously, increment time by a constant
+            #date = date + len(field_select)*constants.FIELDTIME
+            # Now update the time from the selected field
+            date = ephem.Date(field_select[-1]['DATE']) + constants.FIELDTIME
 
             self.completed_fields = self.completed_fields + field_select
-            self.scheduled_fields    = self.scheduled_fields + field_select
+            self.scheduled_fields = self.scheduled_fields + field_select
 
             if plot: self.plotField(date, field_select)
 
