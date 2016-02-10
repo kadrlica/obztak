@@ -23,12 +23,8 @@ from maglites.field import FieldArray
 
 class Scheduler(object):
 
-    def __init__(self,target_fields,observation_windows=None,completed_fields=None):
-        if isinstance(target_fields,basestring):
-            self.target_fields = FieldArray.read(target_fields)
-        else:
-            self.target_fields = target_fields
-
+    def __init__(self,target_fields=None,observation_windows=None,completed_fields=None):
+        self.loadTargetFields(target_fields)
         self.loadObservationWindows(observation_windows)
         self.loadCompletedFields(completed_fields)
         
@@ -43,6 +39,15 @@ class Scheduler(object):
 
         self.loadBlancoConstraints()
 
+    def loadTargetFields(self, target_fields=None):
+        if target_fields is None:
+            target_fields = os.path.expandvars("$MAGLITESDIR/maglites/data/maglites-target-fields.csv")
+        
+        if isinstance(target_fields,basestring):
+            self.target_fields = FieldArray.read(target_fields)
+        else:
+            self.target_fields = target_fields
+        
     def loadObservationWindows(self, observation_windows=None):
         if observation_windows is None: 
             observation_windows = os.path.expandvars("$MAGLITESDIR/maglites/data/maglites-windows.csv")
@@ -542,7 +547,7 @@ class Scheduler(object):
                             help="end time for observation.")
         parser.add_argument('-k','--chunk', default=60., type=float,
                             help = 'time chunk')
-        parser.add_argument('-f','--fields',default='target_fields.csv',
+        parser.add_argument('-f','--fields',default=None,
                             help='list of all target fields.')
         parser.add_argument('-w','--windows',default=None,
                             help='list of observation windows.')
