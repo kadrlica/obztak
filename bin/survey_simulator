@@ -10,7 +10,7 @@ def main():
     parser.add_argument('--nightly',action='store_true',
                         help='Plot only at the end of the night')
     args = parser.parse_args()
-    scheduler = Scheduler(args.fields,args.windows,args.accomplish)
+    scheduler = Scheduler(args.fields,args.windows,args.complete)
 
     if args.utc_start and args.utc_end:
         windows = [[args.utc_start,args.utc_end]]

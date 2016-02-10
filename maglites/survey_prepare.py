@@ -20,10 +20,6 @@ plt.ion()
 
 ############################################################
 
-MAGLITES_DITHER = [[0,0],[1,1],[1,0],[0,1]]
-
-############################################################
-
 def prepareObservationWindows(nights, horizon=-14., outfile=None):
     """
     Use -14 deg twilight as default for start and end of observation windows.
@@ -70,8 +66,16 @@ def prepareTargetList(infile=None, outfile=None, plot=True):
     #    return ra,dec
 
     # Tiling/dither offset in decimal degrees
-    #TILINGS = [[0,0],[8/3.,11/3.],[-8/3.,-11/3.],[8/3.,0]] # DECam dithers in units of CCD
-    TILINGS = [(0,0), (1.0,0.0), (-1.0,0.0), (0.0,0.75)] # SMASH dither
+    #TILINGS = [(0., 0.),
+    #           (8/3. * maglites.utils.constants.CCD_X, -11/3. * maglites.utils.constants.CCD_Y),
+    #           (-8/3. * maglites.utils.constants.CCD_X, 11/3. * maglites.utils.constants.CCD_Y),
+    #           (8/3. * maglites.utils.constants.CCD_X, 0.)] # DECam dither 1
+    #TILINGS = [(0., 0.),
+    #           (8/3. * maglites.utils.constants.CCD_X, -11/3. * maglites.utils.constants.CCD_Y),
+    #           (8/3. * maglites.utils.constants.CCD_X, 8/3. * maglites.utils.constants.CCD_Y),
+    #           (8/3. * maglites.utils.constants.CCD_X, 0.)] # DECam dither 2
+    #TILINGS = [(0,0), (1.0,0.0), (-1.0,0.0), (0.0,-0.75)] # SMASH dither
+    TILINGS = [(0,0), (0.75,0.75), (-0.75,0.75), (0.0,-0.75)] # SMASH rotate
     
     if infile is None:
         infile = os.path.expandvars('$MAGLITESDIR/maglites/data/smash_fields_alltiles.txt')
@@ -109,6 +113,7 @@ def prepareTargetList(infile=None, outfile=None, plot=True):
         idx0 = i*nhexes*nbands
         idx1 = idx0+nhexes*nbands
         #ra_dither,dec_dither = dither(ra,dec,0,0)
+        #ra_dither,dec_dither = decam_dither(ra,dec,tiling[0],tiling[1])
         #ra_dither,dec_dither = smash_dither(ra,dec,tiling[0],tiling[1])
         ra_dither,dec_dither = smash_rotate(ra,dec,tiling[0],tiling[1])
         fields['RA'][idx0:idx1] = np.repeat(ra_dither,nbands)
@@ -116,6 +121,7 @@ def prepareTargetList(infile=None, outfile=None, plot=True):
 
     # Apply footprint selection after tiling/dither
     sel = maglites.utils.projector.footprint(fields['RA'],fields['DEC'])
+    sel = sel & (fields['DEC'] > maglites.utils.constants.SOUTHERN_REACH)
     fields = fields[sel]
 
     logging.info("Number of target fields: %d"%len(fields))
