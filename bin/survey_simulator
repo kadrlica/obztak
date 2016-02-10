@@ -17,6 +17,7 @@ def main():
     else:
         windows = scheduler.observation_windows
 
+    scheduled = FieldArray()
     for i,(start,end) in enumerate(windows):
         print start,end
 
@@ -26,13 +27,14 @@ def main():
             scheduler.plotField(end,field_select)
         else:
             scheduler.run(tstart=start,tstop=end,plot=args.plot)
+        scheduled = scheduled + scheduler.scheduled_fields
 
         if (raw_input(' ...continue ([y]/n)').lower()=='n'): break
 
     raw_input(' ...finish...')
 
     if args.outfile: 
-        scheduler.scheduled_fields.write(args.outfile)
+        scheduled.write(args.outfile)
         
     return scheduler
 
