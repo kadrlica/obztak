@@ -185,8 +185,9 @@ def testDither(ra_center, dec_center, infile='target_fields.csv', save=False):
 
 ############################################################
 
-infile = 'target_fields_decam_dither.csv'
-#infile = 'target_fields_smash_dither.csv'
+#infile = 'target_fields_decam_dither_1.csv'
+#infile = 'target_fields_decam_dither_2.csv'
+infile = 'target_fields_smash_dither.csv'
 #infile = 'target_fields_smash_rotate.csv'
 save = True
 
