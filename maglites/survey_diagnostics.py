@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import ephem
 
 import maglites.utils.ortho
+import maglites.utils.fileio
 
 plt.ion()
 
@@ -16,12 +17,14 @@ plt.ion()
 def movie(infile_accomplished_fields, infile_target_fields=None, outdir=None, chunk=1):
     plt.ioff()
 
-    accomplished_fields = np.recfromtxt(infile_accomplished_fields, delimiter=',', names=True)
+    #accomplished_fields = np.recfromtxt(infile_accomplished_fields, delimiter=',', names=True)
+    accomplished_fields = maglites.utils.fileio.csv2rec(infile_accomplished_fields)
     print len(accomplished_fields)
 
     if infile_target_fields is not None:
-        target_fields = np.recfromtxt(infile_target_fields, names=True)
-    
+        #target_fields = np.recfromtxt(infile_target_fields, names=True)
+        target_fields = maglites.utils.fileio.csv2rec(infile_target_fields)
+
     for ii in range(0, 1000):
         print ii, accomplished_fields['DATE'][ii * chunk]
         fig, basemap = maglites.utils.ortho.makePlot(accomplished_fields['DATE'][ii * chunk], figsize=(10.5 / 2., 8.5 / 2.), s=25, dpi=160, moon=False)
@@ -63,7 +66,8 @@ def movie(infile_accomplished_fields, infile_target_fields=None, outdir=None, ch
 ############################################################
 
 def slew(infile_accomplished_fields, save=False):
-    accomplished_fields = np.recfromtxt(infile_accomplished_fields, delimiter=',', names=True)
+    #accomplished_fields = np.recfromtxt(infile_accomplished_fields, delimiter=',', names=True)
+    accomplished_fields = maglites.utils.fileio.csv2rec(infile_accomplished_fields)
 
     plt.figure()
     plt.hist(accomplished_fields['SLEW'], bins=np.linspace(0., 20., 21), color='green')
@@ -99,7 +103,8 @@ def slew(infile_accomplished_fields, save=False):
 ############################################################
 
 def slewAnalysis(infile_accomplished_fields):
-    accomplished_fields = np.recfromtxt(infile_accomplished_fields, delimiter=',', names=True)
+    #accomplished_fields = np.recfromtxt(infile_accomplished_fields, delimiter=',', names=True)
+    accomplished_fields = maglites.utils.fileio.csv2rec(infile_accomplished_fields)
 
     cut = accomplished_fields['SLEW'] > 10.
 
@@ -122,8 +127,9 @@ def slewAnalysis(infile_accomplished_fields):
 ############################################################
 
 def hourAngle(infile_accomplished_fields, save=False):
-    accomplished_fields = np.recfromtxt(infile_accomplished_fields, delimiter=',', names=True)
-    
+    #accomplished_fields = np.recfromtxt(infile_accomplished_fields, delimiter=',', names=True)
+    accomplished_fields = maglites.utils.fileio.csv2rec(infile_accomplished_fields)
+
     plt.figure()
     #plt.scatter(np.arange(len(accomplished_fields['SLEW'])), accomplished_fields['SLEW'], edgecolor='none', alpha=0.33)
     plt.scatter(np.arange(len(accomplished_fields['HOURANGLE'])), accomplished_fields['HOURANGLE'], marker='x')
@@ -146,7 +152,8 @@ def hourAngle(infile_accomplished_fields, save=False):
 ############################################################
 
 def airmass(infile_accomplished_fields, save=False):
-    accomplished_fields = np.recfromtxt(infile_accomplished_fields, delimiter=',', names=True)
+    #accomplished_fields = np.recfromtxt(infile_accomplished_fields, delimiter=',', names=True)
+    accomplished_fields = maglites.utils.fileio.csv2rec(infile_accomplished_fields)
 
     plt.figure()
     plt.hist(accomplished_fields['AIRMASS'], bins=np.linspace(1., 2., 21), color='red')
@@ -178,8 +185,9 @@ def progress(infile_accomplished_fields, date, infile_target_fields=None, save=F
     if type(date) != ephem.Date:
         date = ephem.Date(date)
         
-    accomplished_fields = np.recfromtxt(infile_accomplished_fields, delimiter=',', names=True)
-    
+    #accomplished_fields = np.recfromtxt(infile_accomplished_fields, delimiter=',', names=True)
+    accomplished_fields = maglites.utils.fileio.csv2rec(infile_accomplished_fields)
+
     date_array = np.tile(0., len(accomplished_fields['DATE']))
     for ii in range(0, len(accomplished_fields['DATE'])):
         date_array[ii] = ephem.Date(accomplished_fields['DATE'][ii]).real
@@ -188,7 +196,8 @@ def progress(infile_accomplished_fields, date, infile_target_fields=None, save=F
     fig, basemap = maglites.utils.ortho.makePlot(date, figsize=(10.5, 8.5), s=50, dpi=80, airmass=False, moon=False, center=(0., -90.))
     
     if infile_target_fields is not None:
-        target_fields = np.recfromtxt(infile_target_fields, delimiter=',', names=True)
+        #target_fields = np.recfromtxt(infile_target_fields, delimiter=',', names=True)
+        target_fields = maglites.utils.fileio.csv2rec(infile_target_fields)
         proj = maglites.utils.ortho.safeProj(basemap, 
                                              target_fields['RA'][np.logical_not(cut_accomplished)],
                                              target_fields['DEC'][np.logical_not(cut_accomplished)])
@@ -212,8 +221,8 @@ if __name__ == '__main__':
     #progress('accomplished_fields.txt', '2016/6/30 10:32:50', infile_target_fields='target_fields.txt')
     #progress('accomplished_fields.txt', '2017/6/30 10:32:51', infile_target_fields='target_fields.txt')
    
-    #progress('scheduled_fields.csv', '2017/6/30 10:32:51', infile_target_fields='target_fields.csv')
-    #slew('scheduled_fields.csv')
+    progress('scheduled_fields.csv', '2017/6/30 10:32:51', infile_target_fields='target_fields.csv')
+    slew('scheduled_fields.csv')
     #slewAnalysis('scheduled_fields.csv')
     airmass('scheduled_fields.csv')
     #hourAngle('scheduled_fields.csv')
