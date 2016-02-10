@@ -13,10 +13,9 @@ import maglites.utils.projector
 import maglites.utils.constants
 import maglites.utils.ortho
 
-from maglites.utils.constants import STANDARDS
 from maglites.utils.ortho import datestring
 from maglites.field import FieldArray
-from maglites.utils.constants import BANDS, SMASH_POLE
+from maglites.utils.constants import BANDS,SMASH_POLE,CCD_X,CCD_Y,STANDARDS
 from maglites.utils import fileio
 
 plt.ion()
@@ -66,39 +65,38 @@ def prepareObservationWindows(nights, horizon=-14., standards=True, outfile=None
 
 ############################################################
 
-def prepareTargetList(infile=None, outfile=None, plot=True):
-
+def prepareTargetList(infile=None, outfile=None, mode='smash_dither', plot=True):
     # Import the dither function here...
     #def dither(ra,dec,dx,dy):
     #    return ra,dec
 
-    # Tiling/dither offset in decimal degrees
-    #TILINGS = [(0., 0.),
-    #           (8/3. * maglites.utils.constants.CCD_X, -11/3. * maglites.utils.constants.CCD_Y),
-    #           (-8/3. * maglites.utils.constants.CCD_X, 11/3. * maglites.utils.constants.CCD_Y),
-    #           (8/3. * maglites.utils.constants.CCD_X, 0.)] # DECam dither 1
-    #TILINGS = [(0., 0.),
-    #           (8/3. * maglites.utils.constants.CCD_X, -11/3. * maglites.utils.constants.CCD_Y),
-    #           (8/3. * maglites.utils.constants.CCD_X, 8/3. * maglites.utils.constants.CCD_Y),
-    #           (8/3. * maglites.utils.constants.CCD_X, 0.)] # DECam dither 2
-    #TILINGS = [(0,0), (1.0,0.0), (-1.0,0.0), (0.0,-0.75)] # SMASH dither
-    TILINGS = [(0,0), (0.75,0.75), (-0.75,0.75), (0.0,-0.75)] # SMASH rotate
+    if mode is None or mode.lower() == 'none':
+        def dither(ra,dec,dx,dy):
+            return ra,dec
+        TILINGS = [(0,0),(0,0),(0,0),(0,0)]
+    elif mode.lower() == 'smash_dither':
+        TILINGS = [(0,0), (1.0,0.0), (-1.0,0.0), (0.0,-0.75)]
+        dither = smash_dither
+    elif mode.lower() == 'smash_rotate':
+        TILINGS = [(0,0), (0.75,0.75), (-0.75,0.75), (0.0,-0.75)]
+        dither = smash_rotate
+    elif mode.lower() == 'decam_dither':
+        TILINGS = [(0., 0.),(8/3.*CCD_X, -11/3.*CCD_Y),
+                   (8/3.*CCD_X, 8/3.*CCD_Y),(-8/3.*CCD_X, 0.)]
     
     if infile is None:
         infile = os.path.expandvars('$MAGLITESDIR/maglites/data/smash_fields_alltiles.txt')
-    #data = np.recfromtxt('smash_fields_alltiles.txt', names=['RA', 'DEC'])
     data = np.recfromtxt(infile, names=True)
     
-    # Consider to apply footprint selection after tiling/dither
-    sel = maglites.utils.projector.footprint(data['RA'],data['DEC'])
-    sel = np.tile(True, len(data['RA']))
+    # Apply footprint selection after tiling/dither
+    #sel = maglites.utils.projector.footprint(data['RA'],data['DEC'])
 
-    # The selection could be done after the dither...
-    smash_id = data['ID'][sel]
-    ra       = data['RA'][sel]
-    dec      = data['DEC'][sel]
+    # This is currently a non-op
+    smash_id = data['ID']
+    ra       = data['RA']
+    dec      = data['DEC']
 
-    nhexes = sel.sum()
+    nhexes = len(data)
     #ntilings = len(DECAM_DITHERS)
     ntilings = len(TILINGS)
     nbands = len(BANDS)
@@ -118,10 +116,7 @@ def prepareTargetList(infile=None, outfile=None, plot=True):
     for i,tiling in enumerate(TILINGS):
         idx0 = i*nhexes*nbands
         idx1 = idx0+nhexes*nbands
-        #ra_dither,dec_dither = dither(ra,dec,0,0)
-        #ra_dither,dec_dither = decam_dither(ra,dec,tiling[0],tiling[1])
-        #ra_dither,dec_dither = smash_dither(ra,dec,tiling[0],tiling[1])
-        ra_dither,dec_dither = smash_rotate(ra,dec,tiling[0],tiling[1])
+        ra_dither,dec_dither = dither(ra,dec,tiling[0],tiling[1])
         fields['RA'][idx0:idx1] = np.repeat(ra_dither,nbands)
         fields['DEC'][idx0:idx1] = np.repeat(dec_dither,nbands)
 
@@ -136,7 +131,9 @@ def prepareTargetList(infile=None, outfile=None, plot=True):
         fig, basemap = maglites.utils.ortho.makePlot('2016/2/11 03:00',center=(0,-90),airmass=False,moon=False)
 
         proj = maglites.utils.ortho.safeProj(basemap,fields['RA'],fields['DEC'])
-        basemap.scatter(*proj, c=fields['TILING'], edgecolor='none', s=50, cmap='Spectral')
+        basemap.scatter(*proj, c=fields['TILING'], edgecolor='none', s=50, cmap='Spectral',vmin=0,vmax=len(TILINGS))
+        colorbar = plt.colorbar(label='Tiling')
+        
         if outfile:
             outfig = os.path.splitext(outfile)[0]+'.png'
             fig.savefig(outfig,bbox_inches='tight')
@@ -267,6 +264,8 @@ def parser():
                         help='List of all target fields.')
     parser.add_argument('-w','--windows',default='observation_windows.csv',
                         help='List of observation windows.')
+    parser.add_argument('-d','--dither',default='smash_dither',
+                        help='Dithering scheme.')
     parser.add_argument('--no-standards',action='store_false',dest='standards', help = "Don't include time for standard star observations.")
     return parser
 

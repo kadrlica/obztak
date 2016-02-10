@@ -27,10 +27,11 @@ def main():
     base,ext = os.path.splitext(outfile)
     for i,chunk in enumerate(chunks):
         if len(chunks) > 1:
-            time = '_'+chunk['DATE'][0].split(' ')[-1]
-            outfile = base+time+ext
+            idx = '_'+chunk['DATE'][0].split(' ')[-1]
+            idx = '_%02d'%i
+            outfile = base+idx+ext
         logging.debug("Writing %s..."%outfile)
         chunk.write(outfile)
-        
+
 if __name__ == "__main__":
     main()

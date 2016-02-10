@@ -11,8 +11,6 @@ from maglites.utils.parser import Parser
 
 def main():
     parser = Scheduler.parser()
-    parser.add_argument('-k','--chunk',default=60,type=int,
-                        help='scheduling chunk (minutes)')
     args = parser.parse_args()
 
     scheduler = Scheduler(args.fields,args.windows,args.complete)

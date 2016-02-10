@@ -46,8 +46,8 @@ class Scheduler(object):
     def loadObservationWindows(self, observation_windows=None):
         if observation_windows is None: 
             observation_windows = os.path.expandvars("$MAGLITESDIR/maglites/data/maglites-windows.csv")
+            logging.info("Setting default observing windows: %s"%observation_windows)
             
-            logging.warning("")
 
         if isinstance(observation_windows,basestring):
             observation_windows = fileio.csv2rec(observation_windows)
@@ -60,9 +60,11 @@ class Scheduler(object):
         for ii in range(0, len(self.observation_windows)):
             if self.observation_windows[ii][1] < self.observation_windows[ii][0]:
                 logging.warning('Observation windows are not properly sorted')
+                logging.info('%s -- %s'%(self.observation_windows[ii][0],self.observation_windows[ii][1]))
             if ii > 0:
                 if self.observation_windows[ii][0] < self.observation_windows[ii - 1][1]:
                     logging.warning('Observation windows are not properly sorted')
+                    logging.info('%s -- %s'%(self.observation_windows[ii][0],self.observation_windows[ii][1]))
 
         logging.info('Observation Windows:')
         for start,end in self.observation_windows:
@@ -403,6 +405,7 @@ class Scheduler(object):
         timedelta = 90*ephem.minute
         if tstart is None: tstart = ephem.now()
         if tstop is None: tstop = tstart + timedelta
+        print 'start:',datestring(tstart), 'stop:',datestring(tstop)
 
         # Convert strings into dates
         if isinstance(tstart,basestring):
@@ -505,7 +508,6 @@ class Scheduler(object):
                     break
             chunks.append(scheduled_fields)
             start = end
-            
         return chunks
 
     def schedule_survey(self, chunk=60., plot=False):
@@ -544,7 +546,7 @@ class Scheduler(object):
                             help='list of all target fields.')
         parser.add_argument('-w','--windows',default=None,
                             help='list of observation windows.')
-        parser.add_argument('-c','--complete',action='append',
+        parser.add_argument('-c','--complete',nargs='?',action='append',
                             help="list of fields that have been completed.")
         parser.add_argument('-o','--outfile',default=None,
                             help='save output file of scheduled fields.')
