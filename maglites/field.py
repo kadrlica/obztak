@@ -13,18 +13,14 @@ from maglites.utils import constants
 from maglites.utils import fileio
 
 DEFAULTS = odict([
-    #('ID',        dict(dtype=int,value=0)),
     ('HEX',       dict(dtype=int,value=0)),
-    #('OBJECT',    dict(dtype='S80',value='')),
-    #('SEQID',     dict(dtype='S80',value='')),
-    #('SEQNUM',    dict(dtype=int,value=0)),
     ('RA',        dict(dtype=float,value=None)),
     ('DEC',       dict(dtype=float,value=None)),
     ('FILTER',    dict(dtype='S1',value='')),
     ('EXPTIME',   dict(dtype=float,value=90)),
     ('TILING',    dict(dtype=int,value=0)),
     ('PRIORITY',  dict(dtype=int,value=1)),
-    ('DATE',      dict(dtype='S20',value='')),
+    ('DATE',      dict(dtype='S30',value='')),
     ('AIRMASS',   dict(dtype=float,value=-1.0)),
     ('SLEW',      dict(dtype=float,value=-1.0)),
     ('MOONANGLE', dict(dtype=float,value=-1.0)),
@@ -185,27 +181,34 @@ class FieldArray(np.recarray):
 
         defaults = dict(propid='2016A-0366', limit='')
         params = copy.deepcopy(defaults)
-        params.update(kwargs)
-            
-        db = Database()
-        db.connect()
 
         query ="""
-        select object, seqid, seqnum, telra as RA, teldec as dec, 
-        expTime, filter, to_char(utc_beg, 'YYYY/MM/DD HH24:MI:SS') AS DATE, 
-        COALESCE(airmass,-1) as AIRMASS, COALESCE(moonangl,-1) as MOONANGLE,
-        COALESCE(ha,-1) as HOURANGLE, COALESCE(slewangl,-1) as SLEW,
-        from exposure where propid = '%(propid)s' %(limit)s
+        SELECT object, seqid, seqnum, telra as RA, teldec as dec, 
+        expTime, filter, 
+        to_char(to_timestamp(utc_beg), 'YY/MM/DD HH24:MI:SS.MS') AS DATE, 
+        COALESCE(airmass,-1) as AIRMASS, COALESCE(moonangl,-1) as MOONANGLE, 
+        COALESCE(ha, -1) as HOURANGLE, COALESCE(slewangl,-1) as SLEW 
+        FROM exposure where propid = '%(propid)s' and exptime > 89 
+        and discard = False
+        ORDER BY utc_beg %(limit)s 
         """%params
 
         data = database.execute(query)
         names = map(str.upper,database.get_columns())
-        
+        objidx = names.index('OBJECT')        
         if not len(data): return FieldArray(0)
-        sispi = np.recarray(data,names=names)
 
-        fields = self.load_sispi(sispi)
+        fields = cls()
+        for d in data:
+            f = cls(1)
+            for i,key in enumerate(names):
+                if key in f.dtype.names:
+                    f[key] = d[i]
+            f.from_object(d[objidx])
+            fields = fields + f
+
         return fields
+
         
     @classmethod
     def read(cls, filename):
