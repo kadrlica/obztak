@@ -19,6 +19,7 @@ import maglites.utils.fileio as fileio
 
 from maglites.utils.ortho import datestring
 from maglites.field import FieldArray
+
 ############################################################
 
 class Scheduler(object):
@@ -113,6 +114,8 @@ class Scheduler(object):
         for ii in range(0, len(self.blanco_constraints['HA'])):
             ha_degrees[ii] = maglites.utils.projector.hms2dec(self.blanco_constraints['HA'][ii])
         
+        ha_degrees -= 1.25 # Buffer to protect us from the chicken
+
         self.f_hour_angle_limit = lambda dec: np.interp(dec,self.blanco_constraints['Dec'], ha_degrees, left=-1, right=-1)
         self.f_airmass_limit = lambda dec: np.interp(dec,self.blanco_constraints['Dec'], self.blanco_constraints['AirmassLimit'], left=-1, right=-1)
 
