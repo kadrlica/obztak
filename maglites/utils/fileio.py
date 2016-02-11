@@ -40,14 +40,24 @@ def csv2rec(filename, **kwargs):
     #data.dtype.names = map(str.upper,data.dtype.names)
     
     import pandas as pd
-
-    kwargs.setdefault('skip_blank_lines',True)
+        
     kwargs.setdefault('parse_dates',False)
-    kwargs.setdefault('as_recarray',True)
     kwargs.setdefault('comment','#')
 
-    return pd.read_csv(filename,**kwargs)
-
+    if int(pd.__version__.replace('.','')) > 90:
+        kwargs.setdefault('skip_blank_lines',True)
+        kwargs.setdefault('as_recarray',True)
+        return pd.read_csv(filename,**kwargs)
+    else:
+        lines = open(filename,'r').readlines()
+        comments = np.char.startswith(lines,'#')
+        skiprows = np.argmin(comments)
+        print skiprows
+        kwargs.setdefault('skiprows',skiprows)
+        data = pd.read_csv(filename,**kwargs).to_records(index=False)
+        print data
+        return data
+        
 def rec2csv(filename,data,**kwargs):
     """
     Wrapper around numpy.savetxt

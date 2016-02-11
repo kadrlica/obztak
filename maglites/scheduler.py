@@ -527,9 +527,10 @@ class Scheduler(object):
             nites[nite_name] = chunks
 
             field_select = self.completed_fields[-1]
-            self.plotField(end,field_select)
-            if (raw_input(' ...continue ([y]/n)').lower()=='n'): 
-                break
+            if plot:
+                self.plotField(end,field_select)
+                if (raw_input(' ...continue ([y]/n)').lower()=='n'): 
+                    break
             
         return nites
 

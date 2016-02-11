@@ -28,7 +28,7 @@ def main():
     for i,chunk in enumerate(chunks):
         if len(chunks) > 1:
             idx = '_'+chunk['DATE'][0].split(' ')[-1]
-            idx = '_%02d'%i
+            idx = '_%02d'%(i+1)
             outfile = base+idx+ext
         logging.debug("Writing %s..."%outfile)
         chunk.write(outfile)

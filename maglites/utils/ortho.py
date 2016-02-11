@@ -256,9 +256,11 @@ def plotFields(fields, step = 1):
 
         # Draw colorbar in existing axis
         if len(fig.axes) == 2:
-            colorbar = plt.colorbar(label='Tiling',cax=fig.axes[-1])
+            colorbar = plt.colorbar(cax=fig.axes[-1])
+            colorbar
         else:
-            colorbar = plt.colorbar(label='Tiling')
+            colorbar = plt.colorbar()
+        colorbar.set_label('Tiling')
 
         # Show the selected field
         proj = maglites.utils.ortho.safeProj(basemap, ra[i:i+1], dec[i:i+1])
