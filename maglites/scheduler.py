@@ -319,7 +319,7 @@ class Scheduler(object):
         basemap.scatter(*proj, c='magenta', edgecolor='none', s=50)
 
         plt.draw()
-        time.sleep(0.) # 0.1
+        time.sleep(0) # 0.1
 
     def plotField(self, date, field_select):
         if plt.get_fignums(): plt.cla()
@@ -548,11 +548,11 @@ class Scheduler(object):
         parser.add_argument('-k','--chunk', default=60., type=float,
                             help = 'time chunk')
         parser.add_argument('-f','--fields',default=None,
-                            help='list of all target fields.')
+                            help='all target fields.')
         parser.add_argument('-w','--windows',default=None,
-                            help='list of observation windows.')
+                            help='observation windows.')
         parser.add_argument('-c','--complete',nargs='?',action='append',
-                            help="list of fields that have been completed.")
+                            help="fields that have been completed.")
         parser.add_argument('-o','--outfile',default=None,
                             help='save output file of scheduled fields.')
 

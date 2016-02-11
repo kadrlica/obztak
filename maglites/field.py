@@ -215,7 +215,8 @@ class FieldArray(np.recarray):
             return cls().load_sispi(sispi)
         elif ext in ('.csv','.txt'):
             dtype = DTYPES.items()
-            recarray = fileio.csv2rec(filename,dtype=dtype)
+            #recarray = fileio.csv2rec(filename,dtype=dtype)
+            recarray = fileio.csv2rec(filename)
             return cls().load_recarray(recarray)
         else:
             msg = "Unrecognized file extension: %s"%ext
