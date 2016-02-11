@@ -15,18 +15,18 @@ LON_CTIO = '-70:48:23.49'
 LAT_CTIO = '-30:10:10.78'
 ELEVATION_CTIO = 2206.8 # m
 
-# Pole of the SMASH fields
-SMASH_POLE = (10,-30)
+# Pole of the SMASH fields (RA,DEC)
+SMASH_POLE = (10., -30.)
 
 # Characteristics of the survey
-# 4 minutes = 90 sec exposures in g and r with 30 sec between exposures
+# 90 sec exposures with 30 sec between exposures
 EXPTIME   = 90*ephem.second # Exposure time
 DOWNTIME  = 30*ephem.second # Time between exposures from readout/slew
 NEXP      = 2 # Number of exposures taken in a row
 FIELDTIME = EXPTIME+DOWNTIME
 BANDS     = ('g','r')
 
-# Time that it takes to make standards
+# Time for taking standards
 STANDARDS = 10*ephem.minute
 
 # Characteristics of DECam
@@ -41,15 +41,16 @@ CCD_Y = NPIX_Y * PIXEL_SCALE # degree
 SOUTHERN_REACH = -89.
 
 # SISPI json template formatting
+PROPID = '2016A-0366'
 OBJECT_FMT = "MAGLITES field - %(ID)d.%(TILING)d.%(PRIORITY)d"
 SEQID_FMT = "MAGLITES scheduled - %(DATE)s"
 FLOAT_FMT = '%.4f'
 SISPI_DICT = odict([
-    ("seqtot",  2),
-    ("seqnum",  None), # 1-indexed
-    ("seqid",   None),
     ("object",  None),
-    ("exptime", 90),
+    ("seqnum",  None), # 1-indexed
+    ("seqtot",  2),
+    ("seqid",   None),
+    ("expTime", 90),
     ("RA",      None),
     ("dec",     None),
     ("filter",  None),
@@ -57,6 +58,8 @@ SISPI_DICT = odict([
     ("expType", "object"),
     ("program", "maglites"),
     ("wait",    "False"),
+    ("propid",  PROPID),
+    ("comment", ""),
 ])
 
 def FIELD2OBJECT(field):

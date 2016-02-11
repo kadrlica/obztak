@@ -14,17 +14,13 @@ def main():
     args = parser.parse_args()
 
     start = ephem.Date(args.utc_start) if args.utc_start else ephem.now()
-    print args.utc_start
-    print datestring(start), start
-    print float(start)
     end = start + args.chunk*ephem.minute
-    print datestring(start),datestring(end)
     scheduler = Scheduler(args.fields,args.windows,args.complete)
     scheduler.run(start,end,plot=args.plot)
 
     outfile = args.outfile
     if not outfile:
-        outfile = str(start).replace(' ','_').replace(':','.')+'.json'
+        outfile = '%d%02d%02d_%02d:%02d:%02d.json'%start.tuple()
 
     scheduler.scheduled_fields.write(outfile)
 

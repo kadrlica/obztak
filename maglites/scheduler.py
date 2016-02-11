@@ -27,11 +27,10 @@ class Scheduler(object):
     def __init__(self,target_fields=None,observation_windows=None,completed_fields=None):
         self.loadTargetFields(target_fields)
         self.loadObservationWindows(observation_windows)
+        self.loadObservedFields()
         self.loadCompletedFields(completed_fields)
         
         self.scheduled_fields = FieldArray()
-        self.observed_fields  = self.loadObservedFields()
-        self.completed_fields = self.completed_fields + self.observed_fields
 
         self.observatory = ephem.Observer()
         self.observatory.lon = maglites.utils.constants.LON_CTIO
@@ -50,6 +49,9 @@ class Scheduler(object):
             self.target_fields = target_fields
         
     def loadObservationWindows(self, observation_windows=None):
+        """
+        Load the set of start and stop times for the observation windows.
+        """
         if observation_windows is None: 
             observation_windows = os.path.expandvars("$MAGLITESDIR/maglites/data/maglites-windows.csv")
             logging.info("Setting default observing windows: %s"%observation_windows)
@@ -77,10 +79,37 @@ class Scheduler(object):
             logging.info('  %s -- %s'%(start,end))
         logging.info(30*'-')
 
+    def loadObservedFields(self, **kwargs):
+        """
+        Load observed fields from the telemetry database.
+        """
+
+        from maglites.field import FieldArray
+        try: 
+            fields = FieldArray.load_database()
+        except: 
+            fields = FieldArray()
+        self.observed_fields = fields
+        return self.observed_fields
+
+
     def loadCompletedFields(self, completed_fields=None):
+        """
+        Load completed fields.
+
+        Parameters:
+        -----------
+        completed_fields : Filename, list of filenames, or FieldArray object
+
+
+        Returns:
+        --------
+        FieldArray of the completed fields
+        """
+        self.completed_fields = copy.deepcopy(self.observed_fields)
+
         if not completed_fields:
-            self.completed_fields = FieldArray()
-            return
+            return self.completed_fields
 
         if isinstance(completed_fields,basestring):
             completed_fields = [completed_fields]
@@ -89,19 +118,13 @@ class Scheduler(object):
             fields = FieldArray()
             for filename in completed_fields:
                 fields = fields + FieldArray.read(filename)
-            self.completed_fields = fields
+        
+            completed_fields = fields
 
-    def loadObservedFields(self, **kwargs):
-        """
-        Get observed fields from the telemetry database.
-        """
-
-        from maglites.field import FieldArray
-        try: 
-            fields = FieldArray.load_database()
-        except: 
-            fields = FieldArray()
-        return fields
+        new=~np.in1d(completed_fields.unique_id,self.completed_fields.unique_id)
+        new_fields = completed_fields[new]
+        self.completed_fields = self.completed_fields + new_fields
+        return self.completed_fields
 
     def loadBlancoConstraints(self):
         """
@@ -225,7 +248,7 @@ class Scheduler(object):
             weight += 100. * (airmass - 1.)**3
             index_select = np.argmin(weight)
         elif mode == 'balance3':
-            print slew
+            logging.debug("Slew: %s"%slew)
             weight = copy.copy(hour_angle_degree)
             weight[np.logical_not(cut)] = 9999.
             weight += 3. * 360. * self.target_fields['TILING']
@@ -276,8 +299,8 @@ class Scheduler(object):
         field_select['MOONANGLE'] = moon_angle[index_select]
         field_select['HOURANGLE'] = hour_angle_degree[index_select]
 
-        print np.sum(cut), len(field_select), field_select['FILTER'], 
-        print np.unique(field_select['AIRMASS']), np.unique(field_select['SLEW'])
+        msg = "NExp=%s, filter(s)=%s, airmass=%s, slew=%s"%(len(field_select), field_select['FILTER'], np.unique(field_select['AIRMASS']), np.unique(field_select['SLEW']))
+        logging.info(msg)
 
         # For diagnostic purposes
         #if len(self.accomplished_fields) % 10 == 0:
@@ -413,7 +436,9 @@ class Scheduler(object):
         timedelta = 90*ephem.minute
         if tstart is None: tstart = ephem.now()
         if tstop is None: tstop = tstart + timedelta
-        print 'start:',datestring(tstart), 'stop:',datestring(tstop)
+        msg = "Run start: %s\n"%datestring(tstart)
+        msg += "Run end: %s"%datestring(tstop)
+        logging.debug(msg)
 
         # Convert strings into dates
         if isinstance(tstart,basestring):
