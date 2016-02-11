@@ -52,10 +52,8 @@ def csv2rec(filename, **kwargs):
         lines = open(filename,'r').readlines()
         comments = np.char.startswith(lines,'#')
         skiprows = np.argmin(comments)
-        print skiprows
         kwargs.setdefault('skiprows',skiprows)
         data = pd.read_csv(filename,**kwargs).to_records(index=False)
-        print data
         return data
         
 def rec2csv(filename,data,**kwargs):
