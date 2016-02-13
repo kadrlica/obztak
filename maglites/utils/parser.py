@@ -6,7 +6,8 @@ __author__ = "Alex Drlica-Wagner"
 
 import logging
 import argparse
-
+import dateutil
+        
 from maglites import __version__
 
 class SpecialFormatter(logging.Formatter):
@@ -29,6 +30,15 @@ class VerboseAction(argparse._StoreTrueAction):
     def __call__(self, parser, namespace, values, option_string=None):
         super(VerboseAction,self).__call__(parser, namespace, values, option_string)
         if self.const: logging.getLogger().setLevel(logging.DEBUG)
+
+class DatetimeAction(argparse.Action):
+    """
+    Class for setting logging level from verbosity.
+    """
+    def __call__(self, parser, namespace, values, option_string=None):
+        datetime = dateutil.parser.parse(values)
+        setattr(namespace, self.dest, datetime)
+
 
 class Parser(argparse.ArgumentParser):
     def __init__(self,*args,**kwargs):

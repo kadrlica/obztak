@@ -185,11 +185,11 @@ class FieldArray(np.recarray):
         query ="""
         SELECT object, seqid, seqnum, telra as RA, teldec as dec, 
         expTime, filter, 
-        to_char(to_timestamp(utc_beg), 'YY/MM/DD HH24:MI:SS.MS') AS DATE, 
+        to_char(to_timestamp(utc_beg), 'YYYY/MM/DD HH24:MI:SS.MS') AS DATE, 
         COALESCE(airmass,-1) as AIRMASS, COALESCE(moonangl,-1) as MOONANGLE, 
         COALESCE(ha, -1) as HOURANGLE, COALESCE(slewangl,-1) as SLEW 
         FROM exposure where propid = '%(propid)s' and exptime > 89 
-        and discard = False
+        and discard = False and delivered = True
         ORDER BY utc_beg %(limit)s 
         """%params
 

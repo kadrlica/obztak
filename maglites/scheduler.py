@@ -15,12 +15,13 @@ import maglites.utils.projector
 import maglites.utils.constants
 import maglites.utils.constants as constants
 import maglites.utils.ortho
+import maglites.utils.ortho as ortho
 import maglites.utils.fileio as fileio
 
-from maglites.utils.ortho import datestring
+from maglites.utils import datestring
 from maglites.field import FieldArray
+from maglites.utils.ortho import get_nite
 
-############################################################
 
 class Scheduler(object):
 
@@ -83,8 +84,6 @@ class Scheduler(object):
         """
         Load observed fields from the telemetry database.
         """
-
-        from maglites.field import FieldArray
         try: 
             fields = FieldArray.load_database()
         except: 
@@ -290,7 +289,8 @@ class Scheduler(object):
 
         timedelta = constants.FIELDTIME*np.arange(len(index_select))
         if np.any(slew[index_select] > 5.):
-            # Apply a 30 second penalty for longer slews for more accurate predictions
+            # Apply a 30 second penalty for slews over 5 deg.
+            # This is not completely realistic, but better than nothing
             timedelta += 30*ephem.second
         field_select = self.target_fields[index_select]
         field_select['AIRMASS'] = airmass[index_select]
@@ -299,8 +299,8 @@ class Scheduler(object):
         field_select['MOONANGLE'] = moon_angle[index_select]
         field_select['HOURANGLE'] = hour_angle_degree[index_select]
 
-        msg = "NExp=%s, filter(s)=%s, airmass=%s, slew=%s"%(len(field_select), field_select['FILTER'], np.unique(field_select['AIRMASS']), np.unique(field_select['SLEW']))
-        logging.info(msg)
+        msg = str(field_select)
+        logging.debug(msg)
 
         # For diagnostic purposes
         #if len(self.accomplished_fields) % 10 == 0:
@@ -416,10 +416,10 @@ class Scheduler(object):
 
         # Draw colorbar in existing axis
         if len(fig.axes) == 2:
-            colorbar = plt.colorbar(label='Tiling',cax=fig.axes[-1])
+            colorbar = plt.colorbar(cax=fig.axes[-1])
         else:
-            colorbar = plt.colorbar(label='Tiling')
-            
+            colorbar = plt.colorbar()
+        colorbar.set_label('Tiling')
         # Show the selected field
         proj = maglites.utils.ortho.safeProj(basemap, [field_select['RA']], [field_select['DEC']])
         basemap.scatter(*proj, c='magenta', edgecolor='none', s=50)
@@ -429,6 +429,20 @@ class Scheduler(object):
 
 
     def run(self, tstart=None, tstop=None, plot=True):
+        """
+        Schedule a chunk of exposures.
+        
+        Parameters:
+        -----------
+        tstart : Chunk start time
+        tstop  : Chunk end time (may be replace with chunk length)
+        plot   : Plot the chunk (may be removed)
+        
+        Returns:
+        --------
+        fields : FieldArray of scheduled fields        
+        """
+
         # Reset the scheduled fields
         self.scheduled_fields = FieldArray(0)
 
@@ -436,8 +450,9 @@ class Scheduler(object):
         timedelta = 90*ephem.minute
         if tstart is None: tstart = ephem.now()
         if tstop is None: tstop = tstart + timedelta
-        msg = "Run start: %s\n"%datestring(tstart)
-        msg += "Run end: %s"%datestring(tstop)
+        msg  = "Run start: %s\n"%datestring(tstart)
+        msg += "Run end: %s\n"%datestring(tstop)
+        msg += "Run time: %s minutes"%(timedelta/ephem.minute)
         logging.debug(msg)
 
         # Convert strings into dates
@@ -452,6 +467,7 @@ class Scheduler(object):
         date = tstart
         latch = True
         while latch:
+            logging.debug('  '+datestring(date))
 
             # Check to see if in valid observation window
             if self.observation_windows is not None:
@@ -463,7 +479,6 @@ class Scheduler(object):
                 if not inside:
                     msg = 'Date outside of nominal observing windows'
                     logging.warning(msg)
-            logging.info('  '+datestring(date))
 
             # Check 
             compute_slew = True
@@ -486,24 +501,33 @@ class Scheduler(object):
             self.completed_fields = self.completed_fields + field_select
             self.scheduled_fields = self.scheduled_fields + field_select
 
-            if plot: self.plotField(date, field_select)
+            msg = "  %(DATE).20s: id=%(ID)s, airmass=%(AIRMASS).2f, slew=%(SLEW).2f"
+            for i,f in zip(field_select.unique_id,field_select):
+                params = dict([('ID',i)]+[(k,f[k]) for k in f.dtype.names])
+                logging.info(msg%params)
 
+            #if plot: self.plotField(date, field_select)
+            if plot: 
+                ortho.plotField(field_select[:-1],self.target_fields,self.completed_fields)
             if date > tstop: break
-        print "Newly scheduled fields: %i"%len(self.scheduled_fields)
+
+        msg = "Newly scheduled fields: %i"%len(self.scheduled_fields)
+        logging.info(msg)
+
         return self.scheduled_fields
 
     schedule_chunk = run
 
     def schedule_nite(self,nite=None,chunk=60.,plot=False):
         # Create the nite
-        nite = ephem.Date(nite) if nite else ephem.now()
+        nite = get_nite(nite)
         nite_tuple = nite.tuple()[:3]
 
         # Convert chunk to MJD
         if chunk > 1: chunk = chunk*ephem.minute
 
         try:
-            nites = [w[0] for w in self.observation_windows]
+            nites = [get_nite(w[0]) for w in self.observation_windows]
             nite_tuples = [n.tuple()[:3] for n in nites]
             idx = nite_tuples.index(nite_tuple)
             start,finish = self.observation_windows[idx]
@@ -512,21 +536,16 @@ class Scheduler(object):
             msg += "%s/%s/%s : "%nite_tuple
             msg += '['+', '.join(['%s/%s/%s'%t for t in nite_tuples])+']'
             logging.warning(msg)
-            
+
             sun = ephem.Sun()
             obs = self.observatory
-            if obs.previous_setting(sun) > obs.previous_rising(sun):
-                # We are at night
-                start = obs.previous_setting(sun) + 1*ephem.hour
-            else:
-                start = obs.next_setting(sun) + 1*ephem.hour
+            start = nite + 1*ephem.hour            
             finish = obs.next_rising(sun) - 1*ephem.hour
 
             logging.debug("Night start time: %s"%datestring(start))
             logging.debug("Night finish time: %s"%datestring(finish))
 
         chunks = []
-
         i = 0
         while start < finish:
             i+=1
@@ -535,12 +554,15 @@ class Scheduler(object):
             end = start+chunk
             scheduled_fields = self.run(start, end, plot=False)
             if plot:
-                field_select = scheduled_fields[-1]
-                self.plotField(end,field_select)
+                field_select = scheduled_fields[-1:]
+                ortho.plotField(field_select,self.target_fields,self.completed_fields)
                 if (raw_input(' ...continue ([y]/n)').lower()=='n'): 
                     break
             chunks.append(scheduled_fields)
             start = end
+
+        if plot: raw_input(' ...finish... ')
+        
         return chunks
 
     def schedule_survey(self, chunk=60., plot=False):
@@ -551,12 +573,15 @@ class Scheduler(object):
             nite_name = '%d%02d%02d'%start.tuple()[:3]
             nites[nite_name] = chunks
 
-            field_select = self.completed_fields[-1]
             if plot:
-                self.plotField(end,field_select)
+                field_select = self.completed_fields[-1:]
+                ortho.plotField(field_select,self.target_fields,self.completed_fields)
+
+                #self.plotField(end,field_select)
                 if (raw_input(' ...continue ([y]/n)').lower()=='n'): 
                     break
             
+        if plot: raw_input(' ...finish... ')
         return nites
 
     def write(self,filename):
@@ -564,15 +589,15 @@ class Scheduler(object):
 
     @classmethod
     def common_parser(cls):
-        from maglites.utils.parser import Parser
+        from maglites.utils.parser import Parser, DatetimeAction
 
         description = __doc__
         parser = Parser(description=description)
         parser.add_argument('-p','--plot',action='store_true',
                             help='create visual output.')
-        parser.add_argument('--utc-start',
+        parser.add_argument('--utc-start',action=DatetimeAction,
                             help="start time for observation.")
-        parser.add_argument('--utc-end',
+        parser.add_argument('--utc-end',action=DatetimeAction,
                             help="end time for observation.")
         parser.add_argument('-k','--chunk', default=60., type=float,
                             help = 'time chunk')

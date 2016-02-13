@@ -1,0 +1,36 @@
+#!/usr/bin/env python
+"""
+Plot a night summary.
+"""
+import argparse
+import pylab as plt
+
+import ephem
+import numpy as np
+
+from maglites.field import FieldArray
+import maglites.utils.ortho
+from maglites.utils.ortho import makePlot, get_nite
+from maglites.utils.parser import Parser
+
+if __name__ == "__main__":
+    parser = Parser(description=__doc__)
+    args = parser.parse_args()
+
+    fields = FieldArray.load_database()
+    now = ephem.now()
+    nite = "%d/%02d/%02d"%now.tuple()[:3]
+    fig,basemap = makePlot(nite+" 03:00:00")
+    new = np.char.startswith(fields['DATE'],nite)
+    new_fields = fields[new]
+    old_fields = fields[~new]
+
+    kwargs = dict(edgecolor='none', s=50, vmin=0, vmax=4, cmap='summer_r')
+
+    proj = maglites.utils.ortho.safeProj(basemap, old_fields['RA'], old_fields['DEC'])
+    basemap.scatter(*proj, c='0.5', **kwargs)
+
+    proj = maglites.utils.ortho.safeProj(basemap, new_fields['RA'], new_fields['DEC'])
+    basemap.scatter(*proj, c='g', **kwargs)
+
+    raw_input(' ...finish...')

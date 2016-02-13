@@ -7,19 +7,20 @@ import ephem
 import logging
 
 from maglites.scheduler import Scheduler
-from maglites.utils.parser import Parser
+from maglites.utils.parser import Parser, DatetimeAction
+from maglites.utils.ortho import get_nite
 
 def main():
     parser = Scheduler.parser()
-    parser.add_argument('-n','--nite',
+    parser.add_argument('-n','--nite',action=DatetimeAction,
                         help='night to schedule')
     args = parser.parse_args()
-    nite = ephem.date(args.nite) if args.nite else ephem.now()
 
-    logging.debug(str(nite))
+    nite = get_nite(args.nite)
+    logging.debug("Scheduling nite: %s"%(nite))
 
-    scheduler = Scheduler(args.fields,args.windows,args.complete)
-    chunks = scheduler.schedule_nite(nite,chunk=args.chunk,plot=args.plot)
+    scheduler = Scheduler(args.fields,args.windows,args.complete)  
+    chunks = scheduler.schedule_nite(args.nite,chunk=args.chunk,plot=args.plot)
 
     if not args.outfile:
         outfile = '%d%02d%02d.json'%nite.tuple()[:3]

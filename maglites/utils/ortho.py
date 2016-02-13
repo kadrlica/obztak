@@ -8,7 +8,10 @@ import time
 import logging
 
 import maglites.utils.projector
-import constants
+import maglites.utils.constants as constants
+
+from maglites.utils import datestring
+from maglites.field import FieldArray
 
 plt.ion()
 
@@ -169,16 +172,6 @@ def drawMoon(basemap, date):
 
 ############################################################
 
-def datestring(date): 
-    date = ephem.Date(date)
-    datetuple = date.tuple()
-    seconds = round(datetuple[-1],4)
-    minutes = datetuple[-2]
-    minutes += seconds//60
-    seconds = seconds%60.
-    return '%s/%s/%s %02i:%02i:%07.4f'%(datetuple[:-2]+(minutes,seconds))
-
-############################################################
 
 def makePlot(date=None, name=None, figsize=(10.5,8.5), dpi=80, s=50, center=None, airmass=True, moon=True, des=True, smash=True, maglites=True):
     """
@@ -232,45 +225,94 @@ def makePlot(date=None, name=None, figsize=(10.5,8.5), dpi=80, s=50, center=None
     #return fig, ax, basemap
     return fig, basemap
 
-def plotFields(fields, step = 1):
+def plotField(field, target_fields=None, completed_fields=None, **kwargs):
+    """
+    Plot a specific target field.
+    """
+    defaults = dict(edgecolor='none', s=50, vmin=0, vmax=4, cmap='summer_r')
+    for k,v in defaults.items():
+        kwargs.setdefault(k,v)
+
+    msg = "  Plotting -- "
+    msg += "%s (time=%.8s, "%(field['ID'][0],field['DATE'][0].split(' ')[-1])
+    msg +="ra=%(RA)-8.4f, dec=%(DEC)-8.4f)"%field[0]
+    logging.info(msg)
+
+    if plt.get_fignums(): plt.cla()
+
+    fig, basemap = maglites.utils.ortho.makePlot(field['DATE'][0],name='ortho')
+        
+    # Plot target fields
+    if target_fields is not None:
+        proj = maglites.utils.ortho.safeProj(basemap, target_fields['RA'], target_fields['DEC'])
+        basemap.scatter(*proj, c=np.zeros(len(target_fields)), **kwargs)
+
+    # Plot completed fields        
+    if completed_fields is not None:
+        proj = maglites.utils.ortho.safeProj(basemap,completed_fields['RA'],completed_fields['DEC'])
+        basemap.scatter(*proj, c=completed_fields['TILING'], **kwargs)
+
+    # Draw colorbar in existing axis
+    if len(fig.axes) == 2:
+        colorbar = plt.colorbar(cax=fig.axes[-1])
+    else:
+        colorbar = plt.colorbar()
+    colorbar.set_label('Tiling')
+
+    # Show the selected field
+    proj = maglites.utils.ortho.safeProj(basemap, field['RA'], field['DEC'])
+    basemap.scatter(*proj, c='magenta', edgecolor='none', s=50)
+            
+    plt.draw()
+
+
+def plotFields(fields, target_fields=None, completed_fields=None):
     # ADW: Need to be careful about the size of the marker. It
     # does not change with the size of the frame so it is
     # really safest to scale to the size of the zenith circle
     # (see PlotPointings). That said, s=50 is probably roughly ok.
 
-    ra,dec = fields['RA'],fields['DEC']
 
-    completed = []
-
-    kwargs = dict(edgecolor='none', s=50, vmin=0, vmax=4, cmap='summer_r')
     for i,f in enumerate(fields):
-        msg = "%s: time=%s, "%(fields['ID'][i],f['DATE'].split(' ')[-1])
-        msg +="ra=%(RA)-8.4f, dec=%(DEC)-8.4f, exptime=%(EXPTIME).0f"%f
-        logging.info(msg)
-        if plt.get_fignums(): plt.cla()
-        fig, basemap = maglites.utils.ortho.makePlot(f['DATE'],name='ortho')
-        
-        proj = maglites.utils.ortho.safeProj(basemap, ra, dec)
-        basemap.scatter(*proj, c=np.zeros(len(ra)), **kwargs)
-    
-        proj = maglites.utils.ortho.safeProj(basemap, ra[:i+1], dec[:i+1])
-        basemap.scatter(*proj, c=fields['TILING'][:i+1], **kwargs)
+        plotField(fields[[i]],target_fields,completed_fields)
 
-        # Draw colorbar in existing axis
-        if len(fig.axes) == 2:
-            colorbar = plt.colorbar(cax=fig.axes[-1])
-            colorbar
-        else:
-            colorbar = plt.colorbar()
-        colorbar.set_label('Tiling')
+        if completed_fields is None: completed_fields = FieldArray(0)
+        completed_fields = completed_fields + fields[[i]]
 
-        # Show the selected field
-        proj = maglites.utils.ortho.safeProj(basemap, ra[i:i+1], dec[i:i+1])
-        basemap.scatter(*proj, c='magenta', edgecolor='none', s=50)
-            
-        plt.draw()
         time.sleep(0.01)
     
+def get_nite(date=None):
+    """
+    Convert from a date and time to a "nite". A "nite" is defined as
+    the day (UTC) on which the Sun sets.
+
+    Parameters:
+    -----------
+    date : The date to calculate the nite from.
+    
+    Returns:
+    --------
+    nite : A pyephem.Date object with the current nite
+    """
+    import ephem
+    if not date: date = ephem.now()
+
+    sun = ephem.Sun()
+    obs = ephem.Observer()
+    obs.lon = maglites.utils.constants.LON_CTIO
+    obs.lat = maglites.utils.constants.LAT_CTIO
+    obs.elevation = maglites.utils.constants.ELEVATION_CTIO
+    obs.date = date
+
+    if obs.previous_setting(sun) > obs.previous_rising(sun):
+        # It's nighttime, use the date of the previous setting
+        nite = ephem.localtime(obs.previous_setting(sun))
+    else:
+        # It's daytime, use the next setting
+        nite = ephem.localtime(obs.next_setting(sun))
+
+    return ephem.Date(nite)
+
 
 ############################################################
 

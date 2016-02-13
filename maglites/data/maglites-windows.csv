@@ -1,13 +1,13 @@
 # author: kadrlica
-# date: 2016/02/10
-# version: maglites v2.0.dev22
+# date: 2016/02/11
+# version: maglites v2.1
 #
 # Y1 dates are assigned in 2016A; Y2 dates are approximate
 # Start and end times come from kentools `ephem` output.
 # 10 minutes is added to the night midpoint to account for standard stars.
 UTC_START,UTC_END
-2016/02/11 05:07:00,2016/02/11 09:15:00
-2016/02/12 05:07:00,2016/02/12 09:16:00
+2016/02/11 04:57:00,2016/02/11 08:37:00
+2016/02/12 05:15:00,2016/02/12 09:16:00
 2016/02/13 05:07:00,2016/02/13 09:17:00
 2016/02/14 05:07:00,2016/02/14 09:18:00
 2016/02/15 05:07:00,2016/02/15 09:19:00
