@@ -1,13 +1,15 @@
-# README #
+# MagLiteS
 
-Planning observations for the Magellanic Satellites Survey
+Bizarro Observation Tactician (ObzTak) for the *Mag*ellanic Satel*lite*s *S*urvey (MagLiteS).
 
 * Contact: Keith Bechtol <keith.bechtol@icecube.wisc.edu>
 * Contact: Alex Drlica-Wagner <kadrlica@fnal.gov>
 
-## Running
+### Installation
 
-The first step is to run `prepare_surve` to set up the necessary survey characterization files. Specifically, this script builds a list of survey fields and a list of expected time windows. These files will be written to the current directory by default.
+### Running
+
+The first step is to run `prepare_survey` to set up the necessary survey characterization files. Specifically, this script builds a list of survey fields and a list of expected time windows. These files will be written to the current directory by default.
 ```
 > ./bin/prepare_survey --help
 usage: prepare_survey [-h] [-p] [-f FIELDS] [-w WINDOWS]
