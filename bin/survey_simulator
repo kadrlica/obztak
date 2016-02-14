@@ -4,6 +4,8 @@ Executable for simulating the survey.
 """
 from maglites.scheduler import Scheduler
 from maglites.field import FieldArray
+from maglites.utils.parser import DatetimeAction
+import maglites.utils.ortho as ortho
 
 ############################################################
 
@@ -14,6 +16,11 @@ def main():
                         help='Plot only at the end of the night')
     parser.add_argument('--nonstop',action='store_true',
                         help='Run entire survey without stops')
+    parser.add_argument('--utc-start',action=DatetimeAction,
+                        help="start time for observation.")
+    parser.add_argument('--utc-end',action=DatetimeAction,
+                        help="end time for observation.")
+
     args = parser.parse_args()
     scheduler = Scheduler(args.fields,args.windows,args.complete)
 
@@ -27,9 +34,9 @@ def main():
         print start,end
 
         if args.nightly: 
-            scheduler.run(tstart=start,tstop=end,plot=False)
+            scheduler.schedule_nite(start,plot=False)
             field_select = scheduler.scheduled_fields[-1]
-            scheduler.plotField(end,field_select)
+            ortho.plotFields(field_select,scheduler.target_fields,scheduler.completed_fields)
         else:
             scheduler.run(tstart=start,tstop=end,plot=args.plot)
         scheduled = scheduled + scheduler.scheduled_fields
