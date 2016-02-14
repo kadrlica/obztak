@@ -20,8 +20,11 @@ def main():
     scheduler = Scheduler(args.fields,args.windows,args.complete)
     survey = scheduler.schedule_survey(chunk=args.chunk,plot=args.plot)
 
-    fields = np.hstack(itertools.chain(*survey.values()))
-    fields.view(FieldArray).write('survey_fields.csv')
+    # Write only the scheduled fields
+    #fields = np.hstack(itertools.chain(*survey.values()))
+    #fields.view(FieldArray).write('survey_fields.csv')
+    # Write all completed fields
+    scheduler.completed_fields.write('survey_fields.csv')
 
     basedir = args.outfile if args.outfile else 'survey'
     if not os.path.exists(basedir):
