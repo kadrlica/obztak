@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """
 Create diagnostic plots for a particular survey strategy.
 """
@@ -213,6 +214,40 @@ def progress(infile_accomplished_fields, date, infile_target_fields=None, tag=No
 
 ############################################################
 
+def tiling(infile_accomplished_fields, infile_target_fields=None, tag=None):
+    """
+    Survey progress in terms of tiling coverage
+    """
+
+    accomplished_fields = maglites.utils.fileio.csv2rec(infile_accomplished_fields)
+    #print accomplished_fields
+    #print accomplished_fields.dtype
+
+    if infile_target_fields is not None:
+        target_fields = maglites.utils.fileio.csv2rec(infile_target_fields)
+    
+    x = np.arange(len(accomplished_fields['TILING']))
+    plt.figure()
+    for ii, color in enumerate(['black', 'red', 'blue', 'green']): 
+        if infile_target_fields is not None:
+            print ii + 1, np.sum(target_fields['TILING'] == (ii + 1))
+            y = np.cumsum(accomplished_fields['TILING'] == (ii + 1)) / float(np.sum(target_fields['TILING'] == (ii + 1)))
+        else:
+            y = np.cumsum(accomplished_fields['TILING'] == (ii + 1))
+        plt.plot(x, y, c=color, label='Tiling %i'%(ii))
+        
+    plt.xlabel('Sequential Field Observed')
+    if infile_target_fields is not None:
+        plt.ylabel('Fraction of Tiling Complete')
+    else:
+        plt.ylabel('Completed Exposures in Tiling')
+    plt.legend(frameon=False, loc='upper left')
+
+    if tag is not None:
+        plt.savefig('tiling_%s.pdf'%(tag))
+
+############################################################
+
 if __name__ == '__main__':
     #from maglites.utils.parser import Parser
     #description = __doc__
@@ -244,10 +279,16 @@ if __name__ == '__main__':
     #progress('accomplished_fields.txt', '2016/6/30 10:32:50', infile_target_fields='target_fields.txt')
     #progress('accomplished_fields.txt', '2017/6/30 10:32:51', infile_target_fields='target_fields.txt')
    
+
+    """
     progress(args.scheduled, '2017/6/30 10:32:51', infile_target_fields='target_fields.csv', tag=args.tag)
     slew(args.scheduled, tag=args.tag)
     #slewAnalysis(args.scheduled)
     airmass(args.scheduled, tag=args.tag)
     #hourAngle(args.scheduled)
+    """
+    tiling(args.scheduled, infile_target_fields='target_fields.csv', tag=args.tag)
+
+    raw_input('...wait...')
 
 ############################################################
