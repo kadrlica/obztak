@@ -270,11 +270,13 @@ def plotField(field, target_fields=None, completed_fields=None, **kwargs):
     plt.draw()
 
 
-def plotFields(fields, target_fields=None, completed_fields=None):
+def plotFields(fields=None,target_fields=None,completed_fields=None, **kwargs):
     # ADW: Need to be careful about the size of the marker. It
     # does not change with the size of the frame so it is
     # really safest to scale to the size of the zenith circle
     # (see PlotPointings). That said, s=50 is probably roughly ok.
+    if fields is None:
+        fields = completed_fields[-1]
 
     if isinstance(fields,np.core.records.record):
         tmp = FieldArray(1)
@@ -282,22 +284,26 @@ def plotFields(fields, target_fields=None, completed_fields=None):
         fields = tmp
 
     for i,f in enumerate(fields):
-        plotField(fields[i],target_fields,completed_fields)
+        plotField(fields[i],target_fields,completed_fields,**kwargs)
 
         if completed_fields is None: completed_fields = FieldArray(0)
         completed_fields = completed_fields + fields[[i]]
 
         time.sleep(0.01)
     
-def plotWeight(self, date, field_select, weight):
+def plotWeight(field, target_fields, weight, **kwargs):
+    if isinstance(field,FieldArray):
+        field = field[-1]
+
+    date = ephem.Date(field['DATE'])
+
     if plt.get_fignums(): plt.cla()
     fig, basemap = maglites.utils.ortho.makePlot(date,name='weight')
     
     index_sort = np.argsort(weight)[::-1]
-    proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][index_sort], self.target_fields['DEC'][index_sort])
+    proj = maglites.utils.ortho.safeProj(basemap, target_fields['RA'][index_sort], target_fields['DEC'][index_sort])
     weight_min = np.min(weight)
     basemap.scatter(*proj, c=weight[index_sort], edgecolor='none', s=50, vmin=weight_min, vmax=weight_min + 300., cmap='Spectral')
-    #colorbar = plt.colorbar(label='Weight')
 
     #cut_accomplished = np.in1d(self.target_fields['ID'], self.accomplished_field_ids)
     #proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_accomplished], self.target_fields['DEC'][cut_accomplished])
@@ -316,16 +322,17 @@ def plotWeight(self, date, field_select, weight):
 
     # Draw colorbar in existing axis
     if len(fig.axes) == 2:
-        colorbar = plt.colorbar(label='Weight',cax=fig.axes[-1])
+        colorbar = plt.colorbar(cax=fig.axes[-1])
     else:
-        colorbar = plt.colorbar(label='Weight')
-        
+        colorbar = plt.colorbar()
+    colorbar.set_label('Weight')
+    
     # Show the selected field
-    proj = maglites.utils.ortho.safeProj(basemap, [field_select['RA']], [field_select['DEC']])
+    proj = maglites.utils.ortho.safeProj(basemap, [field['RA']], [field['DEC']])
     basemap.scatter(*proj, c='magenta', edgecolor='none', s=50)
 
     plt.draw()
-    time.sleep(0) # 0.1
+
 
 ############################################################
 

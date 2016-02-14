@@ -323,9 +323,9 @@ class Scheduler(object):
         logging.debug(msg)
 
         # For diagnostic purposes
-        #if len(self.accomplished_fields) % 10 == 0:
-        #    self.plotWeight(date, field_select, weight)
-        #    raw_input('WAIT')
+        if True and len(self.scheduled_fields) % 10 == 0:
+            ortho.plotWeight(field_select[-1], self.target_fields, weight)
+            raw_input('WAIT')
 
         return field_select
 
@@ -422,7 +422,7 @@ class Scheduler(object):
 
         return self.scheduled_fields
 
-    def schedule_chunk(tstart=None,chunk=60.,clip=False,plot=False):
+    def schedule_chunk(self, tstart=None, chunk=60., clip=False, plot=False):
         """
         Schedule a chunk of exposures.
         
@@ -438,7 +438,7 @@ class Scheduler(object):
         """
         # If no tstop, run for 90 minutes
         if tstart is None: tstart = ephem.now()
-        tstop = tstart + chunk*ephem.minutes
+        tstop = tstart + chunk*ephem.minute
 
         return self.run(tstart,tstop,clip,plot)
 
