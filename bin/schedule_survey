@@ -21,7 +21,7 @@ def main():
     survey = scheduler.schedule_survey(start=args.utc_start,end=args.utc_end,
                                        chunk=args.chunk,plot=args.plot)
 
-    #fields = np.hstack(itertools.chain(*survey.values()))
+    # Write all completed fields
     scheduler.completed_fields.write('survey_fields.csv')
 
     basedir = args.outfile if args.outfile else 'survey'

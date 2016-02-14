@@ -21,6 +21,7 @@ import maglites.utils.fileio as fileio
 from maglites.field import FieldArray
 from maglites.utils.ortho import get_nite, datestring
 
+############################################################
 
 class Scheduler(object):
     """
