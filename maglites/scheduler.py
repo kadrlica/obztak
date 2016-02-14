@@ -329,7 +329,7 @@ class Scheduler(object):
         return field_select
 
 
-    def run(self, tstart=None, tstop=None, plot=True):
+    def run(self, tstart=None, tstop=None, clip=False, plot=True):
         """
         Schedule a chunk of exposures.
         
@@ -378,9 +378,13 @@ class Scheduler(object):
                         inside = True 
 
                 if not inside:
-                    msg = 'Date outside of nominal observing windows'
-                    logging.warning(msg)
+                    if clip: 
+                        break
+                    else:
+                        msg = 'Date outside of nominal observing windows'
+                        logging.warning(msg)
 
+                
             # Check 
             compute_slew = True
             if len(self.completed_fields) == 0:
@@ -417,7 +421,7 @@ class Scheduler(object):
 
         return self.scheduled_fields
 
-    def schedule_chunk(tstart=None,chunk=60.,plot=False):
+    def schedule_chunk(tstart=None,chunk=60.,clip=False,plot=False):
         """
         Schedule a chunk of exposures.
         
@@ -435,9 +439,9 @@ class Scheduler(object):
         if tstart is None: tstart = ephem.now()
         tstop = tstart + chunk*ephem.minutes
 
-        return self.run(tstart,tstop,plot)
+        return self.run(tstart,tstop,clip,plot)
 
-    def schedule_nite(self,nite=None,chunk=60.,plot=False):
+    def schedule_nite(self,nite=None,chunk=60.,clip=False,plot=False):
         """
         Schedule a night of observing.
 
@@ -487,12 +491,14 @@ class Scheduler(object):
             msg = "Scheduling %s -- Chunk %i"%(start,i)
             logging.debug(msg)
             end = start+chunk
-            scheduled_fields = self.run(start, end, plot=False)
+            scheduled_fields = self.run(start, end, clip=clip, plot=False)
+
             if plot:
                 field_select = scheduled_fields[-1:]
                 ortho.plotField(field_select,self.target_fields,self.completed_fields)
                 if (raw_input(' ...continue ([y]/n)').lower()=='n'): 
                     break
+            
             chunks.append(scheduled_fields)
             start = end
 
@@ -517,7 +523,7 @@ class Scheduler(object):
         nites = odict()
 
         for start,end in self.observation_windows:
-            chunks = self.schedule_nite(start,chunk,plot=False)
+            chunks = self.schedule_nite(start,chunk,clip=True,plot=False)
             nite_name = '%d%02d%02d'%start.tuple()[:3]
             nites[nite_name] = chunks
 
@@ -528,7 +534,7 @@ class Scheduler(object):
                 #self.plotField(end,field_select)
                 if (raw_input(' ...continue ([y]/n)').lower()=='n'): 
                     break
-            
+
         if plot: raw_input(' ...finish... ')
         return nites
 
@@ -543,7 +549,7 @@ class Scheduler(object):
         parser = Parser(description=description)
         parser.add_argument('-p','--plot',action='store_true',
                             help='create visual output.')
-        parser.add_argument('--utc','--utc-start',action=DatetimeAction,
+        parser.add_argument('--utc','--utc-start',dest='utc_start',action=DatetimeAction,
                             help="start time for observation.")
         parser.add_argument('-k','--chunk', default=60., type=float,
                             help = 'time chunk')
