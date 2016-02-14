@@ -301,9 +301,9 @@ class Scheduler(object):
             weight += slew**2
             index_select = np.argmin(weight)
         elif mode == 'coverage':
-            weight = copy.copy(hour_angle_degree)
+            weight = 0.5*copy.copy(hour_angle_degree)
             weight[np.logical_not(cut)] = 9999.
-            weight += 6. * 360. * self.target_fields['TILING']
+            weight += 60. * 360. * self.target_fields['TILING']
             weight += slew**3 # slew**2
             weight += 100. * (airmass - 1.)**3
             index_select = np.argmin(weight)
