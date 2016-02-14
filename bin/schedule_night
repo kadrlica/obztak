@@ -19,11 +19,15 @@ def main():
     nite = get_nite(args.nite)
     logging.debug("Scheduling nite: %s"%(nite))
 
+    if not args.outfile:
+        nitestr ='%d%02d%02d'%nite.tuple()[:3]
+        outdir  = nitestr
+        if not os.path.exists(outdir):
+            os.makedirs(outdir)
+        outfile = os.path.join(outdir,nitestr+'.json')
+
     scheduler = Scheduler(args.fields,args.windows,args.complete)  
     chunks = scheduler.schedule_nite(args.nite,chunk=args.chunk,plot=args.plot)
-
-    if not args.outfile:
-        outfile = '%d%02d%02d.json'%nite.tuple()[:3]
 
     base,ext = os.path.splitext(outfile)
     for i,chunk in enumerate(chunks):
@@ -33,6 +37,8 @@ def main():
             outfile = base+idx+ext
         logging.debug("Writing %s..."%outfile)
         chunk.write(outfile)
+        if args.write_protect:
+            os.chmod(outfile,0444)
 
 if __name__ == "__main__":
     main()
