@@ -386,13 +386,14 @@ class Scheduler(object):
                         logging.warning(msg)
 
                 
-            # Check 
+            # FIXME: I think that ra_previous and dec_previous don't need to be passed
             compute_slew = True
             if len(self.completed_fields) == 0:
                 compute_slew = False
             else:
                 if (date - ephem.Date(self.completed_fields['DATE'][-1])) > (30. * ephem.minute):
                     compute_slew = False
+
             if compute_slew:
                 field_select = self.selectField(date, ra_previous=self.completed_fields['RA'][-1], dec_previous=self.completed_fields['DEC'][-1], plot=plot)
             else:
