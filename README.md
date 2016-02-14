@@ -1,6 +1,6 @@
 # MagLiteS
 
-Bizarro Observation Tactician (ObzTak) for the *Mag*ellanic Satel*lite*s *S*urvey (MagLiteS).
+Bizarro Observation Tactician (ObzTak) for the **Mag**ellanic Satel**lite**s **S**urvey (MagLiteS).
 
 * Contact: Keith Bechtol <keith.bechtol@icecube.wisc.edu>
 * Contact: Alex Drlica-Wagner <kadrlica@fnal.gov>
