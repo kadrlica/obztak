@@ -330,7 +330,7 @@ class Scheduler(object):
         logging.debug(msg)
 
         # For diagnostic purposes
-        if True and len(self.scheduled_fields) % 10 == 0:
+        if False and len(self.scheduled_fields) % 10 == 0:
             ortho.plotWeight(field_select[-1], self.target_fields, weight)
             raw_input('WAIT')
 
