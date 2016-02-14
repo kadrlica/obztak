@@ -506,7 +506,7 @@ class Scheduler(object):
         
         return chunks
 
-    def schedule_survey(self, chunk=60., plot=False):
+    def schedule_survey(self, start=None, end=None, chunk=60., plot=False):
         """
         Schedule the entire survey.
 
@@ -521,10 +521,13 @@ class Scheduler(object):
         """
 
         nites = odict()
+        
+        for tstart,tend in self.observation_windows:
+            if start is not None and ephem.Date(tstart) < ephem.Date(start): continue
+            if end is not None and ephem.Date(tend) > ephem.Date(end): continue
 
-        for start,end in self.observation_windows:
-            chunks = self.schedule_nite(start,chunk,clip=True,plot=False)
-            nite_name = '%d%02d%02d'%start.tuple()[:3]
+            chunks = self.schedule_nite(tstart,chunk,clip=True,plot=False)
+            nite_name = '%d%02d%02d'%tstart.tuple()[:3]
             nites[nite_name] = chunks
 
             if plot:
@@ -551,6 +554,8 @@ class Scheduler(object):
                             help='create visual output.')
         parser.add_argument('--utc','--utc-start',dest='utc_start',action=DatetimeAction,
                             help="start time for observation.")
+        parser.add_argument('--utc-end',action=DatetimeAction,
+                            help="end time for observation.")
         parser.add_argument('-k','--chunk', default=60., type=float,
                             help = 'time chunk')
         parser.add_argument('-f','--fields',default=None,

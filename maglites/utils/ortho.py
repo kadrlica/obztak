@@ -282,7 +282,7 @@ def plotFields(fields, target_fields=None, completed_fields=None):
         fields = tmp
 
     for i,f in enumerate(fields):
-        plotField(fields[[i]],target_fields,completed_fields)
+        plotField(fields[i],target_fields,completed_fields)
 
         if completed_fields is None: completed_fields = FieldArray(0)
         completed_fields = completed_fields + fields[[i]]
