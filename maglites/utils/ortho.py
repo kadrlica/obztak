@@ -10,7 +10,6 @@ import logging
 import maglites.utils.projector
 import maglites.utils.constants as constants
 
-from maglites.utils import datestring
 from maglites.field import FieldArray
 
 plt.ion()
@@ -233,6 +232,11 @@ def plotField(field, target_fields=None, completed_fields=None, **kwargs):
     for k,v in defaults.items():
         kwargs.setdefault(k,v)
 
+    if isinstance(field,np.core.records.record):
+        tmp = FieldArray(1)
+        tmp[0] = field
+        field = tmp
+
     msg = "  Plotting -- "
     msg += "%s (time=%.8s, "%(field['ID'][0],field['DATE'][0].split(' ')[-1])
     msg +="ra=%(RA)-8.4f, dec=%(DEC)-8.4f)"%field[0]
@@ -272,6 +276,10 @@ def plotFields(fields, target_fields=None, completed_fields=None):
     # really safest to scale to the size of the zenith circle
     # (see PlotPointings). That said, s=50 is probably roughly ok.
 
+    if isinstance(fields,np.core.records.record):
+        tmp = FieldArray(1)
+        tmp[0] = fields
+        fields = tmp
 
     for i,f in enumerate(fields):
         plotField(fields[[i]],target_fields,completed_fields)
@@ -281,6 +289,71 @@ def plotFields(fields, target_fields=None, completed_fields=None):
 
         time.sleep(0.01)
     
+def plotWeight(self, date, field_select, weight):
+    if plt.get_fignums(): plt.cla()
+    fig, basemap = maglites.utils.ortho.makePlot(date,name='weight')
+    
+    index_sort = np.argsort(weight)[::-1]
+    proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][index_sort], self.target_fields['DEC'][index_sort])
+    weight_min = np.min(weight)
+    basemap.scatter(*proj, c=weight[index_sort], edgecolor='none', s=50, vmin=weight_min, vmax=weight_min + 300., cmap='Spectral')
+    #colorbar = plt.colorbar(label='Weight')
+
+    #cut_accomplished = np.in1d(self.target_fields['ID'], self.accomplished_field_ids)
+    #proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_accomplished], self.target_fields['DEC'][cut_accomplished])
+    #basemap.scatter(*proj, c='0.75', edgecolor='none', s=50)
+    
+    """
+    cut_accomplished = np.in1d(self.target_fields['ID'],self.accomplished_fields['ID'])
+    proj = maglites.utils.ortho.safeProj(basemap, 
+                                         self.target_fields['RA'][~cut_accomplished], 
+                                         self.target_fields['DEC'][~cut_accomplished])
+    basemap.scatter(*proj, c=np.tile(0, np.sum(np.logical_not(cut_accomplished))), edgecolor='none', s=50, vmin=0, vmax=4, cmap='summer_r')
+    
+    proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_accomplished], self.target_fields['DEC'][cut_accomplished])
+    basemap.scatter(*proj, c=self.target_fields['TILING'][cut_accomplished], edgecolor='none', s=50, vmin=0, vmax=4, cmap='summer_r')
+    """
+
+    # Draw colorbar in existing axis
+    if len(fig.axes) == 2:
+        colorbar = plt.colorbar(label='Weight',cax=fig.axes[-1])
+    else:
+        colorbar = plt.colorbar(label='Weight')
+        
+    # Show the selected field
+    proj = maglites.utils.ortho.safeProj(basemap, [field_select['RA']], [field_select['DEC']])
+    basemap.scatter(*proj, c='magenta', edgecolor='none', s=50)
+
+    plt.draw()
+    time.sleep(0) # 0.1
+
+############################################################
+
+def datestring(date,precision=4): 
+    """
+    Convert an ephem.Date object to a string with increased precision
+    
+    Parameters:
+    -----------
+    date      : ephem.Date object
+    precision : Output precision 
+    
+    Returns:
+    --------
+    datestr   : String representation of the date
+    """
+    date = ephem.Date(date)
+    datetuple = date.tuple()
+    seconds = round(datetuple[-1],precision)
+    minutes = datetuple[-2]
+    minutes += seconds//60
+    seconds = seconds%60.
+    datestr = '%d/%02d/%d %02i:%02i:%07.4f'%(datetuple[:-2]+(minutes,seconds))
+    return datestr
+
+############################################################
+
+
 def get_nite(date=None):
     """
     Convert from a date and time to a "nite". A "nite" is defined as
@@ -294,14 +367,13 @@ def get_nite(date=None):
     --------
     nite : A pyephem.Date object with the current nite
     """
-    import ephem
     if not date: date = ephem.now()
 
     sun = ephem.Sun()
     obs = ephem.Observer()
-    obs.lon = maglites.utils.constants.LON_CTIO
-    obs.lat = maglites.utils.constants.LAT_CTIO
-    obs.elevation = maglites.utils.constants.ELEVATION_CTIO
+    obs.lon = constants.LON_CTIO
+    obs.lat = constants.LAT_CTIO
+    obs.elevation = constants.ELEVATION_CTIO
     obs.date = date
 
     if obs.previous_setting(sun) > obs.previous_rising(sun):
