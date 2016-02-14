@@ -227,6 +227,7 @@ class FieldArray(np.recarray):
 
     def write(self, filename, **kwargs):
         base,ext = os.path.splitext(filename)
+        logging.debug('Writing %s...'%filename)
         if ext in ('.json'):
             data = self.to_sispi()
             fileio.write_json(filename,data,**kwargs)
