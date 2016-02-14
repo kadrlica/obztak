@@ -10,12 +10,26 @@ from maglites.utils.ortho import plotFields
 from maglites.utils.parser import Parser
 if __name__ == "__main__":
     parser = Parser(description=__doc__)
-    parser.add_argument('infiles',nargs='+',help='Input files')
+    parser.add_argument('infiles',nargs='+',
+                        help='Input files')
+    parser.add_argument('-k','--chunk',action='store_true',
+                        help='plot chunks of exposures file-by-file.')
+    parser.add_argument('-a','--all',action='store_true',
+                        help='plot all exposures at once.')
     args = parser.parse_args()
 
     fields = FieldArray()
     for filename in args.infiles:
         fields = fields + FieldArray.read(filename)
-
-    plotFields(fields,target_fields=fields)
+        if args.chunk:
+            plotFields(fields[-1],target_fields=fields,completed_fields=fields)
+            raw_input('...continue...')
+            
+    if args.chunk:
+        pass
+    elif args.all:
+        plotFields(fields[-1],target_fields=fields,completed_fields=fields)
+    else:
+        plotFields(fields,target_fields=fields)
+    
     raw_input(' ...finish...')
