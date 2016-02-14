@@ -8,26 +8,40 @@ import logging
 
 from maglites.scheduler import Scheduler
 from maglites.utils.parser import Parser, DatetimeAction
-from maglites.utils.ortho import get_nite
+from maglites.utils.ortho import nite2utc, utc2nite
 
 def main():
     parser = Scheduler.parser()
-    parser.add_argument('-n','--nite',action=DatetimeAction,
-                        help='night to schedule')
+    parser.add_argument('-n','--nite',type=int,
+                        help='the *local* nite to schedule')
     args = parser.parse_args()
+    
+    if args.utc_start and args.nite:
+        msg = "Can't specify '--utc-start' and '--nite'"
+        raise Exception(msg)
 
-    nite = get_nite(args.nite)
-    logging.debug("Scheduling nite: %s"%(nite))
+    if args.utc_start:
+        date = ephem.Date(args.utc_start)
+    elif args.nite:
+        date = nite2utc(str(args.nite))
+    else:
+        date = ephem.now()
+
+    nite = utc2nite(date)
+
+    nitestr ='%d%02d%02d'%nite.tuple()[:3]
+        
+    logging.info("Scheduling nite: %s"%(nitestr))
+    logging.info("Midpoint (UTC): %s"%(date))
 
     if not args.outfile:
-        nitestr ='%d%02d%02d'%nite.tuple()[:3]
         outdir  = nitestr
         if not os.path.exists(outdir):
             os.makedirs(outdir)
         outfile = os.path.join(outdir,nitestr+'.json')
 
     scheduler = Scheduler(args.fields,args.windows,args.complete)  
-    chunks = scheduler.schedule_nite(args.nite,chunk=args.chunk,plot=args.plot)
+    chunks = scheduler.schedule_nite(date,chunk=args.chunk,plot=args.plot)
 
     base,ext = os.path.splitext(outfile)
     for i,chunk in enumerate(chunks):

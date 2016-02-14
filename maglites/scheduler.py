@@ -447,6 +447,38 @@ class Scheduler(object):
 
         return self.scheduled_fields
 
+    def schedule_field(self, hex, tiling, band=None, date=None, plot=False):
+        """
+        Schedule a single filed at a given time.
+
+        Parameters:
+        -----------
+        hexid  : the hex ID of the field
+        tiling : the tiling number of the field
+        band   : The band of the field 
+        
+        Returns:
+        --------
+        field : The scheduled field
+        """
+        date = ephem.Date(date) if date else ephem.now()
+
+        select  = (self.target_fields['HEX']==hex)
+        select &= (self.target_fields['TILING']==tiling)
+        if band is not None:
+            select &= (self.target_fields['FILTER']==band)
+        index = np.nonzero(select)[0]
+
+        field = self.target_fields[select]
+
+        field['DATE'] = map(datestring,select.sum()*[date])
+        #field['AIRMASS'] = 
+        #field['DATE'] = 
+        #field['SLEW'] = 
+        #field['MOONANGLE'] = 
+        #field['HOURANGLE'] = 
+        return field
+        
     def schedule_chunk(self, tstart=None, chunk=60., clip=False, plot=False):
         """
         Schedule a chunk of exposures.
@@ -467,7 +499,7 @@ class Scheduler(object):
 
         return self.run(tstart,tstop,clip,plot)
 
-    def schedule_nite(self,nite=None,chunk=60.,clip=False,plot=False):
+    def schedule_nite(self,date=None,chunk=60.,clip=False,plot=False):
         """
         Schedule a night of observing.
 
@@ -485,7 +517,7 @@ class Scheduler(object):
         """
 
         # Create the nite
-        nite = get_nite(nite)
+        nite = get_nite(date)
         nite_tuple = nite.tuple()[:3]
 
         # Convert chunk to MJD

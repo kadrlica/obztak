@@ -360,8 +360,47 @@ def datestring(date,precision=4):
 
 ############################################################
 
+def nite2utc(nite, observer=None):
+    import dateutil.parser
+    import dateutil.tz
+    import datetime
+    sun = ephem.Sun()
 
-def get_nite(date=None):
+    if observer is None:
+        observer = ephem.Observer()
+        observer.lon = constants.LON_CTIO
+        observer.lat = constants.LAT_CTIO
+        observer.elevation = constants.ELEVATION_CTIO
+    
+    if not isinstance(nite,datetime.datetime):
+        nite = dateutil.parser.parse(nite)
+    nite = nite.replace(hour=12,tzinfo=dateutil.tz.tzlocal())
+    utc = ephem.Date(nite - nite.utcoffset())
+    observer.date = utc   
+   
+    return observer.next_antitransit(sun)
+
+def utc2nite(utc, observer=None):
+    sun = ephem.Sun()
+
+    if observer is None:
+        observer = ephem.Observer()
+        observer.lon = constants.LON_CTIO
+        observer.lat = constants.LAT_CTIO
+        observer.elevation = constants.ELEVATION_CTIO
+
+    observer.date = utc
+
+    if observer.previous_setting(sun) > observer.previous_rising(sun):
+        # It's night time, use the date of the previous setting
+        nite = ephem.localtime(observer.previous_setting(sun))
+    else:
+        # It's daytime, use the next setting
+        nite = ephem.localtime(observer.next_setting(sun))
+
+    return ephem.Date(nite)
+
+def get_nite(utc=None):
     """Convert from a date and time to the 'nite'. 
 
     A 'nite' is defined by the day (UTC) at noon local time in Chile
@@ -370,30 +409,15 @@ def get_nite(date=None):
 
     Parameters:
     -----------
-    date : The date/time to calculate the nite from.
+    utc : The date/time (UTC) to calculate the nite from.
     
     Returns:
     --------
     nite : An ephem.Date object containing the nite (at sunset)
 
     """
-    if not date: date = ephem.now()
-
-    sun = ephem.Sun()
-    obs = ephem.Observer()
-    obs.lon = constants.LON_CTIO
-    obs.lat = constants.LAT_CTIO
-    obs.elevation = constants.ELEVATION_CTIO
-    obs.date = date
-
-    if obs.previous_setting(sun) > obs.previous_rising(sun):
-        # It's nighttime, use the date of the previous setting
-        nite = ephem.localtime(obs.previous_setting(sun))
-    else:
-        # It's daytime, use the next setting
-        nite = ephem.localtime(obs.next_setting(sun))
-
-    return ephem.Date(nite)
+    if not utc: utc = ephem.now()
+    return utc2nite(utc)
 
 
 ############################################################
