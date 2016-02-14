@@ -18,12 +18,14 @@ import maglites.utils.ortho
 import maglites.utils.ortho as ortho
 import maglites.utils.fileio as fileio
 
-from maglites.utils import datestring
 from maglites.field import FieldArray
-from maglites.utils.ortho import get_nite
+from maglites.utils.ortho import get_nite, datestring
 
 
 class Scheduler(object):
+    """
+    Deal with survey scheduling.
+    """
 
     def __init__(self,target_fields=None,observation_windows=None,completed_fields=None):
         self.loadTargetFields(target_fields)
@@ -145,7 +147,26 @@ class Scheduler(object):
 
     def selectField(self, date, ra_previous=None, dec_previous=None, plot=False, mode='balance'):
         """
-        Input is pyephem date object
+        Select the `best` field to observe at a given time.
+
+        A single field can contain multiple exposures (for example g- and r-band).
+        
+        Available modes:
+        `balance`  : 
+        `balance2` : 
+        `balance3` : 
+
+        Parameters:
+        -----------
+        date         : The time to schedule the exposure
+        ra_previous  : The ra of the previous exposure
+        dec_previous : The dec of the previous exposure
+        plot         : Plot the output
+        mode         : Algorithm used to select the exposure
+
+        Returns:
+        --------
+        field        :  The selected exposures as a FieldArray object
         """
 
         self.observatory.date = ephem.Date(date)
@@ -192,9 +213,10 @@ class Scheduler(object):
         cut = cut_todo & cut_hour_angle & cut_airmass & cut_declination & (airmass < 2.) # Now with Blanco telescope constraints
         #cut = cut_todo & (airmass < 2.) # Original
 
-        # Need to figure out what to do if there are no available fields
+        # Need to figure out what to do if there are no available fields...
 
-        # Now apply some kind of selection criteria, e.g., select the field with the lowest airmass
+        # Now apply some kind of selection criteria, e.g., 
+        # select the field with the lowest airmass
         #airmass[np.logical_not(cut)] = 999.
         
         if mode == 'airmass':
@@ -267,9 +289,6 @@ class Scheduler(object):
                                    [20., 1000.], # 500
                                    [50., 5000.], # 1000
                                    [180., 5000.]])
-            #plt.figure()
-            #plt.plot(x_slew, y_slew)
-            #raw_input('WAIT')
             weight += np.interp(slew, x_slew, y_slew, left=9999., right=9999.)
             weight += 100. * (airmass - 1.)**3
             index_select = np.argmin(weight)
@@ -309,124 +328,6 @@ class Scheduler(object):
 
         return field_select
 
-    def plotWeight(self, date, field_select, weight):
-        if plt.get_fignums(): plt.cla()
-        fig, basemap = maglites.utils.ortho.makePlot(date,name='weight')
-        
-        index_sort = np.argsort(weight)[::-1]
-        proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][index_sort], self.target_fields['DEC'][index_sort])
-        weight_min = np.min(weight)
-        basemap.scatter(*proj, c=weight[index_sort], edgecolor='none', s=50, vmin=weight_min, vmax=weight_min + 300., cmap='Spectral')
-        #colorbar = plt.colorbar(label='Weight')
-
-        #cut_accomplished = np.in1d(self.target_fields['ID'], self.accomplished_field_ids)
-        #proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_accomplished], self.target_fields['DEC'][cut_accomplished])
-        #basemap.scatter(*proj, c='0.75', edgecolor='none', s=50)
-        
-        """
-        cut_accomplished = np.in1d(self.target_fields['ID'],self.accomplished_fields['ID'])
-        proj = maglites.utils.ortho.safeProj(basemap, 
-                                             self.target_fields['RA'][~cut_accomplished], 
-                                             self.target_fields['DEC'][~cut_accomplished])
-        basemap.scatter(*proj, c=np.tile(0, np.sum(np.logical_not(cut_accomplished))), edgecolor='none', s=50, vmin=0, vmax=4, cmap='summer_r')
-        
-        proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_accomplished], self.target_fields['DEC'][cut_accomplished])
-        basemap.scatter(*proj, c=self.target_fields['TILING'][cut_accomplished], edgecolor='none', s=50, vmin=0, vmax=4, cmap='summer_r')
-        """
-
-        # Draw colorbar in existing axis
-        if len(fig.axes) == 2:
-            colorbar = plt.colorbar(label='Weight',cax=fig.axes[-1])
-        else:
-            colorbar = plt.colorbar(label='Weight')
-            
-        # Show the selected field
-        proj = maglites.utils.ortho.safeProj(basemap, [field_select['RA']], [field_select['DEC']])
-        basemap.scatter(*proj, c='magenta', edgecolor='none', s=50)
-
-        plt.draw()
-        time.sleep(0) # 0.1
-
-    def plotField(self, date, field_select):
-        if plt.get_fignums(): plt.cla()
-        fig, basemap = maglites.utils.ortho.makePlot(date,name='ortho')
-
-        """
-        # Plot airmass
-        cut_completed = np.in1d(self.target_fields['ID'], self.completed_field_ids)
-        proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_completed], self.target_fields['DEC'][cut_completed])
-        basemap.scatter(*proj, c='0.75', edgecolor='none', s=50)
-        
-        proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_todo], self.target_fields['DEC'][cut_todo])
-        basemap.scatter(*proj, c=airmass[cut_todo], edgecolor='none', s=50, vmin=1., vmax=2., cmap='summer_r')
-        #basemap.scatter(*proj, c=cut_airmass.astype(float)[cut_todo], edgecolor='none', s=50, vmin=0., vmax=1., cmap='summer_r')
-        colorbar = plt.colorbar(label='Airmass')
-        """
-        """
-        # Plot hour angle
-        cut_completed = np.in1d(self.target_fields['ID'], self.completed_field_ids)
-        proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_completed], self.target_fields['DEC'][cut_completed])
-        basemap.scatter(*proj, c='0.75', edgecolor='none', s=50)
-        
-        proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_todo], self.target_fields['DEC'][cut_todo])
-        basemap.scatter(*proj, c=np.fabs(hour_angle_degree[cut_todo]), edgecolor='none', s=50, vmin=0., vmax=78.75, cmap='summer_r')
-        #basemap.scatter(*proj, c=cut_hour_angle.astype(float)[cut_todo], edgecolor='none', s=50, vmin=0., vmax=1., cmap='summer_r')
-        colorbar = plt.colorbar(label='Hour Angle')
-        """
-        """
-        # Plot RA
-        proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_todo], self.target_fields['DEC'][cut_todo])
-        ra_effective = self.target_fields['RA'][cut_todo] - ra_zenith
-        ra_effective[ra_effective > 180.] = ra_effective[ra_effective > 180.] - 360.
-        basemap.scatter(*proj, c=ra_effective, edgecolor='none', s=50, cmap='summer_r')
-        colorbar = plt.colorbar(label='RA')
-
-        cut_completed = np.in1d(self.target_fields['ID'], self.completed_field_ids)
-        proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_completed], self.target_fields['DEC'][cut_completed])
-        basemap.scatter(*proj, c='0.75', edgecolor='none', s=50)
-        """
-        """
-        # Plot weight
-        index_sort = np.argsort(ra_effective[cut_todo])[::-1]
-        proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_todo][index_sort], self.target_fields['DEC'][cut_todo][index_sort])
-        weight_min = np.min(ra_effective[cut_todo])
-        basemap.scatter(*proj, c=ra_effective[cut_todo][index_sort], edgecolor='none', s=50, vmin=weight_min, vmax=weight_min + 100., cmap='summer_r')
-        colorbar = plt.colorbar(label='Weight')
-
-        cut_completed = np.in1d(self.target_fields['ID'], self.completed_field_ids)
-        proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_completed], self.target_fields['DEC'][cut_completed])
-        basemap.scatter(*proj, c='0.75', edgecolor='none', s=50)
-        """
-
-        # ADW: Need to be careful about the size of the marker. It
-        # does not change with the size of the frame so it is
-        # really safest to scale to the size of the zenith circle
-        # (see PlotPointings). That said, s=50 is probably roughly ok.
-        
-        # Plot number of tilings 
-        cut_completed = np.in1d(self.target_fields['ID'],
-                                self.completed_fields['ID'])
-        proj = maglites.utils.ortho.safeProj(basemap, 
-                                             self.target_fields['RA'][~cut_completed], 
-                                             self.target_fields['DEC'][~cut_completed])
-        basemap.scatter(*proj, c=np.tile(0, np.sum(np.logical_not(cut_completed))), edgecolor='none', s=50, vmin=0, vmax=4, cmap='summer_r')
-        
-        proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_completed], self.target_fields['DEC'][cut_completed])
-        basemap.scatter(*proj, c=self.target_fields['TILING'][cut_completed], edgecolor='none', s=50, vmin=0, vmax=4, cmap='summer_r')
-
-        # Draw colorbar in existing axis
-        if len(fig.axes) == 2:
-            colorbar = plt.colorbar(cax=fig.axes[-1])
-        else:
-            colorbar = plt.colorbar()
-        colorbar.set_label('Tiling')
-        # Show the selected field
-        proj = maglites.utils.ortho.safeProj(basemap, [field_select['RA']], [field_select['DEC']])
-        basemap.scatter(*proj, c='magenta', edgecolor='none', s=50)
-
-        plt.draw()
-        time.sleep(0.1)
-
 
     def run(self, tstart=None, tstop=None, plot=True):
         """
@@ -440,7 +341,7 @@ class Scheduler(object):
         
         Returns:
         --------
-        fields : FieldArray of scheduled fields        
+        fields : Scheduled fields
         """
 
         # Reset the scheduled fields
@@ -516,9 +417,43 @@ class Scheduler(object):
 
         return self.scheduled_fields
 
-    schedule_chunk = run
+    def schedule_chunk(tstart=None,chunk=60.,plot=False):
+        """
+        Schedule a chunk of exposures.
+        
+        Parameters:
+        -----------
+        tstart : Start time (UTC); in `None` use `ephem.now()`
+        chunk  : Chunk of time to schedule.
+        plot   : Dynamically plot each scheduled exposure
+        
+        Returns:
+        --------
+        fields : Scheduled fields
+        """
+        # If no tstop, run for 90 minutes
+        if tstart is None: tstart = ephem.now()
+        tstop = tstart + chunk*ephem.minutes
+
+        return self.run(tstart,tstop,plot)
 
     def schedule_nite(self,nite=None,chunk=60.,plot=False):
+        """
+        Schedule a night of observing.
+
+        A `nite` is defined by the day (UTC) at noon local time before observing started.
+
+        Parameters:
+        -----------
+        nite  : The nite to schedule
+        chunk : The duration of a chunk of exposures (minutes)
+        plot  : Dynamically plot the progress after each chunk
+
+        Returns:
+        --------
+        chunks : A list of the chunks generated for the scheduled nite.
+        """
+
         # Create the nite
         nite = get_nite(nite)
         nite_tuple = nite.tuple()[:3]
@@ -566,6 +501,19 @@ class Scheduler(object):
         return chunks
 
     def schedule_survey(self, chunk=60., plot=False):
+        """
+        Schedule the entire survey.
+
+        Parameters:
+        -----------
+        chunk : The duration of a chunk of exposures (minutes)
+        plot  : Dynamically plot the progress after each night
+
+        Returns:
+        --------
+        nites : A list of the nightly schedule
+        """
+
         nites = odict()
 
         for start,end in self.observation_windows:
@@ -595,10 +543,8 @@ class Scheduler(object):
         parser = Parser(description=description)
         parser.add_argument('-p','--plot',action='store_true',
                             help='create visual output.')
-        parser.add_argument('--utc-start',action=DatetimeAction,
+        parser.add_argument('--utc','--utc-start',action=DatetimeAction,
                             help="start time for observation.")
-        parser.add_argument('--utc-end',action=DatetimeAction,
-                            help="end time for observation.")
         parser.add_argument('-k','--chunk', default=60., type=float,
                             help = 'time chunk')
         parser.add_argument('-f','--fields',default=None,
@@ -609,7 +555,8 @@ class Scheduler(object):
                             help="fields that have been completed.")
         parser.add_argument('-o','--outfile',default=None,
                             help='save output file of scheduled fields.')
-
+        parser.add_argument('--write-protect',action='store_true',
+                            help='write-protect output files')
         return parser
 
     @classmethod
