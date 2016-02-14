@@ -355,17 +355,20 @@ def datestring(date,precision=4):
 
 
 def get_nite(date=None):
-    """
-    Convert from a date and time to a "nite". A "nite" is defined as
-    the day (UTC) on which the Sun sets.
+    """Convert from a date and time to the 'nite'. 
+
+    A 'nite' is defined by the day (UTC) at noon local time in Chile
+    before observing started. This follows the usual convention of
+    naming the nite after the day (local time) on which it starts.
 
     Parameters:
     -----------
-    date : The date to calculate the nite from.
+    date : The date/time to calculate the nite from.
     
     Returns:
     --------
-    nite : A pyephem.Date object with the current nite
+    nite : An ephem.Date object containing the nite (at sunset)
+
     """
     if not date: date = ephem.now()
 

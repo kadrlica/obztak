@@ -4,10 +4,14 @@ Executable for simulating the survey.
 """
 import os
 import logging
+import itertools
+
 import ephem
+import numpy as np
 
 from maglites.scheduler import Scheduler
 from maglites.utils.parser import Parser
+from maglites.field import FieldArray
 
 def main():
     parser = Scheduler.parser()
@@ -16,12 +20,15 @@ def main():
     scheduler = Scheduler(args.fields,args.windows,args.complete)
     survey = scheduler.schedule_survey(chunk=args.chunk,plot=args.plot)
 
-    basedir = args.outfile if args.outfile else 'survey'
+    fields = np.hstack(itertools.chain(*survey.values()))
+    fields.view(FieldArray).write('survey_fields.csv')
 
+    basedir = args.outfile if args.outfile else 'survey'
     if not os.path.exists(basedir):
         os.makedirs(basedir)
 
     for nite,chunks in survey.items():
+
         outdir = os.path.join(basedir,nite)
         if not os.path.exists(outdir): os.makedirs(outdir)
         outfile = os.path.join(outdir,nite+'.json')
@@ -33,6 +40,7 @@ def main():
             logging.debug("Writing %s..."%outfile)
             chunk.write(outfile)
         
+    return survey
 
 if __name__ == "__main__":
-    main()
+    survey = main()
