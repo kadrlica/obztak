@@ -230,14 +230,14 @@ class Scheduler(object):
             #ra_effective = copy.copy(self.target_fields['RA'])
             ra_effective = copy.copy(self.target_fields['RA']) - ra_zenith
             ra_effective[ra_effective > 180.] = ra_effective[ra_effective > 180.] - 360.
-            ra_effective[np.logical_not(cut)] = 9999.
+            ra_effective[np.logical_not(cut)] = np.inf
             ra_effective += 360. * self.target_fields['TILING']
             index_select = np.argmin(ra_effective)
         elif mode == 'slew':
             #ra_effective = copy.copy(self.target_fields['RA'])
             ra_effective = copy.copy(self.target_fields['RA']) - ra_zenith
             ra_effective[ra_effective > 180.] = ra_effective[ra_effective > 180.] - 360.
-            ra_effective[np.logical_not(cut)] = 9999.
+            ra_effective[np.logical_not(cut)] = np.inf
             ra_effective += 360. * self.target_fields['TILING']
             ra_effective += slew**2
             #ra_effective += 2. * slew
@@ -246,7 +246,7 @@ class Scheduler(object):
             """
             ra_effective = copy.copy(self.target_fields['RA']) - ra_zenith
             ra_effective[ra_effective > 180.] = ra_effective[ra_effective > 180.] - 360.
-            ra_effective[np.logical_not(cut)] = 9999.
+            ra_effective[np.logical_not(cut)] = np.inf
             ra_effective += 360. * self.target_fields['TILING']
             #ra_effective += 720. * self.target_fields['TILING']
             ra_effective += slew**2
@@ -256,14 +256,14 @@ class Scheduler(object):
             weight = hour_angle_degree
             """
             weight = copy.copy(hour_angle_degree)
-            weight[np.logical_not(cut)] = 9999.
+            weight[np.logical_not(cut)] = np.inf
             weight += 3. * 360. * self.target_fields['TILING']
             weight += slew**3 # slew**2
             weight += 100. * (airmass - 1.)**3
             index_select = np.argmin(weight)
         elif mode == 'balance2':
             weight = copy.copy(hour_angle_degree)
-            weight[np.logical_not(cut)] = 9999.
+            weight[np.logical_not(cut)] = np.inf
             weight += 360. * self.target_fields['TILING']
             weight += slew_ra**2
             weight += slew_dec
@@ -272,7 +272,7 @@ class Scheduler(object):
         elif mode == 'balance3':
             logging.debug("Slew: %s"%slew)
             weight = copy.copy(hour_angle_degree)
-            weight[np.logical_not(cut)] = 9999.
+            weight[np.logical_not(cut)] = np.inf
             weight += 3. * 360. * self.target_fields['TILING']
             """
             x_slew, y_slew = zip(*[[0., 0.],
@@ -290,19 +290,19 @@ class Scheduler(object):
                                    [20., 1000.], # 500
                                    [50., 5000.], # 1000
                                    [180., 5000.]])
-            weight += np.interp(slew, x_slew, y_slew, left=9999., right=9999.)
+            weight += np.interp(slew, x_slew, y_slew, left=np.inf, right=np.inf)
             weight += 100. * (airmass - 1.)**3
             index_select = np.argmin(weight)
         elif mode == 'airmass2':
             weight = 200. * (airmass - airmass_next)
-            weight[np.logical_not(cut)] = 9999.
+            weight[np.logical_not(cut)] = np.inf
             weight += 360. * self.target_fields['TILING']
             weight += 100. * (airmass - 1.)**3
             weight += slew**2
             index_select = np.argmin(weight)
         elif mode == 'coverage':
             weight = 0.5*copy.copy(hour_angle_degree)
-            weight[np.logical_not(cut)] = 9999.
+            weight[np.logical_not(cut)] = np.inf
             weight += 60. * 360. * self.target_fields['TILING']
             weight += slew**3 # slew**2
             weight += 100. * (airmass - 1.)**3
@@ -310,7 +310,7 @@ class Scheduler(object):
         elif mode == 'coverage2':
             weight = copy.copy(hour_angle_degree)
             weight *= 2.
-            weight[np.logical_not(cut)] = 9999.
+            weight[np.logical_not(cut)] = np.inf
             weight += 6. * 360. * self.target_fields['TILING']
             weight += slew**3 # slew**2
             weight += 100. * (airmass - 1.)**3
@@ -318,30 +318,31 @@ class Scheduler(object):
         elif mode == 'coverage3':
             weight = copy.copy(hour_angle_degree)
             weight *= 0.5
-            weight[np.logical_not(cut)] = 9999.
+            weight[np.logical_not(cut)] = np.inf
             weight += 6. * 360. * self.target_fields['TILING']
             weight += slew**3 # slew**2
             weight += 100. * (airmass - 1.)**3
             index_select = np.argmin(weight)
         
-        
         # Search for other exposures in the same field
         field_id = self.target_fields['HEX'][index_select]
         tiling = self.target_fields['TILING'][index_select]        
-        index_select = np.nonzero( (self.target_fields['HEX']==field_id) & \
+
+        index = np.nonzero( (self.target_fields['HEX']==field_id) & \
                                    (self.target_fields['TILING']==tiling) & cut)[0]
 
-        timedelta = constants.FIELDTIME*np.arange(len(index_select))
-        if np.any(slew[index_select] > 5.):
+        
+        timedelta = constants.FIELDTIME*np.arange(len(index))
+        if np.any(slew[index] > 5.):
             # Apply a 30 second penalty for slews over 5 deg.
             # This is not completely realistic, but better than nothing
             timedelta += 30*ephem.second
-        field_select = self.target_fields[index_select]
-        field_select['AIRMASS'] = airmass[index_select]
+        field_select = self.target_fields[index]
+        field_select['AIRMASS'] = airmass[index]
         field_select['DATE'] = map(datestring,date+timedelta)
-        field_select['SLEW'] = slew[index_select]
-        field_select['MOONANGLE'] = moon_angle[index_select]
-        field_select['HOURANGLE'] = hour_angle_degree[index_select]
+        field_select['SLEW'] = slew[index]
+        field_select['MOONANGLE'] = moon_angle[index]
+        field_select['HOURANGLE'] = hour_angle_degree[index]
 
         msg = str(field_select)
         logging.debug(msg)
@@ -350,6 +351,17 @@ class Scheduler(object):
         if False and len(self.scheduled_fields) % 10 == 0:
             ortho.plotWeight(field_select[-1], self.target_fields, weight)
             raw_input('WAIT')
+
+        if len(field_select) == 0:
+            print field_id, tiling
+            print index_select
+            print cut[index_select]
+            print index
+            print cut.sum()
+            print weight
+            #ortho.plotWeight(field_select, self.target_fields, weight)
+            raw_input('WAIT')
+            
 
         return field_select
 

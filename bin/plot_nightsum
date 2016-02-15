@@ -20,17 +20,21 @@ if __name__ == "__main__":
     fields = FieldArray.load_database()
     now = ephem.now()
     nite = "%d/%02d/%02d"%now.tuple()[:3]
-    fig,basemap = makePlot(nite+" 03:00:00")
+    time = nite + ' 00:00:00'
+    fig,basemap = makePlot(date=time,name='nightsum',moon=False,airmass=False,center=(0,-90))
     new = np.char.startswith(fields['DATE'],nite)
     new_fields = fields[new]
     old_fields = fields[~new]
 
     kwargs = dict(edgecolor='none', s=50, vmin=0, vmax=4, cmap='summer_r')
 
-    proj = maglites.utils.ortho.safeProj(basemap, old_fields['RA'], old_fields['DEC'])
-    basemap.scatter(*proj, c='0.5', **kwargs)
-
     proj = maglites.utils.ortho.safeProj(basemap, new_fields['RA'], new_fields['DEC'])
-    basemap.scatter(*proj, c='g', **kwargs)
+    basemap.scatter(*proj, c='g', label='Observed tonight', **kwargs)
+
+    proj = maglites.utils.ortho.safeProj(basemap, old_fields['RA'], old_fields['DEC'])
+    basemap.scatter(*proj, c='0.5', label='Observed previously',**kwargs)
+
+    plt.legend(fontsize=10,loc='lower left',scatterpoints=1)
+    plt.savefig('nightsum_%d%02d%d.png'%now.tuple()[:3],bbox_inches='tight')
 
     raw_input(' ...finish...')

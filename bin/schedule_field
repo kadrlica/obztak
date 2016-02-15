@@ -1,0 +1,38 @@
+#!/usr/bin/env python
+"""
+Executable for simulating the survey.
+"""
+import os
+import ephem
+
+from maglites.utils.ortho import datestring
+from maglites.scheduler import Scheduler
+from maglites.utils.parser import Parser
+from maglites.utils.constants import BANDS
+
+def main():
+    parser = Scheduler.parser()
+    parser.add_argument('--hex',required=True,type=int,
+                        help='field hex id')
+    parser.add_argument('--tiling',required=True,type=int,
+                        help='field tiling id')
+    parser.add_argument('--band',choices=BANDS,default=None,
+                        help='exposure band')
+    args = parser.parse_args()
+
+    date = ephem.Date(args.utc_start) if args.utc_start else ephem.now()
+    scheduler = Scheduler(args.fields,None,None)
+    field = scheduler.schedule_field(args.hex,args.tiling,band=args.band,date=date,plot=args.plot)
+
+    outfile = args.outfile
+    if not outfile:
+        if args.band is None:
+            outfile = '%(HEX)d-%(TILING)02d'%field[0]
+        else:
+            outfile = '%s_'%field['ID'][0]
+        outfile += '_%02d:%02d:%02d.json'%date.tuple()[-3:]
+
+    field.write(outfile)
+
+if __name__ == "__main__":
+    main()
