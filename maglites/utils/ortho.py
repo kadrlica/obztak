@@ -146,11 +146,26 @@ def drawAirmassContour(basemap, observatory, airmass, n=360, s=50):
     proj = safeProj(basemap, ra_contour, dec_contour)
     basemap.plot(*proj, color='green', lw=2)
 
+    drawZenith(basemap, observatory)
+    #ra_zenith, dec_zenith = observatory.radec_of(0, '90') # RA and Dec of zenith
+    #ra_zenith = np.degrees(ra_zenith)
+    #dec_zenith = np.degrees(dec_zenith)
+    #proj = safeProj(basemap, np.array([ra_zenith]), np.array([dec_zenith]))
+    #basemap.scatter(*proj, color='green', edgecolor='none', s=s)
+
+def drawZenith(basemap, observatory):
+    """
+    Plot a to-scale representation of the focal plane size at the zenith.
+    """
     ra_zenith, dec_zenith = observatory.radec_of(0, '90') # RA and Dec of zenith
     ra_zenith = np.degrees(ra_zenith)
     dec_zenith = np.degrees(dec_zenith)
     proj = safeProj(basemap, np.array([ra_zenith]), np.array([dec_zenith]))
-    basemap.scatter(*proj, color='green', edgecolor='none', s=s)
+
+    zen_kwargs = dict(color='green',alpha=0.75,lw=1.5,zorder=1000)
+    basemap.plot(*proj,marker='+',ms=10,mew=1.5, **zen_kwargs)
+    basemap.tissot(ra_zenith, dec_zenith, constants.DECAM, 100, fc='none',**zen_kwargs)
+
 
 ############################################################
 
