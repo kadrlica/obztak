@@ -146,7 +146,7 @@ class Scheduler(object):
 
         return self.f_hour_angle_limit,self.f_airmass_limit
 
-    def selectField(self, date, ra_previous=None, dec_previous=None, plot=False, mode='balance'):
+    def selectField(self, date, ra_previous=None, dec_previous=None, plot=False, mode='lowairmass'):
         """
         Select the `best` field to observe at a given time.
 
@@ -322,6 +322,25 @@ class Scheduler(object):
             weight += 6. * 360. * self.target_fields['TILING']
             weight += slew**3 # slew**2
             weight += 100. * (airmass - 1.)**3
+            index_select = np.argmin(weight)
+        elif mode == 'lowairmass':
+            """
+            weight = 2.0 * copy.copy(hour_angle_degree)
+            if len(self.scheduled_fields) == 0:
+                weight += 200. * maglites.utils.projector.angsep(self.target_fields['RA'], 
+                                                                 self.target_fields['DEC'],
+                                                                 90., -70.)
+            weight[np.logical_not(cut)] = np.inf
+            weight += 3. * 360. * self.target_fields['TILING']
+            weight += slew**3 # slew**2
+            weight += 200. * (airmass - 1.)**3
+            index_select = np.argmin(weight)
+            """
+            weight = copy.copy(hour_angle_degree)
+            weight[np.logical_not(cut)] = np.inf
+            weight += 3. * 360. * self.target_fields['TILING']
+            weight += slew**3 # slew**2
+            weight += 1000. * (airmass - 1.)**3
             index_select = np.argmin(weight)
         
         # Search for other exposures in the same field
