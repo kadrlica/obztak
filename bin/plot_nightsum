@@ -18,44 +18,54 @@ if __name__ == "__main__":
     parser = Parser(description=__doc__)
     args = parser.parse_args()
 
-    fields = FieldArray.load_database()
     now = ephem.now()
     nite = "%d%02d%d"%get_nite(now).tuple()[:3]
     date = "%d/%02d/%02d"%now.tuple()[:3]
     time = date + ' 00:00:00'
-    fig,basemap = makePlot(date=time,name='nightsum',moon=False,airmass=False,center=(0,-90))
+
+    fields = FieldArray.load_database()
     new = np.char.startswith(fields['DATE'],date)
     new_fields = fields[new]
     old_fields = fields[~new]
 
-    kwargs = dict(edgecolor='none', s=50, vmin=0, vmax=4, cmap='summer_r')
-
-    plt.plot(np.nan, np.nan,'og',label='Observed tonight')
-
+    kwargs = dict(edgecolor='none', s=50, vmin=0, vmax=4)
+    fig,basemap = makePlot(date=time,name='nightsum',moon=False,airmass=False,center=(0,-90))
+    plt.title('Coverage (%s)'%nite)
+    kwargs['cmap'] = 'gray_r'
     proj = maglites.utils.ortho.safeProj(basemap, old_fields['RA'], old_fields['DEC'])
-    basemap.scatter(*proj, c='0.7', label='Observed previously',**kwargs)
+    basemap.scatter(*proj, c=old_fields['TILING'],**kwargs)
 
+    kwargs['cmap'] = 'summer_r'
     proj = maglites.utils.ortho.safeProj(basemap, new_fields['RA'], new_fields['DEC'])
     basemap.scatter(*proj, c=new_fields['TILING'],  **kwargs)
     colorbar = plt.colorbar()
     colorbar.set_label('Tiling')
 
-
+    plt.plot(np.nan, np.nan,'o',color='green',mec='green',label='Observed tonight')
+    plt.plot(np.nan, np.nan,'o',color='0.7',mec='0.7',label='Observed previously')
     plt.legend(fontsize=10,loc='lower left',scatterpoints=1)
-    plt.savefig('nightsum_%d%02d%d.png'%now.tuple()[:3],bbox_inches='tight')
+    plt.savefig('nightsum_coverage_%d%02d%d.png'%now.tuple()[:3],bbox_inches='tight')
 
     db = Database()
     db.connect()
 
-    new = db.query2recarray("select id, qc_fwhm as psf, qc_teff as teff from exposure where to_timestamp(utc_beg) > '%s' and exptime = 90 and delivered = True and propid = '2016A-0366'"%date)
-    old = db.query2recarray("select id, qc_fwhm as psf, qc_teff as teff from exposure where to_timestamp(utc_beg) < '%s' and exptime = 90 and delivered = True and propid = '2016A-0366'"%date)
+    query = """
+select id, qc_fwhm as psf, qc_teff as teff from exposure 
+where exptime = 90 and delivered = True and propid = '2016A-0366'
+and to_timestamp(utc_beg) %s '%s'
+"""
 
-    kwargs = dict(bins=np.linspace(0.5,2.5,50),normed=True,histtype='step',lw=2.5)
+    new = db.query2recarray(query%('>',date))
+    old = db.query2recarray(query%('<',date))
+
+    kwargs = dict(normed=True,histtype='step',lw=2.5)
+
     plt.figure()
+    kwargs['bins'] = np.linspace(0.5,2.5,50),
     plt.hist(new['psf'],color='green', label='Observed tonight', **kwargs)
     plt.hist(old['psf'],color='0.5', label='Observed previously', **kwargs)
     plt.legend()
-    plt.title('PSF %s'%nite)
+    plt.title('Seeing (%s)'%nite)
     plt.xlabel('FWHM (arcsec)')
     plt.ylabel('Normalized Number of Exposures')
     plt.savefig('nightsum_psf_%d%02d%d.png'%now.tuple()[:3],bbox_inches='tight')
@@ -65,7 +75,7 @@ if __name__ == "__main__":
     plt.hist(new['teff'],color='green',label='Observed tonight', **kwargs)
     plt.hist(old['teff'],color='0.5',label='Observed previously', **kwargs)
     plt.legend()
-    plt.title('Teff %s'%nite)
+    plt.title('Effective Depth (%s)'%nite)
     plt.xlabel('Teff')
     plt.ylabel('Normalized Number of Exposures')
     plt.savefig('nightsum_teff_%d%02d%d.png'%now.tuple()[:3],bbox_inches='tight')
