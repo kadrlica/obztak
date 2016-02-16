@@ -51,19 +51,26 @@ if __name__ == "__main__":
 
     query = """
 select id, qc_fwhm as psf, qc_teff as teff from exposure 
-where exptime = 90 and delivered = True and propid = '2016A-0366'
+where exptime = 90 and delivered = True and propid = '2016A-0366' 
+and qc_teff is not NULL and qc_fwhm is not NULL
 and to_timestamp(utc_beg) %s '%s'
 """
 
     new = db.query2recarray(query%('>',date))
     old = db.query2recarray(query%('<',date))
 
-    kwargs = dict(normed=True,histtype='step',lw=2.5)
+    nbins = 35
+    kwargs = dict(normed=True)
+    step_kwargs = dict(kwargs,histtype='step',lw=3.5)
+    fill_kwargs = dict(kwargs,histtype='stepfilled',lw=1.0,alpha=0.7)
 
     plt.figure()
-    kwargs['bins'] = np.linspace(0.5,2.5,50),
-    plt.hist(new['psf'],color='green', label='Observed tonight', **kwargs)
-    plt.hist(old['psf'],color='0.5', label='Observed previously', **kwargs)
+    step_kwargs['bins'] = np.linspace(0.5,2.5,nbins)
+    fill_kwargs['bins'] = np.linspace(0.5,2.5,nbins)
+    plt.hist(new['psf'],color='green',zorder=10, label='Observed tonight', **fill_kwargs)
+    plt.hist(new['psf'],color='green',zorder=10, **step_kwargs)
+    plt.hist(old['psf'],color='0.5', label='Observed previously', **fill_kwargs)
+    plt.hist(old['psf'],color='0.5', **step_kwargs)
     plt.legend()
     plt.title('Seeing (%s)'%nite)
     plt.xlabel('FWHM (arcsec)')
@@ -71,9 +78,12 @@ and to_timestamp(utc_beg) %s '%s'
     plt.savefig('nightsum_psf_%d%02d%d.png'%now.tuple()[:3],bbox_inches='tight')
 
     plt.figure()
-    kwargs['bins'] = np.linspace(0,1.5,50)
-    plt.hist(new['teff'],color='green',label='Observed tonight', **kwargs)
-    plt.hist(old['teff'],color='0.5',label='Observed previously', **kwargs)
+    step_kwargs['bins'] = np.linspace(0,1.5,nbins)
+    fill_kwargs['bins'] = np.linspace(0,1.5,nbins)
+    plt.hist(new['teff'],color='green',zorder=10,label='Observed tonight', **fill_kwargs)
+    plt.hist(new['teff'],color='green',zorder=10, **step_kwargs)
+    plt.hist(old['teff'],color='0.5',label='Observed previously', **fill_kwargs)
+    plt.hist(old['teff'],color='0.5', **step_kwargs)
     plt.legend()
     plt.title('Effective Depth (%s)'%nite)
     plt.xlabel('Teff')
