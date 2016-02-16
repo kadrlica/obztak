@@ -324,7 +324,6 @@ class Scheduler(object):
             weight += 100. * (airmass - 1.)**3
             index_select = np.argmin(weight)
         elif mode == 'lowairmass':
-            
             weight = 2.0 * copy.copy(hour_angle_degree)
             #if len(self.scheduled_fields) == 0:
             #    weight += 200. * maglites.utils.projector.angsep(self.target_fields['RA'], 
@@ -334,7 +333,7 @@ class Scheduler(object):
             weight += 3. * 360. * self.target_fields['TILING']
             weight += slew**3 # slew**2
             #weight += 2000. * (airmass - 1.)**3 # 200
-            weight += 5000. * (airmass > 1.4)
+            weight += 5000. * (airmass > 1.5)
             index_select = np.argmin(weight)
             
             """
