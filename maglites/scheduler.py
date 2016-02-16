@@ -146,7 +146,7 @@ class Scheduler(object):
 
         return self.f_hour_angle_limit,self.f_airmass_limit
 
-    def selectField(self, date, ra_previous=None, dec_previous=None, plot=False, mode='lowairmass'):
+    def selectField(self, date, ra_previous=None, dec_previous=None, plot=False, mode='coverage'):
         """
         Select the `best` field to observe at a given time.
 
