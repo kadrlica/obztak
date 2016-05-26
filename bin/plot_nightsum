@@ -10,15 +10,17 @@ import numpy as np
 
 from maglites.field import FieldArray
 import maglites.utils.ortho
-from maglites.utils.ortho import makePlot, get_nite
-from maglites.utils.parser import Parser
+from maglites.utils.ortho import makePlot, get_nite, nite2utc
+from maglites.utils.parser import Parser, DatetimeAction
 from maglites.utils import Database
 
 if __name__ == "__main__":
     parser = Parser(description=__doc__)
+    parser.add_argument('-n','--nite',type=int,
+                        help="The 'nite' of interest")
     args = parser.parse_args()
 
-    now = ephem.now()
+    now = nite2utc(args.nite) if nite else ephem.now()
     nite = "%d%02d%d"%get_nite(now).tuple()[:3]
     date = "%d/%02d/%02d"%now.tuple()[:3]
     time = date + ' 00:00:00'

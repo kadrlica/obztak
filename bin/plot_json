@@ -32,4 +32,4 @@ if __name__ == "__main__":
     else:
         plotFields(fields,target_fields=fields)
     
-    raw_input(' ...finish...')
+    #raw_input(' ...finish...')
