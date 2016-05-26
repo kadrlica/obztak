@@ -1,4 +1,5 @@
 import os
+from os.path import expandvars
 from mpl_toolkits.basemap import Basemap
 import numpy as np
 import ephem
@@ -36,19 +37,114 @@ matplotlib.rcParams.update(params)
 
 ############################################################
 
-#FIGSIZE = (10.5,8.5)
-#FIGSIZE = (10.5 / 2., 8.5 / 2.)
-#SCALE = np.sqrt((8.0*6.0)/(FIGSIZE[0]*FIGSIZE[1]))
-#DPI = 80
+class DECamBasemap(Basemap):
 
-#LMC_RA = 80.8939   
-#LMC_DEC = -69.7561
+    def __init__(self, *args, **kwargs):
+        super(DECamBasemap,self).__init__(self,*args,**kwargs)
+
+    def proj(self,lon,lat):
+        """ Remove points outside of projection """
+        x, y = self(np.atleast_1d(lon),np.atleast_1d(lat))
+        x[x > 1e29] = None
+        y[y > 1e29] = None
+        #return np.ma.array(x,mask=x>1e2),np.ma.array(y,mask=y>1e2)
+        return x, y
+
+    def draw_polygon(self,filename,**kwargs):
+        """ Draw a polygon footprint on this Basemap instance.
+        """
+        defaults=dict(color='k', lw=2)
+        for k,v in defaults.items():
+            kwargs.setdefault(k,v)
+
+        perim = np.loadtxt(filename,dtype=[('ra',float),('dec',float)])
+        xy = self.proj(perim['ra'],perim['dec'])
+        self.plot(*xy,**kwargs)
+
+    def draw_maglites(self,**kwargs):
+        defaults=dict(color='blue', lw=2)
+        for k,v in defaults.items():
+            kwargs.setdefault(k,v)
+
+        filename = expandvars('$MAGLITESDIR/maglites/data/maglites-poly.txt')
+        self.draw_polygon(filename,**kwargs)
+
+    def draw_des(self,**kwargs):
+        """ Draw the DES footprint on this Basemap instance.
+        """
+        defaults=dict(color='red', lw=2)
+        for k,v in defaults.items():
+            kwargs.setdefault(k,v)
+
+        filename = expandvars('$MAGLITESDIR/maglites/data/round13-poly.txt')
+        self.draw_polygon(filename,**kwargs)
+
+    def draw_smash(self,**kwargs):
+        defaults=dict(facecolor='none',color='k')
+        for k,v in defaults.items():
+            kwargs.setdefault(k,v)
+
+        filename = expandvars('$MAGLITESDIR/maglites/data/smash_fields_final.txt')
+        smash=np.genfromtxt(filename,dtype=[('ra',float),('dec',float)],usecols=[4,5])
+        xy = self.proj(smash['ra'],smash['dec'])
+        self.scatter(*xy,**kwargs)
+
+    def draw_airmass(self, observatory, airmass, npts=360, **kwargs):
+        defaults = dict(color='green', lw=2)
+        for k,v in defaults.items():
+            kwargs.setdefault(k,v)
+
+        altitude_radians = (0.5 * np.pi) - np.arccos(1. / airmass)
+        ra_contour = np.zeros(npts)
+        dec_contour = np.zeros(npts)
+        for ii, azimuth in enumerate(np.linspace(0., 2. * np.pi, npts)):
+            ra_radians, dec_radians = observatory.radec_of(azimuth, '%.2f'%(np.degrees(altitude_radians)))
+            ra_contour[ii] = np.degrees(ra_radians)
+            dec_contour[ii] = np.degrees(dec_radians)
+        xy = self.proj(ra_contour, dec_contour)
+        self.plot(*xy, **kwargs)
+         
+        self.drawZenith(observatory)
+
+    def draw_zenith(self, observatory):
+        """
+        Plot a to-scale representation of the focal plane size at the zenith.
+        """
+        defaults = dict(color='green',alpha=0.75,lw=1.5)
+        for k,v in defaults.items():
+            kwargs.setdefault(k,v)
+
+        # RA and Dec of zenith
+        ra_zenith, dec_zenith = np.degrees(observatory.radec_of(0, '90'))
+        xy = self.proj(ra_zenith, dec_zenith)
+         
+        self.plot(*xy,marker='+',ms=10,mew=1.5, **kwargs)
+        self.tissot(ra_zenith, dec_zenith, constants.DECAM, 100, fc='none',**kwargs)
+
+
+############################################################
+
+def drawMoon(basemap, date):
+    moon = ephem.Moon()
+    moon.compute(date)
+    ra_moon = np.degrees(moon.ra)
+    dec_moon = np.degrees(moon.dec)
+
+    proj = safeProj(basemap, np.array([ra_moon]), np.array([dec_moon]))
+
+    if np.isnan(proj[0]).all() or np.isnan(proj[1]).all(): return
+
+    basemap.scatter(*proj, color='%.2f'%(0.01 * moon.phase), edgecolor='black', s=500)
+    color = 'black' if moon.phase > 50. else 'white'
+    plt.text(proj[0], proj[1], '%.2f'%(0.01 * moon.phase), 
+             fontsize=10, ha='center', va='center', color=color)
+
 
 ############################################################
 
 def safeProj(proj, lon, lat):
     """ Remove points outside of projection """
-    x, y = proj(np.asarray(lon),np.asarray(lat))
+    x, y = proj(np.atleast_1d(lon),np.atleast_1d(lat))
     x[x > 1e29] = None
     y[y > 1e29] = None
     #return np.ma.array(x,mask=x>1e2),np.ma.array(y,mask=y>1e2)
@@ -222,7 +318,7 @@ def makePlot(date=None, name=None, figsize=(10.5,8.5), dpi=80, s=50, center=None
         lon_0, lat_0 = center[0], center[1]
 
     proj_kwargs.update(lon_0=lon_0, lat_0=lat_0)
-    basemap = Basemap(**proj_kwargs)
+    basemap = DECamBasemap(**proj_kwargs)
 
     parallels = np.arange(-90.,120.,30.)
     basemap.drawparallels(parallels)
@@ -300,7 +396,7 @@ def plotFields(fields=None,target_fields=None,completed_fields=None, **kwargs):
 
     for i,f in enumerate(fields):
         plotField(fields[i],target_fields,completed_fields,**kwargs)
-
+        #plt.savefig('field_%08i.png'%i)
         if completed_fields is None: completed_fields = FieldArray(0)
         completed_fields = completed_fields + fields[[i]]
 
@@ -347,6 +443,7 @@ def plotWeight(field, target_fields, weight, **kwargs):
     basemap.scatter(*proj, c='magenta', edgecolor='none', s=50)
 
     plt.draw()
+
 
 
 ############################################################
