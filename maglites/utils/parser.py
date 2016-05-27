@@ -49,6 +49,12 @@ class Parser(argparse.ArgumentParser):
                           version='maglites v'+__version__,
                           help="print version number and exit")
 
+    def remove_argument(self,option_string):
+        for i,action in enumerate(self._actions):
+            if option_string in action.option_strings:
+                self._handle_conflict_resolve(None, [(option_string,action)])
+                #action.container._remove_action(action)
+
 logger = logging.getLogger()
 handler = logging.StreamHandler()
 handler.setFormatter(SpecialFormatter())
