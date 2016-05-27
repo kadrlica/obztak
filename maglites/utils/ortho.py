@@ -461,13 +461,35 @@ def datestring(date,precision=4):
     --------
     datestr   : String representation of the date
     """
+    """
+    date = ephem.Date(date).datetime()
+    datestr = date.strftime('%Y/%m/%d %H:%M:%S')
+    datestr += '{:.{precision}f}'.format(date.microsecond/1.e6,
+                                         precision=precision)[1:]
+    """
+
+    if precision < 0:
+        msg = "Precision must be positive."
+        raise Exception(msg)
+
+    # This is a bit annoying, but works better than converting to datetime
     date = ephem.Date(date)
     datetuple = date.tuple()
     seconds = round(datetuple[-1],precision)
     minutes = datetuple[-2]
-    minutes += seconds//60
+    hours = datetuple[-3]
+    minutes += int(seconds//60)
     seconds = seconds%60.
-    datestr = '%d/%02d/%d %02i:%02i:%07.4f'%(datetuple[:-2]+(minutes,seconds))
+    hours += int(minutes//60)
+    minutes = minutes%60
+
+    strtuple = datetuple[:-3]+(hours,minutes,seconds)
+    width = precision+2 if precision == 0 else precision+3
+
+    #datestr = '%d/%02d/%02d %02i:%02i:%07.4f'%strtuple
+    datestr = '{:4d}/{:02d}/{:02d} {:02d}:{:02d}:{:0{width}.{precision}f}'
+    datestr = datestr.format(*strtuple,precision=precision,width=width)
+
     return datestr
 
 ############################################################
@@ -476,21 +498,24 @@ def nite2utc(nite, observer=None):
     import dateutil.parser
     import dateutil.tz
     import datetime
-    sun = ephem.Sun()
 
     if observer is None:
         observer = ephem.Observer()
         observer.lon = constants.LON_CTIO
         observer.lat = constants.LAT_CTIO
         observer.elevation = constants.ELEVATION_CTIO
-    
+        
     if not isinstance(nite,datetime.datetime):
         nite = dateutil.parser.parse(nite)
     nite = nite.replace(hour=12,tzinfo=dateutil.tz.tzlocal())
     utc = ephem.Date(nite - nite.utcoffset())
-    observer.date = utc   
-   
-    return observer.next_antitransit(sun)
+
+    observer.date = utc
+    observer.horizon = '-14'
+
+    #return observer.next_antitransit(ephem.Sun())
+    return observer.previous_setting(ephem.Sun(), use_center=True)
+
 
 def utc2nite(utc, observer=None):
     sun = ephem.Sun()
@@ -512,8 +537,8 @@ def utc2nite(utc, observer=None):
 
     return ephem.Date(nite)
 
-def get_nite(utc=None):
-    """Convert from a date and time to the 'nite'. 
+def get_nite(utc=None, observer=None):
+    """Convert from a UTC date and time to the 'nite'. 
 
     A 'nite' is defined by the day (UTC) at noon local time in Chile
     before observing started. This follows the usual convention of
@@ -529,7 +554,7 @@ def get_nite(utc=None):
 
     """
     if not utc: utc = ephem.now()
-    return utc2nite(utc)
+    return utc2nite(utc, observer)
 
 
 ############################################################
