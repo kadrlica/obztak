@@ -80,7 +80,7 @@ class Scheduler(object):
 
         logging.info('Observation Windows:')
         for start,end in self.observation_windows:
-            logging.info('  %s -- %s'%(start,end))
+            logging.info('  %s UTC -- %s UTC'%(start,end))
         logging.info(30*'-')
 
     def loadObservedFields(self, **kwargs):
@@ -219,7 +219,7 @@ class Scheduler(object):
         # Now apply some kind of selection criteria, e.g., 
         # select the field with the lowest airmass
         #airmass[np.logical_not(cut)] = 999.
-        
+
         if mode == 'airmass':
             airmass_effective = copy.copy(airmass)
             airmass_effective[np.logical_not(cut)] = 999. # Do not observe fields that are unavailable
@@ -344,7 +344,10 @@ class Scheduler(object):
             weight += 1000. * (airmass - 1.)**3
             index_select = np.argmin(weight)
             """
-        
+        else:
+            msg = "Unrecognized mode: %s"%mode
+            raise Exception(msg)
+
         # Search for other exposures in the same field
         field_id = self.target_fields['HEX'][index_select]
         tiling = self.target_fields['TILING'][index_select]        
@@ -357,6 +360,7 @@ class Scheduler(object):
         if np.any(slew[index] > 5.):
             # Apply a 30 second penalty for slews over 5 deg.
             # This is not completely realistic, but better than nothing
+            # This is also broken when selecting two fields at once
             timedelta += 30*ephem.second
         field_select = self.target_fields[index]
         field_select['AIRMASS'] = airmass[index]
@@ -387,7 +391,7 @@ class Scheduler(object):
         return field_select
 
 
-    def run(self, tstart=None, tstop=None, clip=False, plot=True):
+    def run(self, tstart=None, tstop=None, clip=False, plot=True, mode=None):
         """
         Schedule a chunk of exposures.
         
@@ -401,6 +405,7 @@ class Scheduler(object):
         --------
         fields : Scheduled fields
         """
+        if mode is None: mode='coverage'
 
         # Reset the scheduled fields
         self.scheduled_fields = FieldArray(0)
@@ -423,6 +428,9 @@ class Scheduler(object):
         msg = "Previously completed fields: %i"%len(self.completed_fields)
         logging.info(msg)
 
+        msg = "Scheduling with tactician mode: %s"%mode
+        logging.info(msg)
+
         date = tstart
         latch = True
         while latch:
@@ -432,7 +440,7 @@ class Scheduler(object):
             if self.observation_windows is not None:
                 inside = False
                 for window in self.observation_windows:
-                    if date >= window[0] and date <= window[-1]: 
+                    if date >= window[0] and date < window[-1]: 
                         inside = True 
 
                 if not inside:
@@ -451,10 +459,11 @@ class Scheduler(object):
                 if (date - ephem.Date(self.completed_fields['DATE'][-1])) > (30. * ephem.minute):
                     compute_slew = False
 
+                
             if compute_slew:
-                field_select = self.selectField(date, ra_previous=self.completed_fields['RA'][-1], dec_previous=self.completed_fields['DEC'][-1], plot=plot)
+                field_select = self.selectField(date, ra_previous=self.completed_fields['RA'][-1], dec_previous=self.completed_fields['DEC'][-1], plot=plot,mode=mode)
             else:
-                field_select = self.selectField(date, plot=plot)
+                field_select = self.selectField(date, plot=plot, mode=mode)
 
             id_select = field_select['ID']
             # Previously, increment time by a constant
@@ -465,7 +474,7 @@ class Scheduler(object):
             self.completed_fields = self.completed_fields + field_select
             self.scheduled_fields = self.scheduled_fields + field_select
 
-            msg = "  %(DATE).20s: id=%(ID)s, airmass=%(AIRMASS).2f, slew=%(SLEW).2f"
+            msg = "  %(DATE).19s: id=%(ID)s, airmass=%(AIRMASS).2f, slew=%(SLEW).2f"
             for i,f in zip(field_select.unique_id,field_select):
                 params = dict([('ID',i)]+[(k,f[k]) for k in f.dtype.names])
                 logging.info(msg%params)
@@ -473,14 +482,14 @@ class Scheduler(object):
             #if plot: self.plotField(date, field_select)
             if plot: 
                 ortho.plotField(field_select[:-1],self.target_fields,self.completed_fields)
-            if date > tstop: break
+            if date >= tstop: break
 
         msg = "Newly scheduled fields: %i"%len(self.scheduled_fields)
         logging.info(msg)
 
         return self.scheduled_fields
 
-    def schedule_field(self, hex, tiling, band=None, date=None, plot=False):
+    def schedule_field(self, hex, tiling, band=None, date=None, plot=False, mode=None):
         """
         Schedule a single filed at a given time.
 
@@ -489,6 +498,9 @@ class Scheduler(object):
         hexid  : the hex ID of the field
         tiling : the tiling number of the field
         band   : The band of the field 
+        date   : The date/time for observation
+        plot   : Plot the output
+        mode   : Mode for scheduler tactician
         
         Returns:
         --------
@@ -512,7 +524,7 @@ class Scheduler(object):
         #field['HOURANGLE'] = 
         return field
         
-    def schedule_chunk(self, tstart=None, chunk=60., clip=False, plot=False):
+    def schedule_chunk(self,tstart=None,chunk=60,clip=False,plot=False,mode=None):
         """
         Schedule a chunk of exposures.
         
@@ -521,6 +533,7 @@ class Scheduler(object):
         tstart : Start time (UTC); in `None` use `ephem.now()`
         chunk  : Chunk of time to schedule.
         plot   : Dynamically plot each scheduled exposure
+        mode   : Mode for scheduler tactician
         
         Returns:
         --------
@@ -530,9 +543,9 @@ class Scheduler(object):
         if tstart is None: tstart = ephem.now()
         tstop = tstart + chunk*ephem.minute
 
-        return self.run(tstart,tstop,clip,plot)
+        return self.run(tstart,tstop,clip,plot,mode)
 
-    def schedule_nite(self,date=None,chunk=60.,clip=False,plot=False):
+    def schedule_nite(self,date=None,chunk=60,clip=False,plot=False,mode=None):
         """
         Schedule a night of observing.
 
@@ -540,9 +553,10 @@ class Scheduler(object):
 
         Parameters:
         -----------
-        nite  : The nite to schedule
+        date  : The date of the nite to schedule
         chunk : The duration of a chunk of exposures (minutes)
         plot  : Dynamically plot the progress after each chunk
+        mode  : Mode for scheduler tactician
 
         Returns:
         --------
@@ -567,13 +581,15 @@ class Scheduler(object):
             msg += '['+', '.join(['%s/%s/%s'%t for t in nite_tuples])+']'
             logging.warning(msg)
 
-            sun = ephem.Sun()
-            obs = self.observatory
-            start = nite + 1*ephem.hour            
-            finish = obs.next_rising(sun) - 1*ephem.hour
+            # WARNING: copy.deepcopy doesn't work for ephem.Observer
+            start = date
+            self.observatory.date = date
+            self.observatory.horizon = '-14'
+            finish = self.observatory.next_rising(ephem.Sun(), use_center=True)
+            self.observatory.horizon = '0'
 
-            logging.debug("Night start time: %s"%datestring(start))
-            logging.debug("Night finish time: %s"%datestring(finish))
+            logging.info("Night start time: %s"%datestring(start))
+            logging.info("Night finish time: %s"%datestring(finish))
 
         chunks = []
         i = 0
@@ -582,7 +598,7 @@ class Scheduler(object):
             msg = "Scheduling %s -- Chunk %i"%(start,i)
             logging.debug(msg)
             end = start+chunk
-            scheduled_fields = self.run(start, end, clip=clip, plot=False)
+            scheduled_fields = self.run(start,end,clip=clip,plot=False,mode=mode)
 
             if plot:
                 field_select = scheduled_fields[-1:]
@@ -591,20 +607,24 @@ class Scheduler(object):
                     break
             
             chunks.append(scheduled_fields)
-            start = end
+            start = ephem.Date(chunks[-1]['DATE'][-1]) + constants.FIELDTIME
+            #start = end
 
         if plot: raw_input(' ...finish... ')
         
         return chunks
 
-    def schedule_survey(self, start=None, end=None, chunk=60., plot=False):
+    def schedule_survey(self,start=None,end=None,chunk=60,plot=False,mode=None):
         """
         Schedule the entire survey.
 
         Parameters:
         -----------
+        start : Start of survey (int or str)
+        end   : End of survey (int or str)
         chunk : The duration of a chunk of exposures (minutes)
         plot  : Dynamically plot the progress after each night
+        mode  : Mode of scheduler tactician 
 
         Returns:
         --------
@@ -617,7 +637,7 @@ class Scheduler(object):
             if start is not None and ephem.Date(tstart) < ephem.Date(start): continue
             if end is not None and ephem.Date(tend) > ephem.Date(end): continue
 
-            chunks = self.schedule_nite(tstart,chunk,clip=True,plot=False)
+            chunks = self.schedule_nite(tstart,chunk,clip=True,plot=False,mode=mode)
             nite_name = '%d%02d%02d'%tstart.tuple()[:3]
             nites[nite_name] = chunks
 
@@ -651,6 +671,8 @@ class Scheduler(object):
                             help = 'time chunk')
         parser.add_argument('-f','--fields',default=None,
                             help='all target fields.')
+        parser.add_argument('-m','--mode',default='coverage',
+                            help='Mode for scheduler tactician.')
         parser.add_argument('-w','--windows',default=None,
                             help='observation windows.')
         parser.add_argument('-c','--complete',nargs='?',action='append',
