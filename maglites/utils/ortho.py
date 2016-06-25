@@ -1,5 +1,6 @@
 import os
 from os.path import expandvars
+import shutil
 from mpl_toolkits.basemap import Basemap
 import numpy as np
 import ephem
@@ -7,6 +8,8 @@ import matplotlib.pyplot as plt
 import matplotlib
 import time
 import logging
+import tempfile
+import subprocess
 
 import maglites.utils.projector
 import maglites.utils.constants as constants
@@ -381,7 +384,7 @@ def plotField(field, target_fields=None, completed_fields=None, **kwargs):
     plt.draw()
 
 
-def plotFields(fields=None,target_fields=None,completed_fields=None, **kwargs):
+def plotFields(fields=None,target_fields=None,completed_fields=None,**kwargs):
     # ADW: Need to be careful about the size of the marker. It
     # does not change with the size of the frame so it is
     # really safest to scale to the size of the zenith circle
@@ -401,7 +404,35 @@ def plotFields(fields=None,target_fields=None,completed_fields=None, **kwargs):
         completed_fields = completed_fields + fields[[i]]
 
         time.sleep(0.01)
-    
+
+def movieFields(outfile,fields=None,target_fields=None,completed_fields=None,**kwargs):
+    if os.path.splitext(outfile)[-1] not in ['.gif']:
+        msg = "Only animated gif currently supported."
+        raise Exception(msg)
+
+    tmpdir = tempfile.mkdtemp()
+
+    if fields is None:
+        fields = completed_fields[-1]
+
+    if isinstance(fields,np.core.records.record):
+        tmp = FieldArray(1)
+        tmp[0] = fields
+        fields = tmp
+
+    for i,f in enumerate(fields):
+        plotField(fields[i],target_fields,completed_fields,**kwargs)
+        png = os.path.join(tmpdir,'field_%08i.png'%i)
+        plt.savefig(png,bbox_inches='tight',dpi=100)
+        if completed_fields is None: completed_fields = FieldArray(0)
+        completed_fields = completed_fields + fields[[i]]
+
+    cmd = 'convert -delay 10 -loop 0 %s/*.png %s'%(tmpdir,outfile)
+    logging.info(cmd)
+    subprocess.call(cmd,shell=True)
+    shutil.rmtree(tmpdir)
+    return outfile
+
 def plotWeight(field, target_fields, weight, **kwargs):
     if isinstance(field,FieldArray):
         field = field[-1]
@@ -506,16 +537,26 @@ def nite2utc(nite, observer=None):
         observer.elevation = constants.ELEVATION_CTIO
         
     if not isinstance(nite,datetime.datetime):
-        nite = dateutil.parser.parse(nite)
+        nite = dateutil.parser.parse(str(nite))
+
+    # Move to (local) noon
+    # This depends on where the user is and isn't very safe
     nite = nite.replace(hour=12,tzinfo=dateutil.tz.tzlocal())
     utc = ephem.Date(nite - nite.utcoffset())
 
+    # Maybe something like this instead...
+    #offset = int( (observer.lon/(2*np.pi)) * 24. * 60) * 60
+    #tzinfo = dateutil.tz.tzoffset('OBS',offset)
+    #nite = nite.replace(hour=12,tzinfo=tzinfo)
+    #utc = ephem.Date(nite - nite.utcoffset())
+
     observer.date = utc
     observer.horizon = '-14'
+    #ret = observer.next_antitransit(ephem.Sun())
+    ret = observer.next_setting(ephem.Sun(), use_center=True)
 
-    #return observer.next_antitransit(ephem.Sun())
-    return observer.previous_setting(ephem.Sun(), use_center=True)
-
+    observer.horizon = '0'
+    return ret
 
 def utc2nite(utc, observer=None):
     sun = ephem.Sun()

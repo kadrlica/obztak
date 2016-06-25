@@ -4,9 +4,10 @@ Plot json files.
 """
 import argparse
 import pylab as plt
+import os
 
 from maglites.field import FieldArray
-from maglites.utils.ortho import plotFields
+from maglites.utils.ortho import plotFields, movieFields
 from maglites.utils.parser import Parser
 if __name__ == "__main__":
     parser = Parser(description=__doc__)
@@ -26,15 +27,19 @@ if __name__ == "__main__":
         if args.chunk:
             plotFields(fields[-1],target_fields=fields,completed_fields=fields)
             raw_input('...continue...')
+
+    ext = os.path.splitext(args.outfile)[-1] if args.outfile else None
             
     if args.chunk:
         pass
     elif args.all:
         plotFields(fields[-1],target_fields=fields,completed_fields=fields)
+    elif ext in ['.gif']:
+        movieFields(args.outfile,fields,target_fields=fields)
     else:
         plotFields(fields,target_fields=fields)
 
-    if args.outfile:
-        plt.savefig(args.outfile,bbox_inches='tight')
+    if args.outfile and ext not in ['.gif']:
+        plt.savefig(args.outfile,bbox_inches='tight')    
 
     #raw_input(' ...finish...')
