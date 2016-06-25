@@ -65,7 +65,7 @@ def prepareObservationWindows(nights, horizon=-14., standards=True, outfile=None
 
 ############################################################
 
-def prepareTargetList(infile=None, outfile=None, mode='smash_dither', plot=True):
+def prepareTargetList(infile=None, outfile=None, mode='smash_dither', plot=True, smcnod=False):
     # Import the dither function here...
     #def dither(ra,dec,dx,dy):
     #    return ra,dec
@@ -121,7 +121,13 @@ def prepareTargetList(infile=None, outfile=None, mode='smash_dither', plot=True)
         fields['DEC'][idx0:idx1] = np.repeat(dec_dither,nbands)
 
     # Apply footprint selection after tiling/dither
-    sel = maglites.utils.projector.footprint(fields['RA'],fields['DEC'])
+    sel = maglites.utils.projector.footprint(fields['RA'],fields['DEC']) # NORMAL OPERATION
+    if smcnod:
+        # Include SMC northern overdensity fields
+        sel_smcnod = maglites.utils.projector.footprintSMCNOD(fields) # SMCNOD OPERATION
+        sel = sel | sel_smcnod
+        #sel = sel_smcnod
+        fields['PRIORITY'][sel_smcnod] = 999 # Check this value
     sel = sel & (fields['DEC'] > maglites.utils.constants.SOUTHERN_REACH)
     fields = fields[sel]
 
