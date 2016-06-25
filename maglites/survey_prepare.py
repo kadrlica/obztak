@@ -127,7 +127,7 @@ def prepareTargetList(infile=None, outfile=None, mode='smash_dither', plot=True,
         sel_smcnod = maglites.utils.projector.footprintSMCNOD(fields) # SMCNOD OPERATION
         sel = sel | sel_smcnod
         #sel = sel_smcnod
-        fields['PRIORITY'][sel_smcnod] = 999 # Check this value
+        fields['PRIORITY'][sel_smcnod] = 99
     sel = sel & (fields['DEC'] > maglites.utils.constants.SOUTHERN_REACH)
     fields = fields[sel]
 
@@ -254,7 +254,7 @@ def main():
     observation_windows = prepareObservationWindows(nights, outfile=args.windows, standards = args.standards)
 
     #data, data2 = prepareTargetList('smash_fields_alltiles.txt', outfile='list.txt')
-    prepareTargetList('%s/maglites/data/smash_fields_alltiles.txt'%(os.environ['MAGLITESDIR']), outfile=args.fields,plot=args.plot)
+    prepareTargetList('%s/maglites/data/smash_fields_alltiles.txt'%(os.environ['MAGLITESDIR']), outfile=args.fields,plot=args.plot,smcnod=args.smcnod)
     
 ############################################################
 
@@ -272,6 +272,8 @@ def parser():
                         help='List of observation windows.')
     parser.add_argument('-d','--dither',default='smash_dither',
                         help='Dithering scheme.')
+    parser.add_argument('-s','--smcnod',action='store_true',
+                        help='Include SMC Northern Overdensity fields.')
     parser.add_argument('--no-standards',action='store_false',dest='standards', help = "Don't include time for standard star observations.")
     return parser
 

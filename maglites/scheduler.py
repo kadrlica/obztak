@@ -214,6 +214,10 @@ class Scheduler(object):
         cut = cut_todo & cut_hour_angle & cut_airmass & cut_declination & (airmass < 2.) # Now with Blanco telescope constraints
         #cut = cut_todo & (airmass < 2.) # Original
 
+        # Exclude special fields unless using special tacticians
+        if mode not in ['smcnod']:
+            cut = cut & (self.target_fields['PRIORITY'] < 90)
+
         # Need to figure out what to do if there are no available fields...
 
         # Now apply some kind of selection criteria, e.g., 
@@ -222,7 +226,7 @@ class Scheduler(object):
 
         if mode == 'airmass':
             airmass_effective = copy.copy(airmass)
-            airmass_effective[np.logical_not(cut)] = 999. # Do not observe fields that are unavailable
+            airmass_effective[np.logical_not(cut)] = np.inf # Do not observe fields that are unavailable
             airmass_effective += self.target_fields['TILING'] # Priorize coverage over multiple tilings
             index_select = np.argmin(airmass_effective)
         elif mode == 'ra':
@@ -344,6 +348,12 @@ class Scheduler(object):
             weight += 1000. * (airmass - 1.)**3
             index_select = np.argmin(weight)
             """
+        elif mode == 'smcnod':
+            weight = 10000. * np.logical_not(np.in1d(self.target_fields['HEX'], maglites.utils.constants.HEX_SMCNOD)).astype(float)
+            weight[np.logical_not(cut)] = np.inf
+            weight += 360. * self.target_fields['TILING']
+            weight += slew
+            index_select = np.argmin(weight)
         else:
             msg = "Unrecognized mode: %s"%mode
             raise Exception(msg)

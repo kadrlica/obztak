@@ -23,6 +23,9 @@ RADIUS_SMC = 2.667 # semi_major axis (deg)
 # SMC Northern Oversdensity
 RA_SMCNOD = 12.0
 DEC_SMCNOD = -64.8
+HEX_SMCNOD = [1651, 1575, 1576, 1804] # baseline
+#HEX_SMCNOD = [1575, 1576, 1804, 1960] # alternative
+TILING_SMCNOD = [1, 3]
 
 # http://www.ctio.noao.edu/noao/content/coordinates-observatories-cerro-tololo-and-cerro-pachon
 LON_CTIO = '-70:48:23.49'

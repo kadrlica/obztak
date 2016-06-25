@@ -377,19 +377,10 @@ def footprintSMCNOD(fields):
     """
     Special selection for pointings near the SMC Northern Overdensity (SMCNOD)
     """
-    cut = np.in1d(fields['HEX'], [1651, 1575, 1576, 1804]) & np.in1d(fields['TILING'], [1, 3]) # Baseline
-    #cut = np.in1d(fields['HEX'], [1575, 1576, 1804, 1960]) & np.in1d(fields['TILING'], [1, 3]) # Alternate
+    cut = np.in1d(fields['HEX'], maglites.utils.constants.HEX_SMCNOD) \
+          & np.in1d(fields['TILING'], maglites.utils.constants.TILING_SMCNOD)
     return cut
 
-#def footprintSMCNOD(ra, dec):
-#    """
-#    Special selection for pointings near the "SMC Northern Overdensity" (SMCNOD)
-#    """
-#    angsep_smcnod = maglites.utils.projector.angsep(maglites.utils.constants.RA_SMCNOD, maglites.utils.constants.DEC_SMCNOD, ra, dec)
-#    cut = (angsep_smcnod < 4.) \
-#          & (dec < -64.5)
-#          #& (np.fabs(data_alltiles['RA'] - maglites.utils.constants.RA_SMCNOD) < 6.)
-#    return cut
 
 
 
