@@ -10,29 +10,39 @@ import numpy as np
 
 from maglites.field import FieldArray
 import maglites.utils.ortho
-from maglites.utils.ortho import makePlot, get_nite, nite2utc
+from maglites.utils.ortho import makePlot, get_nite, nite2utc, utc2nite
 from maglites.utils.parser import Parser, DatetimeAction
 from maglites.utils import Database
 
 if __name__ == "__main__":
     parser = Parser(description=__doc__)
     parser.add_argument('-n','--nite',type=int,
-                        help="The 'nite' of interest")
+                        help='The *local* nite to plot')
     args = parser.parse_args()
 
-    now = nite2utc(args.nite) if nite else ephem.now()
-    nite = "%d%02d%d"%get_nite(now).tuple()[:3]
-    date = "%d/%02d/%02d"%now.tuple()[:3]
-    time = date + ' 00:00:00'
+    if args.nite:
+        date = nite2utc(args.nite)
+    else:
+        # Yesterday...
+        date = ephem.Date(ephem.now() - 24*ephem.hour)
+    nite = utc2nite(date)
+    nitestr ='%d%02d%02d'%nite.tuple()[:3]
+
+    #if args.nite:
+    #    now = nite2utc(args.nite) if args.nite else ephem.now()
+    #nite = "%d%02d%d"%get_nite(now).tuple()[:3]
+    #date = "%d/%02d/%02d"%now.tuple()[:3]
+    #time = "%d/%02d/%02d"%date.tuple()[:3] + ' 00:00:00'
 
     fields = FieldArray.load_database()
-    new = np.char.startswith(fields['DATE'],date)
+    #new = np.char.startswith(fields['DATE'],date)
+    new = (np.array(map(utc2nite,fields['DATE'])) == nite)
     new_fields = fields[new]
     old_fields = fields[~new]
 
     kwargs = dict(edgecolor='none', s=50, vmin=0, vmax=4)
-    fig,basemap = makePlot(date=time,name='nightsum',moon=False,airmass=False,center=(0,-90))
-    plt.title('Coverage (%s)'%nite)
+    fig,basemap = makePlot(date=nitestr,name='nightsum',moon=False,airmass=False,center=(0,-90))
+    plt.title('Coverage (%s)'%nitestr)
     kwargs['cmap'] = 'gray_r'
     proj = maglites.utils.ortho.safeProj(basemap, old_fields['RA'], old_fields['DEC'])
     basemap.scatter(*proj, c=old_fields['TILING'],**kwargs)
@@ -46,7 +56,7 @@ if __name__ == "__main__":
     plt.plot(np.nan, np.nan,'o',color='green',mec='green',label='Observed tonight')
     plt.plot(np.nan, np.nan,'o',color='0.7',mec='0.7',label='Observed previously')
     plt.legend(fontsize=10,loc='lower left',scatterpoints=1)
-    plt.savefig('nightsum_coverage_%d%02d%d.png'%now.tuple()[:3],bbox_inches='tight')
+    plt.savefig('nightsum_coverage_%s.png'%nitestr,bbox_inches='tight')
 
     db = Database()
     db.connect()
@@ -74,10 +84,10 @@ and to_timestamp(utc_beg) %s '%s'
     plt.hist(old['psf'],color='0.5', label='Observed previously', **fill_kwargs)
     plt.hist(old['psf'],color='0.5', **step_kwargs)
     plt.legend()
-    plt.title('Seeing (%s)'%nite)
+    plt.title('Seeing (%s)'%nitestr)
     plt.xlabel('FWHM (arcsec)')
     plt.ylabel('Normalized Number of Exposures')
-    plt.savefig('nightsum_psf_%d%02d%d.png'%now.tuple()[:3],bbox_inches='tight')
+    plt.savefig('nightsum_psf_%s.png'%nitestr,bbox_inches='tight')
 
     plt.figure()
     step_kwargs['bins'] = np.linspace(0,1.5,nbins)
@@ -87,9 +97,9 @@ and to_timestamp(utc_beg) %s '%s'
     plt.hist(old['teff'],color='0.5',label='Observed previously', **fill_kwargs)
     plt.hist(old['teff'],color='0.5', **step_kwargs)
     plt.legend()
-    plt.title('Effective Depth (%s)'%nite)
+    plt.title('Effective Depth (%s)'%nitestr)
     plt.xlabel('Teff')
     plt.ylabel('Normalized Number of Exposures')
-    plt.savefig('nightsum_teff_%d%02d%d.png'%now.tuple()[:3],bbox_inches='tight')
+    plt.savefig('nightsum_teff_%s.png'%nitestr,bbox_inches='tight')
 
     raw_input(' ...finish...')
