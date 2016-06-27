@@ -189,7 +189,7 @@ class FieldArray(np.recarray):
         COALESCE(airmass,-1) as AIRMASS, COALESCE(moonangl,-1) as MOONANGLE, 
         COALESCE(ha, -1) as HOURANGLE, COALESCE(slewangl,-1) as SLEW 
         FROM exposure where propid = '%(propid)s' and exptime > 89 
-        and discard = False and delivered = True
+        and discard = False and delivered = True and flavor = 'object'
         ORDER BY utc_beg %(limit)s 
         """%params
 
