@@ -89,7 +89,9 @@ class Scheduler(object):
         """
         try: 
             fields = FieldArray.load_database()
-        except: 
+        except Exception as e: 
+            logging.warning("Failed to load completed exposures from database")
+            logging.info(e)
             fields = FieldArray()
         self.observed_fields = fields
         return self.observed_fields
@@ -304,7 +306,7 @@ class Scheduler(object):
             weight += 100. * (airmass - 1.)**3
             weight += slew**2
             index_select = np.argmin(weight)
-        elif mode == 'coverage':
+        elif mode in ('coverage','good'):
             weight = copy.copy(hour_angle_degree)
             weight[np.logical_not(cut)] = 9999.
             weight += 6. * 360. * self.target_fields['TILING'] # Was 6, 60
@@ -327,7 +329,7 @@ class Scheduler(object):
             weight += slew**3 # slew**2
             weight += 100. * (airmass - 1.)**3
             index_select = np.argmin(weight)
-        elif mode == 'lowairmass':
+        elif mode in ('lowairmass','poor'):
             weight = 2.0 * copy.copy(hour_angle_degree)
             #if len(self.scheduled_fields) == 0:
             #    weight += 200. * maglites.utils.projector.angsep(self.target_fields['RA'], 
