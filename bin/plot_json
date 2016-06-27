@@ -13,6 +13,8 @@ if __name__ == "__main__":
     parser = Parser(description=__doc__)
     parser.add_argument('infiles',nargs='+',
                         help='Input files')
+    parser.add_argument('-i',dest='inspect',action='store_true',
+                        help='interactive plot window')
     parser.add_argument('-k','--chunk',action='store_true',
                         help='plot chunks of exposures file-by-file.')
     parser.add_argument('-a','--all',action='store_true',
@@ -42,4 +44,5 @@ if __name__ == "__main__":
     if args.outfile and ext not in ['.gif']:
         plt.savefig(args.outfile,bbox_inches='tight')    
 
-    #raw_input(' ...finish...')
+    if args.inspect:
+        raw_input(' ...finish...')
