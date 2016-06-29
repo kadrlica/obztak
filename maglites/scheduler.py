@@ -350,6 +350,15 @@ class Scheduler(object):
             weight += 1000. * (airmass - 1.)**3
             index_select = np.argmin(weight)
             """
+        elif mode in ('medairmass','fine'):
+            weight = 2.0 * copy.copy(hour_angle_degree)
+            weight[np.logical_not(cut)] = np.inf
+            weight += 3. * 360. * self.target_fields['TILING']
+            weight += slew**3 # slew**2
+            #weight += 2000. * (airmass - 1.)**3 # 200
+            weight += 5000. * (airmass > 1.7)
+            index_select = np.argmin(weight)
+
         elif mode == 'smcnod':
             weight = 10000. * np.logical_not(np.in1d(self.target_fields['HEX'], maglites.utils.constants.HEX_SMCNOD)).astype(float)
             weight[np.logical_not(cut)] = np.inf
