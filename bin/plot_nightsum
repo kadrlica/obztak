@@ -18,15 +18,19 @@ if __name__ == "__main__":
     parser = Parser(description=__doc__)
     parser.add_argument('-n','--nite',type=int,
                         help='The *local* nite to plot')
+    parser.add_argument('-i',dest='inspect',action='store_true',
+                        help='interactive plot window')
     args = parser.parse_args()
 
     if args.nite:
         date = nite2utc(args.nite)
     else:
         # Yesterday...
-        date = ephem.Date(ephem.now() - 24*ephem.hour)
+        date = ephem.Date(ephem.now() - 12*ephem.hour)
     nite = utc2nite(date)
     nitestr ='%d%02d%02d'%nite.tuple()[:3]
+
+    print "Plotting nightsum for: %s"%nitestr
 
     #if args.nite:
     #    now = nite2utc(args.nite) if args.nite else ephem.now()
@@ -83,6 +87,7 @@ and to_timestamp(utc_beg) %s '%s'
     plt.hist(new['psf'],color='green',zorder=10, **step_kwargs)
     plt.hist(old['psf'],color='0.5', label='Observed previously', **fill_kwargs)
     plt.hist(old['psf'],color='0.5', **step_kwargs)
+    plt.axvline(1.20,ls='--',lw=2,color='gray')
     plt.legend()
     plt.title('Seeing (%s)'%nitestr)
     plt.xlabel('FWHM (arcsec)')
@@ -96,10 +101,12 @@ and to_timestamp(utc_beg) %s '%s'
     plt.hist(new['teff'],color='green',zorder=10, **step_kwargs)
     plt.hist(old['teff'],color='0.5',label='Observed previously', **fill_kwargs)
     plt.hist(old['teff'],color='0.5', **step_kwargs)
+    plt.axvline(0.25,ls='--',lw=2,color='gray')
     plt.legend()
     plt.title('Effective Depth (%s)'%nitestr)
     plt.xlabel('Teff')
     plt.ylabel('Normalized Number of Exposures')
     plt.savefig('nightsum_teff_%s.png'%nitestr,bbox_inches='tight')
 
-    raw_input(' ...finish...')
+    if args.inspect:
+        raw_input(' ...finish...')
