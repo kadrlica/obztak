@@ -26,7 +26,7 @@ if __name__ == "__main__":
         date = nite2utc(args.nite)
     else:
         # Yesterday...
-        date = ephem.Date(ephem.now() - 12*ephem.hour)
+        date = ephem.Date(ephem.now() - 8*ephem.hour)
     nite = utc2nite(date)
     nitestr ='%d%02d%02d'%nite.tuple()[:3]
 
