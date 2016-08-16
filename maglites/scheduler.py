@@ -21,6 +21,15 @@ import maglites.utils.fileio as fileio
 from maglites.field import FieldArray
 from maglites.utils.ortho import get_nite, datestring
 
+CONDITIONS = odict([
+    ('great', [1.4, 2.0]),
+    ('good',  [0.0, 2.0]),
+    ('fine',  [0.0, 1.9]),
+    ('ok',    [0.0, 1.6]),
+    ('poor',  [0.0, 1.5]),
+    ('bad',   [0.0, 1.4]),
+])
+
 ############################################################
 
 class Scheduler(object):
@@ -329,7 +338,7 @@ class Scheduler(object):
             weight += slew**3 # slew**2
             weight += 100. * (airmass - 1.)**3
             index_select = np.argmin(weight)
-        elif mode in ('lowairmass','poor'):
+        elif mode == 'lowairmass':
             weight = 2.0 * copy.copy(hour_angle_degree)
             #if len(self.scheduled_fields) == 0:
             #    weight += 200. * maglites.utils.projector.angsep(self.target_fields['RA'], 
@@ -350,15 +359,17 @@ class Scheduler(object):
             weight += 1000. * (airmass - 1.)**3
             index_select = np.argmin(weight)
             """
-        elif mode in ('medairmass','fine'):
+        elif mode in CONDITIONS.keys():
             weight = 2.0 * copy.copy(hour_angle_degree)
             weight[np.logical_not(cut)] = np.inf
             weight += 3. * 360. * self.target_fields['TILING']
-            weight += slew**3 # slew**2
-            #weight += 2000. * (airmass - 1.)**3 # 200
-            weight += 5000. * (airmass > 1.7)
+            weight += slew**3
+            airmass_min, airmass_max = CONDITIONS[mode]
+            airmass_sel = ((airmass < airmass_min) | (airmass > airmass_max))
+            # ADW: This should probably also be in there
+            weight += 100. * (airmass - 1.)**3
+            weight += 5000. * airmass_sel
             index_select = np.argmin(weight)
-
         elif mode == 'smcnod':
             weight = 10000. * np.logical_not(np.in1d(self.target_fields['HEX'], maglites.utils.constants.HEX_SMCNOD)).astype(float)
             weight[np.logical_not(cut)] = np.inf
