@@ -179,7 +179,7 @@ def drawDES(basemap):
 
 ############################################################
 
-def drawSMASH(basemap, s=50):
+def drawSMASH(basemap, color='none', edgecolor='black', marker='h', s=50):
     # SMASH fields
     infile = '%s/maglites/data/smash_fields_final.txt'%(os.environ['MAGLITESDIR'])
     reader = open(infile)
@@ -200,14 +200,14 @@ def drawSMASH(basemap, s=50):
     dec_smash = np.array(dec_smash)
 
     proj = safeProj(basemap, ra_smash, dec_smash)
-    basemap.scatter(*proj, edgecolor='black', color='none', marker='h', s=s)
+    basemap.scatter(*proj, edgecolor=edgecolor, color=color, marker=marker, s=s)
 
     #basemap.scatter(ra_smash, dec_smash, latlon=True, edgecolor='black', color='none', marker='h', s=50)
 
 
 ############################################################
 
-def drawMAGLITES(basemap):
+def drawMAGLITES(basemap, color='blue'):
     infile = '%s/maglites/data/maglites-poly.txt'%(os.environ['MAGLITESDIR'])
     reader_poly = open(infile)
     lines_poly = reader_poly.readlines()
@@ -227,7 +227,7 @@ def drawMAGLITES(basemap):
     l_poly, b_poly = maglites.utils.projector.celToGal(ra_poly, dec_poly)
 
     proj = safeProj(basemap, ra_poly, dec_poly)
-    basemap.plot(*proj, color='blue', lw=2)
+    basemap.plot(*proj, color=color, lw=2)
 
 ############################################################
 
