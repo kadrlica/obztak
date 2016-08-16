@@ -353,7 +353,7 @@ def plotField(field, target_fields=None, completed_fields=None, **kwargs):
 
     msg = "  Plotting -- "
     msg += "%s (time=%.8s, "%(field['ID'][0],field['DATE'][0].split(' ')[-1])
-    msg +="ra=%(RA)-8.4f, dec=%(DEC)-8.4f)"%field[0]
+    msg +="ra=%(RA)-6.2f, dec=%(DEC)-6.2f, secz=%(AIRMASS)-4.2f)"%field[0]
     logging.info(msg)
 
     if plt.get_fignums(): plt.cla()
