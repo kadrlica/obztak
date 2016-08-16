@@ -122,6 +122,21 @@ class FieldArray(np.recarray):
         date = string.lstrip(SEQID_PREFIX)
         self['DATE'] = date
 
+    def from_comment(self, string):
+        integers = ['PRIORITY']
+        floats   = ['AIRMASS','SLEW','MOONANGLE','HOURANGLE']
+        values = dict([x.strip().split('=') for x in string.split(':')[-1].split(',')])
+        for key,val in values.items():
+            if key in integers:
+                self[key] = int(val)
+            elif key in floats:
+                self[key] = float(val)
+            elif key in strings:
+                self[key] = str(val)
+            else:
+                msg = "Unrecognized comment field: %s"%key
+                logging.warning(msg)
+
     def to_recarray(self):
         return self.view(np.recarray)
 
@@ -153,6 +168,7 @@ class FieldArray(np.recarray):
             # Parse scheduled date if date is not present
             if 'date' in s: f['DATE'] = 'date'
             else: f.from_seqid(s['seqid'])
+            f.from_comment(s['comment'])
             fields = fields + f
         return fields
 
