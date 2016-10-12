@@ -155,7 +155,7 @@ def safeProj(proj, lon, lat):
 
 ############################################################
 
-def drawDES(basemap):
+def drawDES(basemap, color='red'):
     infile = '%s/maglites/data/round13-poly.txt'%(os.environ['MAGLITESDIR'])
     reader_poly = open(infile)
     lines_poly = reader_poly.readlines()
@@ -175,7 +175,7 @@ def drawDES(basemap):
     l_poly, b_poly = maglites.utils.projector.celToGal(ra_poly, dec_poly)
 
     proj = safeProj(basemap, ra_poly, dec_poly)
-    basemap.plot(*proj, color='red', lw=2)
+    basemap.plot(*proj, color=color, lw=3)
 
 ############################################################
 
@@ -227,7 +227,7 @@ def drawMAGLITES(basemap, color='blue'):
     l_poly, b_poly = maglites.utils.projector.celToGal(ra_poly, dec_poly)
 
     proj = safeProj(basemap, ra_poly, dec_poly)
-    basemap.plot(*proj, color=color, lw=2)
+    basemap.plot(*proj, color=color, lw=3)
 
 ############################################################
 
