@@ -228,7 +228,7 @@ def main():
               ['2016/6/28', 'full'],
               ['2016/6/29', 'full']]
     """
-
+    """
     # Two seasons prediction
     nights = [['2016/2/10', 'second'],
               ['2016/2/11', 'second'],
@@ -248,7 +248,76 @@ def main():
               ['2017/6/27', 'full'],
               ['2017/6/28', 'full'],
               ['2017/6/29', 'full']]
+    """
 
+    """
+    In 2017A, we are considering a few different possible observing periods.
+
+    Early run (choose one)
+    * 2017/2/01
+    * 2017/3/02
+
+    + Late run (choose one)
+    * 2017/6/17
+    * 2017/7/16
+    """
+
+    # 2017A prediction (feb1jun17)
+    nights = [['2017/2/01', 'second'],
+              ['2017/2/02', 'second'],
+              ['2017/2/03', 'second'],
+              ['2017/2/04', 'second'],
+              ['2017/2/05', 'second'],
+              ['2017/2/06', 'second'],
+              ['2017/6/17', 'full'],
+              ['2017/6/18', 'full'],
+              ['2017/6/19', 'full']]
+    """
+    # 2017A prediction (feb1jul16)
+    nights = [['2017/2/01', 'second'],
+              ['2017/2/02', 'second'],
+              ['2017/2/03', 'second'],
+              ['2017/2/04', 'second'],
+              ['2017/2/05', 'second'],
+              ['2017/2/06', 'second'],
+              ['2017/7/16', 'full'],
+              ['2017/7/17', 'full'],
+              ['2017/7/18', 'full']]
+
+    # 2017A prediction (mar2jun17)
+    nights = [['2017/3/02', 'second'],
+              ['2017/3/03', 'second'],
+              ['2017/3/04', 'second'],
+              ['2017/3/05', 'second'],
+              ['2017/3/06', 'second'],
+              ['2017/3/07', 'second'],
+              ['2017/6/17', 'full'],
+              ['2017/6/18', 'full'],
+              ['2017/6/19', 'full']]
+
+    # 2017A prediction (mar2jul16)
+    nights = [['2017/3/02', 'second'],
+              ['2017/3/03', 'second'],
+              ['2017/3/04', 'second'],
+              ['2017/3/05', 'second'],
+              ['2017/3/06', 'second'],
+              ['2017/3/07', 'second'],
+              ['2017/7/16', 'full'],
+              ['2017/7/17', 'full'],
+              ['2017/7/18', 'full']]
+    """
+    
+    # 2017A prediction (Moon up during second half of night)
+    #nights = [['2017/2/18', 'second'],
+    #          ['2017/2/19', 'second'],
+    #          ['2017/2/20', 'second'],
+    #          ['2017/2/21', 'second'],
+    #          ['2017/2/22', 'second'],
+    #          ['2017/2/23', 'second'],
+    #          ['2017/6/17', 'full'],
+    #          ['2017/6/18', 'full'],
+    #          ['2017/6/19', 'full']]
+    
     args = parser().parse_args()
 
     observation_windows = prepareObservationWindows(nights, outfile=args.windows, standards = args.standards)

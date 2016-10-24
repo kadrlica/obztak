@@ -29,7 +29,7 @@ CONDITIONS = odict([
     ('poor',  [0.0, 1.5]),
     ('bad',   [0.0, 1.4]),
 ])
-
+logging.basicConfig(level=20) # KCB
 ############################################################
 
 class Scheduler(object):
@@ -317,7 +317,8 @@ class Scheduler(object):
             index_select = np.argmin(weight)
         elif mode in ('coverage','good'):
             weight = copy.copy(hour_angle_degree)
-            weight[np.logical_not(cut)] = 9999.
+            #weight[np.logical_not(cut)] = 9999.
+            weight[np.logical_not(cut)] = np.inf
             weight += 6. * 360. * self.target_fields['TILING'] # Was 6, 60
             weight += slew**3 # slew**2
             weight += 100. * (airmass - 1.)**3
@@ -395,6 +396,10 @@ class Scheduler(object):
             # This is also broken when selecting two fields at once
             timedelta += 30*ephem.second
         field_select = self.target_fields[index]
+        #print 'CHECKPOINT 1', field_select, index, field_id, tiling # KCB
+        #print 'CHECKPOINT 2', np.any((self.target_fields['HEX']==field_id) & (self.target_fields['TILING']==tiling)), np.sum(cut), np.min(weight)
+        #print 'CHECKPOINT 3', np.nonzero( (self.target_fields['HEX']==field_id) & \
+        #                           (self.target_fields['TILING']==tiling) & cut)
         field_select['AIRMASS'] = airmass[index]
         field_select['DATE'] = map(datestring,date+timedelta)
         field_select['SLEW'] = slew[index]
@@ -410,6 +415,8 @@ class Scheduler(object):
             raw_input('WAIT')
 
         if len(field_select) == 0:
+            msg = 'No field selected... now we\'ve got problems'
+            logging.warning(msg)
             print field_id, tiling
             print index_select
             print cut[index_select]
