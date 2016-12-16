@@ -381,6 +381,13 @@ def footprintSMCNOD(fields):
           & np.in1d(fields['TILING'], maglites.utils.constants.TILING_SMCNOD)
     return cut
 
+def footprintBridge(ra, dec):
+    """
+    Special selection for pointings near the SMC Northern Overdensity (SMCNOD)
+    """
+    cut = (ra > 30.) & (ra < 60.) & (dec < -65.) 
+    return cut
+
 
 
 

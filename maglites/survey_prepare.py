@@ -128,6 +128,10 @@ def prepareTargetList(infile=None, outfile=None, mode='smash_dither', plot=True,
         sel = sel | sel_smcnod
         #sel = sel_smcnod
         fields['PRIORITY'][sel_smcnod] = 99
+    #if True:
+    #    # Include 'bridge' region between Magellanic Clouds
+    #    sel_bridge = maglites.utils.projector.footprintBridge(fields['RA'],fields['DEC'])
+    #    sel = sel | sel_bridge
     sel = sel & (fields['DEC'] > maglites.utils.constants.SOUTHERN_REACH)
     fields = fields[sel]
 
@@ -261,7 +265,7 @@ def main():
     * 2017/6/17
     * 2017/7/16
     """
-
+    """
     # 2017A prediction (feb1jun17)
     nights = [['2017/2/01', 'second'],
               ['2017/2/02', 'second'],
@@ -272,7 +276,7 @@ def main():
               ['2017/6/17', 'full'],
               ['2017/6/18', 'full'],
               ['2017/6/19', 'full']]
-    """
+    
     # 2017A prediction (feb1jul16)
     nights = [['2017/2/01', 'second'],
               ['2017/2/02', 'second'],
@@ -283,7 +287,7 @@ def main():
               ['2017/7/16', 'full'],
               ['2017/7/17', 'full'],
               ['2017/7/18', 'full']]
-
+    
     # 2017A prediction (mar2jun17)
     nights = [['2017/3/02', 'second'],
               ['2017/3/03', 'second'],
@@ -294,7 +298,8 @@ def main():
               ['2017/6/17', 'full'],
               ['2017/6/18', 'full'],
               ['2017/6/19', 'full']]
-
+    """
+    """
     # 2017A prediction (mar2jul16)
     nights = [['2017/3/02', 'second'],
               ['2017/3/03', 'second'],
@@ -317,6 +322,14 @@ def main():
     #          ['2017/6/17', 'full'],
     #          ['2017/6/18', 'full'],
     #          ['2017/6/19', 'full']]
+
+    # 2017A ACTUAL
+    nights = [['2017/2/21', 'full'],
+              ['2017/2/22', 'full'],
+              ['2017/2/23', 'full'],
+              ['2017/6/18', 'full'],
+              ['2017/6/19', 'full'],
+              ['2017/6/20', 'full']]
     
     args = parser().parse_args()
 

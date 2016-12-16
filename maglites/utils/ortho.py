@@ -338,7 +338,7 @@ def makePlot(date=None, name=None, figsize=(10.5,8.5), dpi=80, s=50, center=None
     #return fig, ax, basemap
     return fig, basemap
 
-def plotField(field, target_fields=None, completed_fields=None, **kwargs):
+def plotField(field, target_fields=None, completed_fields=None, options_basemap={}, **kwargs):
     """
     Plot a specific target field.
     """
@@ -356,10 +356,14 @@ def plotField(field, target_fields=None, completed_fields=None, **kwargs):
     msg +="ra=%(RA)-6.2f, dec=%(DEC)-6.2f, secz=%(AIRMASS)-4.2f)"%field[0]
     logging.info(msg)
 
-    if plt.get_fignums(): plt.cla()
+    #if plt.get_fignums(): plt.cla()
 
-    fig, basemap = maglites.utils.ortho.makePlot(field['DATE'][0],name='ortho')
-        
+    defaults = dict(date=field['DATE'][0], name='ortho')
+    for k,v in defaults.items():
+        options_basemap.setdefault(k,v)
+    #fig, basemap = maglites.utils.ortho.makePlot(field['DATE'][0],name='ortho',**options_basemap)
+    fig, basemap = maglites.utils.ortho.makePlot(**options_basemap)
+   
     # Plot target fields
     if target_fields is not None:
         proj = maglites.utils.ortho.safeProj(basemap, target_fields['RA'], target_fields['DEC'])
@@ -384,7 +388,7 @@ def plotField(field, target_fields=None, completed_fields=None, **kwargs):
     plt.draw()
 
 
-def plotFields(fields=None,target_fields=None,completed_fields=None,**kwargs):
+def plotFields(fields=None,target_fields=None,completed_fields=None,options_basemap={},**kwargs):
     # ADW: Need to be careful about the size of the marker. It
     # does not change with the size of the frame so it is
     # really safest to scale to the size of the zenith circle
@@ -398,7 +402,7 @@ def plotFields(fields=None,target_fields=None,completed_fields=None,**kwargs):
         fields = tmp
 
     for i,f in enumerate(fields):
-        plotField(fields[i],target_fields,completed_fields,**kwargs)
+        plotField(fields[i],target_fields,completed_fields,options_basemap,**kwargs)
         #plt.savefig('field_%08i.png'%i)
         if completed_fields is None: completed_fields = FieldArray(0)
         completed_fields = completed_fields + fields[[i]]
