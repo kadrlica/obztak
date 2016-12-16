@@ -1,9 +1,6 @@
-# MagLiteS
+# obztak
 
-Bizarro Observation Tactician (ObzTak) for the **Mag**ellanic Satel**lite**s **S**urvey (MagLiteS).
-
-* Contact: Keith Bechtol <kbechtol@lsst.org>
-* Contact: Alex Drlica-Wagner <kadrlica@fnal.gov>
+Bizarro observation tactician for the dark energy camera (DECam) at CTIO. Used for the **Mag**ellanic Satel**lite**s **S**urvey (MagLiteS) and the **BL**anco **I**maging of the **S**outhern **S**ky.
 
 ### Installation
 
