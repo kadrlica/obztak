@@ -1,1 +1,1 @@
-maglites/utils/get_version.py export-subst
+maglites/utils/get_version.py export-substmaglites/_version.py export-subst
