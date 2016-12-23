@@ -304,6 +304,7 @@ def makePlot(date=None, name=None, figsize=(10.5,8.5), dpi=80, s=50, center=None
     #fig = plt.figure('ortho')
     #ax = plt.subplots(figure=fig, figsize=FIGSIZE, dpi=DPI)
     fig = plt.figure(name, figsize=figsize, dpi=dpi)
+    plt.cla()
 
     ra_zenith, dec_zenith = observatory.radec_of(0, '90') # RA and Dec of zenith
     ra_zenith = np.degrees(ra_zenith)
@@ -359,6 +360,7 @@ def plotField(field, target_fields=None, completed_fields=None, options_basemap=
     #if plt.get_fignums(): plt.cla()
 
     defaults = dict(date=field['DATE'][0], name='ortho')
+    options_basemap = dict(options_basemap)
     for k,v in defaults.items():
         options_basemap.setdefault(k,v)
     #fig, basemap = maglites.utils.ortho.makePlot(field['DATE'][0],name='ortho',**options_basemap)
@@ -384,9 +386,9 @@ def plotField(field, target_fields=None, completed_fields=None, options_basemap=
     # Show the selected field
     proj = maglites.utils.ortho.safeProj(basemap, field['RA'], field['DEC'])
     basemap.scatter(*proj, c='magenta', edgecolor='none', s=50)
-            
-    plt.draw()
 
+    #plt.draw()
+    plt.pause(0.001)
 
 def plotFields(fields=None,target_fields=None,completed_fields=None,options_basemap={},**kwargs):
     # ADW: Need to be careful about the size of the marker. It
@@ -407,7 +409,7 @@ def plotFields(fields=None,target_fields=None,completed_fields=None,options_base
         if completed_fields is None: completed_fields = FieldArray(0)
         completed_fields = completed_fields + fields[[i]]
 
-        time.sleep(0.01)
+        #time.sleep(0.01)
 
 def movieFields(outfile,fields=None,target_fields=None,completed_fields=None,**kwargs):
     if os.path.splitext(outfile)[-1] not in ['.gif']:
@@ -477,9 +479,9 @@ def plotWeight(field, target_fields, weight, **kwargs):
     proj = maglites.utils.ortho.safeProj(basemap, [field['RA']], [field['DEC']])
     basemap.scatter(*proj, c='magenta', edgecolor='none', s=50)
 
-    plt.draw()
-
-
+    #plt.draw()
+    plt.pause(0.001)
+    #fig.canvas.draw()
 
 ############################################################
 
