@@ -1,5 +1,6 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 import versioneer
+import glob
 
 NAME = 'obztak'
 CLASSIFIERS = """\
@@ -26,13 +27,14 @@ setup(
     url=URL,
     author='Alex Drlica-Wagner',
     author_email='kadrlica@fnal.gov',
-    scripts = ['bin/'],
+    scripts = glob.glob('bin/*'),
     install_requires=[
         'numpy >= 1.7',
         'scipy >= 0.10.1',
+        'setuptools',
     ],
-    packages=['maglites'],
-    package_data={'maglites':['data/*.dat']},
+    packages=find_packages(),
+    package_data={'maglites':['data/*.dat','data/*.txt','data/*.csv']},
     description=DESC,
     long_description=LONG_DESC,
     platforms='any',
