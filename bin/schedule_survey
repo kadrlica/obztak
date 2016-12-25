@@ -25,11 +25,10 @@ def main():
     scheduler.completed_fields.write('survey_fields.csv')
 
     basedir = args.outfile if args.outfile else 'survey'
-    if not os.path.exists(basedir):
-        os.makedirs(basedir)
+    if not os.path.exists(basedir): os.makedirs(basedir)
+    print(basedir)
 
     for nite,chunks in survey.items():
-
         outdir = os.path.join(basedir,nite)
         if not os.path.exists(outdir): os.makedirs(outdir)
         outfile = os.path.join(outdir,nite+'.json')

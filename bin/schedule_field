@@ -27,10 +27,10 @@ def main():
     outfile = args.outfile
     if not outfile:
         if args.band is None:
-            outfile = '%(HEX)d-%(TILING)02d'%field[0]
+            outfile = '%(HEX)d-%(TILING)02d_'%field[0]
         else:
             outfile = '%s_'%field['ID'][0]
-        outfile += '_%02d:%02d:%02d.json'%date.tuple()[-3:]
+        outfile += '%4d%02d%02d_%02d:%02d:%02d.json'%date.tuple()
 
     field.write(outfile)
 

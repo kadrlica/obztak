@@ -40,9 +40,12 @@ def main():
     
     if not args.outfile:
         outdir  = nitestr
-        if not os.path.exists(outdir): os.makedirs(outdir)
         outfile = os.path.join(outdir,nitestr+'.json')
-    
+    else:
+        outdir  = os.path.dirname(args.outfile)
+        outfile = args.outfile
+
+    if not os.path.exists(outdir): os.makedirs(outdir)
     base,ext = os.path.splitext(outfile)
     for i,chunk in enumerate(chunks):
         if len(chunks) > 1:
