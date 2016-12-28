@@ -54,7 +54,8 @@ class Scheduler(object):
 
     def loadTargetFields(self, target_fields=None):
         if target_fields is None:
-            target_fields = os.path.expandvars("$MAGLITESDIR/maglites/data/maglites-target-fields.csv")
+            datadir = fileio.get_datadir()
+            target_fields = os.path.join(datadir,"maglites-target-fields.csv")
         
         if isinstance(target_fields,basestring):
             self.target_fields = FieldArray.read(target_fields)
@@ -66,7 +67,8 @@ class Scheduler(object):
         Load the set of start and stop times for the observation windows.
         """
         if observation_windows is None: 
-            observation_windows = os.path.expandvars("$MAGLITESDIR/maglites/data/maglites-windows.csv")
+            datadir = fileio.get_datadir()
+            observation_windows = os.path.join(datadir,"maglites-windows.csv")
             logging.info("Setting default observing windows: %s"%observation_windows)
             
 
@@ -155,7 +157,9 @@ class Scheduler(object):
         Load telescope pointing constraints
         """
         # Updated to remove the dependence on scipy (which is broken on the mountain)
-        data = np.recfromtxt('%s/maglites/data/blanco_hour_angle_limits.dat'%(os.environ['MAGLITESDIR']), names=True)
+        datadir = fileio.get_datadir()
+        data = np.recfromtxt(os.path.join(datadir,'blanco_hour_angle_limits.dat'), names=True)
+
         self.blanco_constraints = data
         ha_degrees = np.tile(0., len(self.blanco_constraints['HA']))
         for ii in range(0, len(self.blanco_constraints['HA'])):

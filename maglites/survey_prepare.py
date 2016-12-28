@@ -85,7 +85,8 @@ def prepareTargetList(infile=None, outfile=None, mode='smash_dither', plot=True,
                    (8/3.*CCD_X, 8/3.*CCD_Y),(-8/3.*CCD_X, 0.)]
     
     if infile is None:
-        infile = os.path.expandvars('$MAGLITESDIR/maglites/data/smash_fields_alltiles.txt')
+        datadir = fileio.get_datadir()
+        infile = os.path.join(datadir,'smash_fields_alltiles.txt')
     data = np.recfromtxt(infile, names=True)
     
     # Apply footprint selection after tiling/dither
@@ -336,7 +337,8 @@ def main():
     observation_windows = prepareObservationWindows(nights, outfile=args.windows, standards = args.standards)
 
     #data, data2 = prepareTargetList('smash_fields_alltiles.txt', outfile='list.txt')
-    prepareTargetList('%s/maglites/data/smash_fields_alltiles.txt'%(os.environ['MAGLITESDIR']), outfile=args.fields,plot=args.plot,smcnod=args.smcnod)
+    infile = os.path.join(fileio.get_datadir(),'smash_fields_alltiles.txt')
+    prepareTargetList(infile=infile,outfile=args.fields,plot=args.plot,smcnod=args.smcnod)
     
 ############################################################
 

@@ -5,7 +5,7 @@ import matplotlib.path
 from matplotlib.collections import PolyCollection
 
 import maglites.utils.projector
-import maglites.utils.fileio
+import maglites.utils.fileio as fileio
 import maglites.utils.constants
 
 pylab.ion()
@@ -98,10 +98,11 @@ def makeDither():
         angsep_max = 3.
 
     # This should use the environment variable MAGLITESDIR to define the path
-    filename  = os.path.expandvars('$MAGLITESDIR/maglites/data/smash_fields_alltiles.txt')
+    datadir = fileio.get_datadir()
+    filename  = os.path.join(datadir,'smash_fields_alltiles.txt')
     data_alltiles = np.recfromtxt(filename, names=True)
 
-    filename = os.path.expandvars('$MAGLITESDIR/maglites/scratch/ccd_corners_xy_fill.dat')
+    filename = os.path.join(datadir,'ccd_corners_xy_fill.dat')
     data = eval(''.join(open(filename).readlines()))
     ccd_array = []
     for key in data.keys():
@@ -152,14 +153,14 @@ def makeDither():
 
 def testDither(ra_center, dec_center, infile='target_fields.csv', save=False):
 
-    filename = os.path.expandvars('$MAGLITESDIR/maglites/scratch/ccd_corners_xy_fill.dat')
+    filename = os.path.join(fileio.get_datadir(),'ccd_corners_xy_fill.dat')
     data = eval(''.join(open(filename).readlines()))
     ccd_array = []
     for key in data.keys():
         #ccd_array.append(matplotlib.path.Path(data[key]))
         ccd_array.append(data[key])
 
-    data_targets = maglites.utils.fileio.csv2rec(infile)
+    data_targets = fileio.csv2rec(infile)
 
     fig, ax = pylab.subplots(figsize=(8, 8))
     

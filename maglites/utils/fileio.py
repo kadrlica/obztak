@@ -23,6 +23,10 @@ def get_hostname():
     import platform
     return platform.node()
 
+def get_datadir():
+    from os.path import abspath,dirname,join
+    return join(dirname(dirname(abspath(__file__))),'data')
+
 class FormatFloatForce(mlab.FormatFormatStr): 
     """
     mlab not doing well...
@@ -47,8 +51,8 @@ def csv2rec(filename, **kwargs):
     #if int(pd.__version__.replace('.','')) > 90:
     if LooseVersion(pd.__version__) > LooseVersion('0.9.0'):
         kwargs.setdefault('skip_blank_lines',True)
-        kwargs.setdefault('as_recarray',True)
-        return pd.read_csv(filename,**kwargs)
+        #kwargs.setdefault('as_recarray',True)
+        return pd.read_csv(filename,**kwargs).to_records(index=False)
     else:
         lines = open(filename,'r').readlines()
         comments = np.char.startswith(lines,'#')

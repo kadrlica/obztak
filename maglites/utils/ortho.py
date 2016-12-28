@@ -13,7 +13,7 @@ import subprocess
 
 import maglites.utils.projector
 import maglites.utils.constants as constants
-
+from maglites.utils import fileio
 from maglites.field import FieldArray
 
 plt.ion()
@@ -69,7 +69,7 @@ class DECamBasemap(Basemap):
         for k,v in defaults.items():
             kwargs.setdefault(k,v)
 
-        filename = expandvars('$MAGLITESDIR/maglites/data/maglites-poly.txt')
+        filename = os.path.join(fileio.get_datadir(),'maglites-poly.txt')
         self.draw_polygon(filename,**kwargs)
 
     def draw_des(self,**kwargs):
@@ -79,7 +79,7 @@ class DECamBasemap(Basemap):
         for k,v in defaults.items():
             kwargs.setdefault(k,v)
 
-        filename = expandvars('$MAGLITESDIR/maglites/data/round13-poly.txt')
+        filename = os.path.join(fileio.get_datadir(),'round13-poly.txt')
         self.draw_polygon(filename,**kwargs)
 
     def draw_smash(self,**kwargs):
@@ -87,7 +87,7 @@ class DECamBasemap(Basemap):
         for k,v in defaults.items():
             kwargs.setdefault(k,v)
 
-        filename = expandvars('$MAGLITESDIR/maglites/data/smash_fields_final.txt')
+        filename = os.path.join(fileio.get_datadir(),'smash_fields_final.txt')
         smash=np.genfromtxt(filename,dtype=[('ra',float),('dec',float)],usecols=[4,5])
         xy = self.proj(smash['ra'],smash['dec'])
         self.scatter(*xy,**kwargs)
@@ -156,7 +156,7 @@ def safeProj(proj, lon, lat):
 ############################################################
 
 def drawDES(basemap, color='red'):
-    infile = '%s/maglites/data/round13-poly.txt'%(os.environ['MAGLITESDIR'])
+    infile = os.path.join(fileio.get_datadir(),'round13-poly.txt')
     reader_poly = open(infile)
     lines_poly = reader_poly.readlines()
     reader_poly.close()
@@ -181,7 +181,7 @@ def drawDES(basemap, color='red'):
 
 def drawSMASH(basemap, color='none', edgecolor='black', marker='h', s=50):
     # SMASH fields
-    infile = '%s/maglites/data/smash_fields_final.txt'%(os.environ['MAGLITESDIR'])
+    infile = os.path.join(fileio.get_datadir(),'smash_fields_final.txt')
     reader = open(infile)
     lines = reader.readlines()
     reader.close()
@@ -208,7 +208,7 @@ def drawSMASH(basemap, color='none', edgecolor='black', marker='h', s=50):
 ############################################################
 
 def drawMAGLITES(basemap, color='blue'):
-    infile = '%s/maglites/data/maglites-poly.txt'%(os.environ['MAGLITESDIR'])
+    infile = os.path.join(fileio.get_datadir(),'maglites-poly.txt')
     reader_poly = open(infile)
     lines_poly = reader_poly.readlines()
     reader_poly.close()

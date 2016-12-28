@@ -14,8 +14,10 @@ from maglites.utils.projector import SphericalRotator
 from maglites.utils.projector import angsep, match, footprint
 from maglites.utils.ortho import makePlot,safeProj
 from maglites.utils.constants import SMASH_POLE
+import maglites.utils.fileio as fileio
 
-filename  = os.path.expandvars('$MAGLITESDIR/maglites/data/smash_fields_alltiles.txt')
+datadir = fileio.get_datadir()
+filename  = os.path.join(datadir,'smash_fields_alltiles.txt')
 data = np.recfromtxt(filename,names=True)
 d = data
 
