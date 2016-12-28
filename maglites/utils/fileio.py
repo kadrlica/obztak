@@ -40,11 +40,12 @@ def csv2rec(filename, **kwargs):
     #data.dtype.names = map(str.upper,data.dtype.names)
     
     import pandas as pd
-        
+    from distutils.version import LooseVersion
     kwargs.setdefault('parse_dates',False)
     kwargs.setdefault('comment','#')
 
-    if int(pd.__version__.replace('.','')) > 90:
+    #if int(pd.__version__.replace('.','')) > 90:
+    if LooseVersion(pd.__version__) > LooseVersion('0.9.0'):
         kwargs.setdefault('skip_blank_lines',True)
         kwargs.setdefault('as_recarray',True)
         return pd.read_csv(filename,**kwargs)
