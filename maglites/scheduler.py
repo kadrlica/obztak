@@ -107,18 +107,29 @@ class Scheduler(object):
 
 
     def loadCompletedFields(self, completed_fields=None):
-        """
-        Load completed fields.
+        """Load completed fields. The default behavior is to load the
+        observed fields as completed fields. However, if the string
+        'None' is passed then return an empty FieldArray.
 
         Parameters:
         -----------
-        completed_fields : Filename, list of filenames, or FieldArray object
-
+        completed_fields : Filename, list of filenames, or FieldArray object.
 
         Returns:
         --------
         FieldArray of the completed fields
+
         """
+        # Deal with 'None' string
+        if isinstance(completed_fields,list):
+            if completed_fields[0].lower()=='none':
+                self.completed_fields = FieldArray()
+                return self.completed_fields
+        elif isinstance(completed_fields,basestring):
+            if completed_fields.lower()=='none':
+                self.completed_fields = FieldArray()
+                return self.completed_fields
+
         self.completed_fields = copy.deepcopy(self.observed_fields)
 
         if not completed_fields:
