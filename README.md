@@ -80,6 +80,10 @@ optional arguments:
 * git commit -m 'my comments' # git commit takes the staged snapshot and commits it to the project history
 * git push -u origin master # git push moves a local branch or series of commits to main repository
 
+### To work on a specific branch ###
+
+* http://stackoverflow.com/questions/1783405/how-to-check-out-a-remote-git-branch
+
 ### More git documentation ###
 
 * https://confluence.atlassian.com/display/BITBUCKET/Clone+your+Git+repository+and+add+source+files
