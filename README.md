@@ -82,7 +82,7 @@ optional arguments:
 
 ### To work on a specific branch ###
 
-* Example with the maglites branch
+* Example with the maglites branch...
 * git fetch origin maglites
 * git checkout -b maglites origin/maglites # setup a new branch to track origin/maglites
 * git push origin maglites # push maglites branch (which is tracking origin/maglites) back to GitHub
