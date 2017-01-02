@@ -9,8 +9,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import ephem
 
-import maglites.utils.ortho
-import maglites.utils.fileio
+import obztak.utils.ortho
+import obztak.utils.fileio
 
 plt.ion()
 
@@ -20,35 +20,35 @@ def movie(infile_accomplished_fields, infile_target_fields=None, outdir=None, ch
     plt.ioff()
 
     #accomplished_fields = np.recfromtxt(infile_accomplished_fields, delimiter=',', names=True)
-    accomplished_fields = maglites.utils.fileio.csv2rec(infile_accomplished_fields)
+    accomplished_fields = obztak.utils.fileio.csv2rec(infile_accomplished_fields)
     print len(accomplished_fields)
 
     if infile_target_fields is not None:
         #target_fields = np.recfromtxt(infile_target_fields, names=True)
-        target_fields = maglites.utils.fileio.csv2rec(infile_target_fields)
+        target_fields = obztak.utils.fileio.csv2rec(infile_target_fields)
 
     for ii in range(0, 1000):
         print ii, accomplished_fields['DATE'][ii * chunk]
-        fig, basemap = maglites.utils.ortho.makePlot(accomplished_fields['DATE'][ii * chunk], figsize=(10.5 / 2., 8.5 / 2.), s=25, dpi=160, moon=False)
-        
+        fig, basemap = obztak.utils.ortho.makePlot(accomplished_fields['DATE'][ii * chunk], figsize=(10.5 / 2., 8.5 / 2.), s=25, dpi=160, moon=False)
+
         if infile_target_fields is not None:
             cut_accomplished = np.in1d(target_fields['ID'], accomplished_fields['ID'][0:ii * chunk])
             #cut_accomplished[ii] = True
-            proj = maglites.utils.ortho.safeProj(basemap, 
+            proj = obztak.utils.ortho.safeProj(basemap,
                                                  target_fields['RA'][np.logical_not(cut_accomplished)],
                                                  target_fields['DEC'][np.logical_not(cut_accomplished)])
             basemap.scatter(*proj, c=np.tile(0, np.sum(np.logical_not(cut_accomplished))), edgecolor='none', s=25, vmin=0, vmax=4, cmap='summer_r')
-            
-        proj = maglites.utils.ortho.safeProj(basemap, accomplished_fields['RA'][0:(ii * chunk) + 1], accomplished_fields['DEC'][0:(ii * chunk) + 1])
+
+        proj = obztak.utils.ortho.safeProj(basemap, accomplished_fields['RA'][0:(ii * chunk) + 1], accomplished_fields['DEC'][0:(ii * chunk) + 1])
         basemap.scatter(*proj, c=accomplished_fields['TILING'][0:(ii * chunk) + 1], edgecolor='none', s=25, vmin=0, vmax=4, cmap='summer_r')
         colorbar = plt.colorbar(label='Tiling')
 
         # Show the selected field
         if chunk == 1:
-            proj = maglites.utils.ortho.safeProj(basemap, [accomplished_fields['RA'][ii]], [accomplished_fields['DEC'][ii]])
+            proj = obztak.utils.ortho.safeProj(basemap, [accomplished_fields['RA'][ii]], [accomplished_fields['DEC'][ii]])
         else:
-            proj = maglites.utils.ortho.safeProj(basemap, 
-                                                 accomplished_fields['RA'][ii * chunk:(ii + 1) * chunk], 
+            proj = obztak.utils.ortho.safeProj(basemap,
+                                                 accomplished_fields['RA'][ii * chunk:(ii + 1) * chunk],
                                                  accomplished_fields['DEC'][ii * chunk:(ii + 1) * chunk])
         basemap.scatter(*proj, c='magenta', edgecolor='none', s=25)
 
@@ -60,7 +60,7 @@ def movie(infile_accomplished_fields, infile_target_fields=None, outdir=None, ch
 
         if ephem.Date(accomplished_fields['DATE'][(ii + 1) * chunk]) > ephem.Date('2017/1/1 00:00'):
             break
-    
+
     if outdir is not None:
         print 'Generating animated gif...'
         os.system('convert -set delay 10 -loop 0 %s/*.gif %s/output.gif'%(outdir, outdir))
@@ -69,7 +69,7 @@ def movie(infile_accomplished_fields, infile_target_fields=None, outdir=None, ch
 
 def slew(infile_accomplished_fields, tag=None):
     #accomplished_fields = np.recfromtxt(infile_accomplished_fields, delimiter=',', names=True)
-    accomplished_fields = maglites.utils.fileio.csv2rec(infile_accomplished_fields)
+    accomplished_fields = obztak.utils.fileio.csv2rec(infile_accomplished_fields)
 
     plt.figure()
     plt.hist(accomplished_fields['SLEW'], bins=np.linspace(0., 20., 21), color='green')
@@ -100,24 +100,24 @@ def slew(infile_accomplished_fields, tag=None):
 
     cut = accomplished_fields['SLEW'] > 10.
     for index in np.nonzero(cut)[0]:
-        print accomplished_fields['SLEW'][index], accomplished_fields['RA'][index], accomplished_fields['DEC'][index], accomplished_fields['DATE'][index] 
+        print accomplished_fields['SLEW'][index], accomplished_fields['RA'][index], accomplished_fields['DEC'][index], accomplished_fields['DATE'][index]
 
 ############################################################
 
 def slewAnalysis(infile_accomplished_fields):
     #accomplished_fields = np.recfromtxt(infile_accomplished_fields, delimiter=',', names=True)
-    accomplished_fields = maglites.utils.fileio.csv2rec(infile_accomplished_fields)
+    accomplished_fields = obztak.utils.fileio.csv2rec(infile_accomplished_fields)
 
     cut = accomplished_fields['SLEW'] > 10.
 
     for index in np.nonzero(cut)[0]:
         date = accomplished_fields['DATE'][index]
-        fig, basemap = maglites.utils.ortho.makePlot(date, figsize=(10.5, 8.5), s=50, dpi=80, airmass=False, moon=False, center=(0., -90.), name='ortho')
-    
+        fig, basemap = obztak.utils.ortho.makePlot(date, figsize=(10.5, 8.5), s=50, dpi=80, airmass=False, moon=False, center=(0., -90.), name='ortho')
+
         index_min = max(0, index - 10)
         index_max = min(len(accomplished_fields['DATE']), index + 11)
 
-        proj = maglites.utils.ortho.safeProj(basemap, 
+        proj = obztak.utils.ortho.safeProj(basemap,
                                              accomplished_fields['RA'][index_min:index_max],
                                              accomplished_fields['DEC'][index_min:index_max])
         basemap.scatter(*proj, c=np.arange(index_min, index_max), edgecolor='none', s=50, vmin=index_min, vmax=index_max, cmap='Spectral')
@@ -130,7 +130,7 @@ def slewAnalysis(infile_accomplished_fields):
 
 def hourAngle(infile_accomplished_fields, tag=None):
     #accomplished_fields = np.recfromtxt(infile_accomplished_fields, delimiter=',', names=True)
-    accomplished_fields = maglites.utils.fileio.csv2rec(infile_accomplished_fields)
+    accomplished_fields = obztak.utils.fileio.csv2rec(infile_accomplished_fields)
 
     plt.figure()
     #plt.scatter(np.arange(len(accomplished_fields['SLEW'])), accomplished_fields['SLEW'], edgecolor='none', alpha=0.33)
@@ -141,7 +141,7 @@ def hourAngle(infile_accomplished_fields, tag=None):
     #plt.ylim(300., 420.)
     if tag is not None:
         plt.savefig('hour_angle_sequential_%s.pdf'%(tag))
-        
+
     plt.figure()
     plt.scatter(accomplished_fields['DEC'], accomplished_fields['HOURANGLE'], c=np.arange(len(accomplished_fields['HOURANGLE'])), marker='x')
     plt.xlabel('Dec (deg)')
@@ -155,7 +155,7 @@ def hourAngle(infile_accomplished_fields, tag=None):
 
 def airmass(infile_accomplished_fields, tag=None):
     #accomplished_fields = np.recfromtxt(infile_accomplished_fields, delimiter=',', names=True)
-    accomplished_fields = maglites.utils.fileio.csv2rec(infile_accomplished_fields)
+    accomplished_fields = obztak.utils.fileio.csv2rec(infile_accomplished_fields)
 
     plt.figure()
     plt.hist(accomplished_fields['AIRMASS'], bins=np.linspace(1., 2., 21), color='red')
@@ -174,8 +174,8 @@ def airmass(infile_accomplished_fields, tag=None):
     if tag is not None:
         plt.savefig('airmass_sequential_%s.pdf'%(tag))
 
-    fig, basemap = maglites.utils.ortho.makePlot(accomplished_fields['DATE'][0], figsize=(10.5, 8.5), s=50, dpi=80, center=(0., -90.), airmass=False, moon=False)
-    proj = maglites.utils.ortho.safeProj(basemap, accomplished_fields['RA'], accomplished_fields['DEC'])
+    fig, basemap = obztak.utils.ortho.makePlot(accomplished_fields['DATE'][0], figsize=(10.5, 8.5), s=50, dpi=80, center=(0., -90.), airmass=False, moon=False)
+    proj = obztak.utils.ortho.safeProj(basemap, accomplished_fields['RA'], accomplished_fields['DEC'])
     basemap.scatter(*proj, c=accomplished_fields['AIRMASS'], edgecolor='none', s=50, alpha=0.5, vmin=np.min(accomplished_fields['AIRMASS']), vmax=2, cmap='RdYlGn_r')
     colorbar = plt.colorbar(label='Airmass')
     if tag is not None:
@@ -186,31 +186,31 @@ def airmass(infile_accomplished_fields, tag=None):
 def progress(infile_accomplished_fields, date, infile_target_fields=None, tag=None):
     if type(date) != ephem.Date:
         date = ephem.Date(date)
-        
+
     #accomplished_fields = np.recfromtxt(infile_accomplished_fields, delimiter=',', names=True)
-    accomplished_fields = maglites.utils.fileio.csv2rec(infile_accomplished_fields)
+    accomplished_fields = obztak.utils.fileio.csv2rec(infile_accomplished_fields)
 
     date_array = np.tile(0., len(accomplished_fields['DATE']))
     for ii in range(0, len(accomplished_fields['DATE'])):
         date_array[ii] = ephem.Date(accomplished_fields['DATE'][ii]).real
-    cut_accomplished = date_array <= date.real 
+    cut_accomplished = date_array <= date.real
 
-    fig, basemap = maglites.utils.ortho.makePlot(date, figsize=(10.5, 8.5), s=50, dpi=80, airmass=False, moon=False, center=(0., -90.))
-    
+    fig, basemap = obztak.utils.ortho.makePlot(date, figsize=(10.5, 8.5), s=50, dpi=80, airmass=False, moon=False, center=(0., -90.))
+
     if infile_target_fields is not None:
         #target_fields = np.recfromtxt(infile_target_fields, delimiter=',', names=True)
-        target_fields = maglites.utils.fileio.csv2rec(infile_target_fields)
-        proj = maglites.utils.ortho.safeProj(basemap, 
+        target_fields = obztak.utils.fileio.csv2rec(infile_target_fields)
+        proj = obztak.utils.ortho.safeProj(basemap,
                                              target_fields['RA'][np.logical_not(cut_accomplished)],
                                              target_fields['DEC'][np.logical_not(cut_accomplished)])
         basemap.scatter(*proj, c=np.tile(0, np.sum(np.logical_not(cut_accomplished))), edgecolor='none', s=50, vmin=0, vmax=4, cmap='summer_r')
-            
-    proj = maglites.utils.ortho.safeProj(basemap, accomplished_fields['RA'][cut_accomplished], accomplished_fields['DEC'][cut_accomplished])
+
+    proj = obztak.utils.ortho.safeProj(basemap, accomplished_fields['RA'][cut_accomplished], accomplished_fields['DEC'][cut_accomplished])
     basemap.scatter(*proj, c=accomplished_fields['TILING'][cut_accomplished], edgecolor='none', s=50, vmin=0, vmax=4, cmap='summer_r')
     colorbar = plt.colorbar(label='Tiling')
 
     if tag is not None:
-        plt.savefig('progress_map_%s_%s.pdf'%(maglites.utils.ortho.datestring(date).replace('/', '_').replace(':', '_').replace(' ', '_'), tag))
+        plt.savefig('progress_map_%s_%s.pdf'%(obztak.utils.ortho.datestring(date).replace('/', '_').replace(':', '_').replace(' ', '_'), tag))
 
 ############################################################
 
@@ -219,23 +219,23 @@ def tiling(infile_accomplished_fields, infile_target_fields=None, tag=None):
     Survey progress in terms of tiling coverage
     """
 
-    accomplished_fields = maglites.utils.fileio.csv2rec(infile_accomplished_fields)
+    accomplished_fields = obztak.utils.fileio.csv2rec(infile_accomplished_fields)
     #print accomplished_fields
     #print accomplished_fields.dtype
 
     if infile_target_fields is not None:
-        target_fields = maglites.utils.fileio.csv2rec(infile_target_fields)
-    
+        target_fields = obztak.utils.fileio.csv2rec(infile_target_fields)
+
     x = np.arange(len(accomplished_fields['TILING']))
     plt.figure()
-    for ii, color in enumerate(['black', 'red', 'blue', 'green']): 
+    for ii, color in enumerate(['black', 'red', 'blue', 'green']):
         if infile_target_fields is not None:
             print ii + 1, np.sum(target_fields['TILING'] == (ii + 1))
             y = np.cumsum(accomplished_fields['TILING'] == (ii + 1)) / float(np.sum(target_fields['TILING'] == (ii + 1)))
         else:
             y = np.cumsum(accomplished_fields['TILING'] == (ii + 1))
         plt.plot(x, y, c=color, label='Tiling %i'%(ii))
-        
+
     plt.xlabel('Sequential Field Observed')
     if infile_target_fields is not None:
         plt.ylabel('Fraction of Tiling Complete')
@@ -249,7 +249,7 @@ def tiling(infile_accomplished_fields, infile_target_fields=None, tag=None):
 ############################################################
 
 if __name__ == '__main__':
-    #from maglites.utils.parser import Parser
+    #from obztak.utils.parser import Parser
     #description = __doc__
     #parser = Parser(description=description)
 

@@ -6,9 +6,9 @@ import os
 import ephem
 import logging
 
-from maglites.scheduler import Scheduler
-from maglites.utils.parser import Parser, DatetimeAction
-from maglites.utils.ortho import nite2utc, utc2nite, datestring
+from obztak.scheduler import Scheduler
+from obztak.utils.parser import Parser, DatetimeAction
+from obztak.utils.ortho import nite2utc, utc2nite, datestring
 
 def main():
     parser = Scheduler.parser()

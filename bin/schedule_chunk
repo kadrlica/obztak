@@ -5,9 +5,9 @@ Executable for simulating the survey.
 import os
 import ephem
 
-from maglites.utils.ortho import datestring
-from maglites.scheduler import Scheduler
-from maglites.utils.parser import Parser
+from obztak.utils.ortho import datestring
+from obztak.scheduler import Scheduler
+from obztak.utils.parser import Parser
 
 def main():
     parser = Scheduler.parser()

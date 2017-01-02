@@ -9,9 +9,9 @@ import itertools
 import ephem
 import numpy as np
 
-from maglites.scheduler import Scheduler
-from maglites.utils.parser import Parser, DatetimeAction
-from maglites.field import FieldArray
+from obztak.scheduler import Scheduler
+from obztak.utils.parser import Parser, DatetimeAction
+from obztak.field import FieldArray
 
 def main():
     parser = Scheduler.parser()

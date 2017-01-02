@@ -6,9 +6,9 @@ import argparse
 import pylab as plt
 import os
 
-from maglites.field import FieldArray
-from maglites.utils.ortho import plotFields, movieFields
-from maglites.utils.parser import Parser
+from obztak.field import FieldArray
+from obztak.utils.ortho import plotFields, movieFields
+from obztak.utils.parser import Parser
 if __name__ == "__main__":
     parser = Parser(description=__doc__)
     parser.add_argument('infiles',nargs='+',
