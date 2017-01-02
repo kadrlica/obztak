@@ -1,2 +1,2 @@
 include versioneer.py
-include maglites/_version.py
+include obztak/_version.py
