@@ -36,7 +36,7 @@ setup(
         'setuptools',
     ],
     packages=find_packages(),
-    package_data={'maglites':['data/*.dat','data/*.txt','data/*.csv']},
+    package_data={'obztak':['data/*.dat','data/*.txt','data/*.csv']},
     description=DESC,
     long_description=LONG_DESC,
     platforms='any',

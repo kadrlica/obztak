@@ -7,7 +7,7 @@ import glob
 import os.path
 import json
 
-import maglites.utils.fileio
+from obztak.utils import fileio
 
 ############################################################
 
@@ -22,7 +22,7 @@ def convert(infile, outfile, output_filter_set):
     """
     Convert a single standard star field
     """
-    input_data = maglites.utils.fileio.read_json(infile)
+    input_data = fileio.read_json(infile)
 
     ra, dec = None, None
     for ii in range(0, len(input_data)):
@@ -46,7 +46,7 @@ def convert(infile, outfile, output_filter_set):
     if len(output_data) != len(output_filter_set):
         print 'Something terrible happened'
 
-    maglites.utils.fileio.write_json(outfile, output_data)
+    fileio.write_json(outfile, output_data)
 
 ############################################################
 

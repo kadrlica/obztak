@@ -8,7 +8,7 @@ import logging
 import argparse
 import dateutil
         
-from maglites import __version__
+from obztak import __version__
 
 class SpecialFormatter(logging.Formatter):
     """
@@ -46,7 +46,7 @@ class Parser(argparse.ArgumentParser):
         self.add_argument('-v','--verbose',action=VerboseAction,
                           help='output verbosity')
         self.add_argument('--version', action='version',
-                          version='maglites v'+__version__,
+                          version='obztak v'+__version__,
                           help="print version number and exit")
 
     def remove_argument(self,option_string):

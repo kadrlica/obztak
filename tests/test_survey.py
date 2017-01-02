@@ -10,7 +10,7 @@ import json
 
 import numpy as np
 
-from maglites.survey import Survey, MagLiteS
+from obztak.survey import Survey, MagLiteS
 
 def test_prepare_windows():
     nights = [['2017/2/21', 'full'],

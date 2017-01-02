@@ -10,8 +10,8 @@ import numpy as np
 import json
 import logging
 
-from maglites import __version__
-from maglites.utils.constants import FLOAT_FMT
+from obztak import __version__
+from obztak.utils.constants import FLOAT_FMT
 
 #from maglites.field import FieldArray
 
@@ -117,7 +117,7 @@ def header():
     now = ephem.now()
     header  = "# author: %s@%s\n"%(get_username(),get_hostname())
     header += "# date: %s UTC\n"%(ephem.now())
-    header += "# version: maglites v%s\n"%(__version__)
+    header += "# version: obztak v%s\n"%(__version__)
     return header
     
 if __name__ == "__main__":

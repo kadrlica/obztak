@@ -8,9 +8,9 @@ from collections import OrderedDict as odict
 import logging
 
 import numpy as np
-from maglites import __version__
-from maglites.utils import constants
-from maglites.utils import fileio
+from obztak import __version__
+from obztak.utils import constants
+from obztak.utils import fileio
 
 DEFAULTS = odict([
     ('HEX',       dict(dtype=int,value=0)),
@@ -52,7 +52,7 @@ SISPI_DICT = odict([
     ("comment", ""),
 ])
 
-SISPI_MAP = odict([ 
+SISPI_MAP = odict([
     ('expTime','EXPTIME'),
     ('RA','RA'),
     ('dec','DEC'),
@@ -68,12 +68,12 @@ class FieldArray(np.recarray):
         values = VALUES.items()
         for k,v in values: self[k].fill(v)
         return self
-    
+
     def __add__(self, other):
         return np.concatenate([self,other]).view(self.__class__)
 
     def __getitem__(self,key):
-        if key == 'ID':
+        if isinstance(key,basestring) and key == 'ID':
             return self.unique_id
         else:
             return super(FieldArray,self).__getitem__(key)
@@ -173,12 +173,12 @@ class FieldArray(np.recarray):
         return fields
 
     @classmethod
-    def load_recarray(cls,recarray): 
+    def load_recarray(cls,recarray):
         fields = cls(len(recarray))
         keys = dict([(n.upper(),n) for n in recarray.dtype.names])
 
         for k in fields.dtype.names:
-            if k not in keys: 
+            if k not in keys:
                 logging.warning('Key %s not found in input array'%k)
                 continue
             fields[k] = recarray[keys[k]]
@@ -189,7 +189,7 @@ class FieldArray(np.recarray):
         """
         Get the fields that have been observed from the telemetry DB.
         """
-        from maglites.utils import Database
+        from obztak.utils import Database
 
         if not isinstance(database,Database):
             database = Database(database)

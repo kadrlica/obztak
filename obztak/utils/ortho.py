@@ -11,10 +11,10 @@ import logging
 import tempfile
 import subprocess
 
-import maglites.utils.projector
-import maglites.utils.constants as constants
-from maglites.utils import fileio
-from maglites.field import FieldArray
+import obztak.utils.projector
+import obztak.utils.constants as constants
+from obztak.utils import fileio
+from obztak.field import FieldArray
 
 plt.ion()
 
@@ -23,7 +23,7 @@ plt.ion()
 params = {
     #'backend': 'eps',
     'axes.labelsize': 16,
-    #'text.fontsize': 12,           
+    #'text.fontsize': 12,
     'xtick.labelsize': 12,
     'ytick.labelsize': 12,
     'xtick.major.size': 3,      # major tick size in points
@@ -106,7 +106,7 @@ class DECamBasemap(Basemap):
             dec_contour[ii] = np.degrees(dec_radians)
         xy = self.proj(ra_contour, dec_contour)
         self.plot(*xy, **kwargs)
-         
+
         self.drawZenith(observatory)
 
     def draw_zenith(self, observatory):
@@ -120,7 +120,7 @@ class DECamBasemap(Basemap):
         # RA and Dec of zenith
         ra_zenith, dec_zenith = np.degrees(observatory.radec_of(0, '90'))
         xy = self.proj(ra_zenith, dec_zenith)
-         
+
         self.plot(*xy,marker='+',ms=10,mew=1.5, **kwargs)
         self.tissot(ra_zenith, dec_zenith, constants.DECAM, 100, fc='none',**kwargs)
 
@@ -139,7 +139,7 @@ def drawMoon(basemap, date):
 
     basemap.scatter(*proj, color='%.2f'%(0.01 * moon.phase), edgecolor='black', s=500)
     color = 'black' if moon.phase > 50. else 'white'
-    plt.text(proj[0], proj[1], '%.2f'%(0.01 * moon.phase), 
+    plt.text(proj[0], proj[1], '%.2f'%(0.01 * moon.phase),
              fontsize=10, ha='center', va='center', color=color)
 
 
@@ -172,7 +172,7 @@ def drawDES(basemap, color='red'):
         ra_poly.append(float(parts[0]))
         dec_poly.append(float(parts[1]))
 
-    l_poly, b_poly = maglites.utils.projector.celToGal(ra_poly, dec_poly)
+    l_poly, b_poly = obztak.utils.projector.celToGal(ra_poly, dec_poly)
 
     proj = safeProj(basemap, ra_poly, dec_poly)
     basemap.plot(*proj, color=color, lw=3)
@@ -224,7 +224,7 @@ def drawMAGLITES(basemap, color='blue'):
         ra_poly.append(float(parts[0]))
         dec_poly.append(float(parts[1]))
 
-    l_poly, b_poly = maglites.utils.projector.celToGal(ra_poly, dec_poly)
+    l_poly, b_poly = obztak.utils.projector.celToGal(ra_poly, dec_poly)
 
     proj = safeProj(basemap, ra_poly, dec_poly)
     basemap.plot(*proj, color=color, lw=3)
@@ -280,7 +280,7 @@ def drawMoon(basemap, date):
 
     basemap.scatter(*proj, color='%.2f'%(0.01 * moon.phase), edgecolor='black', s=500)
     color = 'black' if moon.phase > 50. else 'white'
-    plt.text(proj[0], proj[1], '%.2f'%(0.01 * moon.phase), 
+    plt.text(proj[0], proj[1], '%.2f'%(0.01 * moon.phase),
              fontsize=10, ha='center', va='center', color=color)
 
 ############################################################
@@ -299,7 +299,7 @@ def makePlot(date=None, name=None, figsize=(10.5,8.5), dpi=80, s=50, center=None
     observatory.lat = constants.LAT_CTIO
     observatory.elevation = constants.ELEVATION_CTIO
     observatory.date = date
-    
+
     #fig, ax = plt.subplots(fig='ortho', figsize=FIGSIZE, dpi=DPI)
     #fig = plt.figure('ortho')
     #ax = plt.subplots(figure=fig, figsize=FIGSIZE, dpi=DPI)
@@ -363,17 +363,17 @@ def plotField(field, target_fields=None, completed_fields=None, options_basemap=
     options_basemap = dict(options_basemap)
     for k,v in defaults.items():
         options_basemap.setdefault(k,v)
-    #fig, basemap = maglites.utils.ortho.makePlot(field['DATE'][0],name='ortho',**options_basemap)
-    fig, basemap = maglites.utils.ortho.makePlot(**options_basemap)
-   
+    #fig, basemap = obztak.utils.ortho.makePlot(field['DATE'][0],name='ortho',**options_basemap)
+    fig, basemap = obztak.utils.ortho.makePlot(**options_basemap)
+
     # Plot target fields
     if target_fields is not None:
-        proj = maglites.utils.ortho.safeProj(basemap, target_fields['RA'], target_fields['DEC'])
+        proj = obztak.utils.ortho.safeProj(basemap, target_fields['RA'], target_fields['DEC'])
         basemap.scatter(*proj, c=np.zeros(len(target_fields)), **kwargs)
 
-    # Plot completed fields        
+    # Plot completed fields
     if completed_fields is not None:
-        proj = maglites.utils.ortho.safeProj(basemap,completed_fields['RA'],completed_fields['DEC'])
+        proj = obztak.utils.ortho.safeProj(basemap,completed_fields['RA'],completed_fields['DEC'])
         basemap.scatter(*proj, c=completed_fields['TILING'], **kwargs)
 
     # Draw colorbar in existing axis
@@ -384,7 +384,7 @@ def plotField(field, target_fields=None, completed_fields=None, options_basemap=
     colorbar.set_label('Tiling')
 
     # Show the selected field
-    proj = maglites.utils.ortho.safeProj(basemap, field['RA'], field['DEC'])
+    proj = obztak.utils.ortho.safeProj(basemap, field['RA'], field['DEC'])
     basemap.scatter(*proj, c='magenta', edgecolor='none', s=50)
 
     #plt.draw()
@@ -446,25 +446,25 @@ def plotWeight(field, target_fields, weight, **kwargs):
     date = ephem.Date(field['DATE'])
 
     if plt.get_fignums(): plt.cla()
-    fig, basemap = maglites.utils.ortho.makePlot(date,name='weight')
-    
+    fig, basemap = obztak.utils.ortho.makePlot(date,name='weight')
+
     index_sort = np.argsort(weight)[::-1]
-    proj = maglites.utils.ortho.safeProj(basemap, target_fields['RA'][index_sort], target_fields['DEC'][index_sort])
+    proj = obztak.utils.ortho.safeProj(basemap, target_fields['RA'][index_sort], target_fields['DEC'][index_sort])
     weight_min = np.min(weight)
     basemap.scatter(*proj, c=weight[index_sort], edgecolor='none', s=50, vmin=weight_min, vmax=weight_min + 300., cmap='Spectral')
 
     #cut_accomplished = np.in1d(self.target_fields['ID'], self.accomplished_field_ids)
-    #proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_accomplished], self.target_fields['DEC'][cut_accomplished])
+    #proj = obztak.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_accomplished], self.target_fields['DEC'][cut_accomplished])
     #basemap.scatter(*proj, c='0.75', edgecolor='none', s=50)
-    
+
     """
     cut_accomplished = np.in1d(self.target_fields['ID'],self.accomplished_fields['ID'])
-    proj = maglites.utils.ortho.safeProj(basemap, 
-                                         self.target_fields['RA'][~cut_accomplished], 
+    proj = obztak.utils.ortho.safeProj(basemap,
+                                         self.target_fields['RA'][~cut_accomplished],
                                          self.target_fields['DEC'][~cut_accomplished])
     basemap.scatter(*proj, c=np.tile(0, np.sum(np.logical_not(cut_accomplished))), edgecolor='none', s=50, vmin=0, vmax=4, cmap='summer_r')
-    
-    proj = maglites.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_accomplished], self.target_fields['DEC'][cut_accomplished])
+
+    proj = obztak.utils.ortho.safeProj(basemap, self.target_fields['RA'][cut_accomplished], self.target_fields['DEC'][cut_accomplished])
     basemap.scatter(*proj, c=self.target_fields['TILING'][cut_accomplished], edgecolor='none', s=50, vmin=0, vmax=4, cmap='summer_r')
     """
 
@@ -474,9 +474,9 @@ def plotWeight(field, target_fields, weight, **kwargs):
     else:
         colorbar = plt.colorbar()
     colorbar.set_label('Weight')
-    
+
     # Show the selected field
-    proj = maglites.utils.ortho.safeProj(basemap, [field['RA']], [field['DEC']])
+    proj = obztak.utils.ortho.safeProj(basemap, [field['RA']], [field['DEC']])
     basemap.scatter(*proj, c='magenta', edgecolor='none', s=50)
 
     #plt.draw()

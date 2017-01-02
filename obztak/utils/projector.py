@@ -1,7 +1,7 @@
 import re
 import numpy as np
 
-import maglites.utils.constants
+import obztak.utils.constants
 ############################################################
 
 def angsep(lon1,lat1,lon2,lat2):
@@ -349,8 +349,8 @@ def match(lon1, lat1, lon2, lat2, tol=None, nnearest=1):
 def footprint(ra,dec):
     l, b = celToGal(ra, dec)
 
-    angsep_lmc = maglites.utils.projector.angsep(maglites.utils.constants.RA_LMC, maglites.utils.constants.DEC_LMC, ra, dec)
-    angsep_smc = maglites.utils.projector.angsep(maglites.utils.constants.RA_SMC, maglites.utils.constants.DEC_SMC, ra, dec)
+    angsep_lmc = obztak.utils.projector.angsep(obztak.utils.constants.RA_LMC, obztak.utils.constants.DEC_LMC, ra, dec)
+    angsep_smc = obztak.utils.projector.angsep(obztak.utils.constants.RA_SMC, obztak.utils.constants.DEC_SMC, ra, dec)
     cut = (np.fabs(b) > 10.) \
           & ((angsep_lmc < 30.) | (angsep_smc < 30.)) \
           & (dec < -55.) & (ra > 100.) & (ra < 300.)
@@ -364,8 +364,8 @@ def footprintSMCNOD(fields):
     """
     Special selection for pointings near the SMC Northern Overdensity (SMCNOD)
     """
-    cut = np.in1d(fields['HEX'], maglites.utils.constants.HEX_SMCNOD) \
-          & np.in1d(fields['TILING'], maglites.utils.constants.TILING_SMCNOD)
+    cut = np.in1d(fields['HEX'], obztak.utils.constants.HEX_SMCNOD) \
+          & np.in1d(fields['TILING'], obztak.utils.constants.TILING_SMCNOD)
     return cut
 
 def footprintBridge(ra, dec):

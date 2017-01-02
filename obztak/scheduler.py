@@ -11,15 +11,15 @@ import matplotlib.pyplot as plt
 import logging
 from collections import OrderedDict as odict
 
-import maglites.utils.projector
-import maglites.utils.constants
-import maglites.utils.constants as constants
-import maglites.utils.ortho
-import maglites.utils.ortho as ortho
-import maglites.utils.fileio as fileio
+import obztak.utils.projector
+import obztak.utils.constants
+import obztak.utils.constants as constants
+import obztak.utils.ortho
+import obztak.utils.ortho as ortho
+import obztak.utils.fileio as fileio
 
-from maglites.field import FieldArray
-from maglites.utils.ortho import get_nite, datestring
+from obztak.field import FieldArray
+from obztak.utils.ortho import get_nite, datestring
 
 CONDITIONS = odict([
     ('great', [1.4, 2.0]),
@@ -45,13 +45,13 @@ class Scheduler(object):
         self.loadObservationWindows(observation_windows)
         self.loadObservedFields()
         self.loadCompletedFields(completed_fields)
-        
+
         self.scheduled_fields = FieldArray()
 
         self.observatory = ephem.Observer()
-        self.observatory.lon = maglites.utils.constants.LON_CTIO
-        self.observatory.lat = maglites.utils.constants.LAT_CTIO
-        self.observatory.elevation = maglites.utils.constants.ELEVATION_CTIO
+        self.observatory.lon = obztak.utils.constants.LON_CTIO
+        self.observatory.lat = obztak.utils.constants.LAT_CTIO
+        self.observatory.elevation = obztak.utils.constants.ELEVATION_CTIO
 
         self.loadBlancoConstraints()
 
@@ -59,25 +59,25 @@ class Scheduler(object):
         if target_fields is None:
             datadir = fileio.get_datadir()
             target_fields = os.path.join(datadir,"maglites-target-fields.csv")
-        
+
         if isinstance(target_fields,basestring):
             self.target_fields = FieldArray.read(target_fields)
         else:
             self.target_fields = target_fields
-        
+
     def loadObservationWindows(self, observation_windows=None):
         """
         Load the set of start and stop times for the observation windows.
         """
-        if observation_windows is None: 
+        if observation_windows is None:
             datadir = fileio.get_datadir()
             observation_windows = os.path.join(datadir,"maglites-windows.csv")
             logging.info("Setting default observing windows: %s"%observation_windows)
-            
+
 
         if isinstance(observation_windows,basestring):
             observation_windows = fileio.csv2rec(observation_windows)
-            
+
         self.observation_windows = []
         for start,end in observation_windows:
             self.observation_windows.append([ephem.Date(start), ephem.Date(end)])
@@ -101,9 +101,9 @@ class Scheduler(object):
         """
         Load observed fields from the telemetry database.
         """
-        try: 
+        try:
             fields = FieldArray.load_database()
-        except Exception as e: 
+        except Exception as e:
             logging.warning("Failed to load completed exposures from database")
             logging.info(e)
             fields = FieldArray()
@@ -147,7 +147,7 @@ class Scheduler(object):
             fields = FieldArray()
             for filename in completed_fields:
                 fields = fields + FieldArray.read(filename)
-        
+
             completed_fields = fields
 
         new=~np.in1d(completed_fields.unique_id,self.completed_fields.unique_id)
@@ -166,8 +166,8 @@ class Scheduler(object):
         self.blanco_constraints = data
         ha_degrees = np.tile(0., len(self.blanco_constraints['HA']))
         for ii in range(0, len(self.blanco_constraints['HA'])):
-            ha_degrees[ii] = maglites.utils.projector.hms2dec(self.blanco_constraints['HA'][ii])
-        
+            ha_degrees[ii] = obztak.utils.projector.hms2dec(self.blanco_constraints['HA'][ii])
+
         ha_degrees -= 1.25 # Buffer to protect us from the chicken
 
         self.f_hour_angle_limit = lambda dec: np.interp(dec,self.blanco_constraints['Dec'], ha_degrees, left=-1, right=-1)
@@ -180,11 +180,11 @@ class Scheduler(object):
         Select the `best` field to observe at a given time.
 
         A single field can contain multiple exposures (for example g- and r-band).
-        
+
         Available modes:
-        `balance`  : 
-        `balance2` : 
-        `balance3` : 
+        `balance`  :
+        `balance2` :
+        `balance3` :
 
         Parameters:
         -----------
@@ -204,19 +204,19 @@ class Scheduler(object):
         ra_zenith, dec_zenith = self.observatory.radec_of(0, '90') # RA and Dec of zenith
         ra_zenith = np.degrees(ra_zenith)
         dec_zenith = np.degrees(dec_zenith)
-        airmass = maglites.utils.projector.airmass(ra_zenith, dec_zenith, self.target_fields['RA'], self.target_fields['DEC'])
-        airmass_next = maglites.utils.projector.airmass(ra_zenith + 15., dec_zenith, self.target_fields['RA'], self.target_fields['DEC'])
+        airmass = obztak.utils.projector.airmass(ra_zenith, dec_zenith, self.target_fields['RA'], self.target_fields['DEC'])
+        airmass_next = obztak.utils.projector.airmass(ra_zenith + 15., dec_zenith, self.target_fields['RA'], self.target_fields['DEC'])
 
         # Include moon angle
         moon = ephem.Moon()
         moon.compute(date)
         ra_moon = np.degrees(moon.ra)
         dec_moon = np.degrees(moon.dec)
-        moon_angle = maglites.utils.projector.angsep(ra_moon, dec_moon, self.target_fields['RA'], self.target_fields['DEC'])
+        moon_angle = obztak.utils.projector.angsep(ra_moon, dec_moon, self.target_fields['RA'], self.target_fields['DEC'])
 
         # Slew from the previous pointing
         if ra_previous is not None and dec_previous is not None:
-            slew = maglites.utils.projector.angsep(ra_previous, dec_previous, self.target_fields['RA'], self.target_fields['DEC'])
+            slew = obztak.utils.projector.angsep(ra_previous, dec_previous, self.target_fields['RA'], self.target_fields['DEC'])
             slew_ra = np.fabs(ra_previous - self.target_fields['RA'])
             slew_dec = np.fabs(dec_previous - self.target_fields['DEC'])
         else:
@@ -231,12 +231,12 @@ class Scheduler(object):
         hour_angle_degree[hour_angle_degree < -180.] += 360.
         hour_angle_degree[hour_angle_degree > 180.] -= 360.
         cut_hour_angle = np.fabs(hour_angle_degree) < self.f_hour_angle_limit(self.target_fields['DEC']) # Check the hour angle restrictions at south pole
-        
+
         # Airmass restrictions
         cut_airmass = airmass < self.f_airmass_limit(self.target_fields['DEC'])
 
         # Declination restrictions
-        cut_declination = self.target_fields['DEC'] > maglites.utils.constants.SOUTHERN_REACH
+        cut_declination = self.target_fields['DEC'] > obztak.utils.constants.SOUTHERN_REACH
 
         # Don't consider fields which have already been observed
         cut_todo = np.logical_not(np.in1d(self.target_fields['ID'], self.completed_fields['ID']))
@@ -249,7 +249,7 @@ class Scheduler(object):
 
         # Need to figure out what to do if there are no available fields...
 
-        # Now apply some kind of selection criteria, e.g., 
+        # Now apply some kind of selection criteria, e.g.,
         # select the field with the lowest airmass
         #airmass[np.logical_not(cut)] = 999.
 
@@ -319,7 +319,7 @@ class Scheduler(object):
             x_slew, y_slew = zip(*[[0., 0.],
                                    [2.5, 10.],
                                    [5., 30.],
-                                   [10., 500.], # 
+                                   [10., 500.], #
                                    [20., 1000.], # 500
                                    [50., 5000.], # 1000
                                    [180., 5000.]])
@@ -360,7 +360,7 @@ class Scheduler(object):
         elif mode == 'lowairmass':
             weight = 2.0 * copy.copy(hour_angle_degree)
             #if len(self.scheduled_fields) == 0:
-            #    weight += 200. * maglites.utils.projector.angsep(self.target_fields['RA'], 
+            #    weight += 200. * obztak.utils.projector.angsep(self.target_fields['RA'],
             #                                                     self.target_fields['DEC'],
             #                                                     90., -70.)
             weight[np.logical_not(cut)] = np.inf
@@ -369,7 +369,7 @@ class Scheduler(object):
             #weight += 2000. * (airmass - 1.)**3 # 200
             weight += 5000. * (airmass > 1.5)
             index_select = np.argmin(weight)
-            
+
             """
             weight = copy.copy(hour_angle_degree)
             weight[np.logical_not(cut)] = np.inf
@@ -390,7 +390,7 @@ class Scheduler(object):
             weight += 5000. * airmass_sel
             index_select = np.argmin(weight)
         elif mode == 'smcnod':
-            weight = 10000. * np.logical_not(np.in1d(self.target_fields['HEX'], maglites.utils.constants.HEX_SMCNOD)).astype(float)
+            weight = 10000. * np.logical_not(np.in1d(self.target_fields['HEX'], obztak.utils.constants.HEX_SMCNOD)).astype(float)
             weight[np.logical_not(cut)] = np.inf
             weight += 360. * self.target_fields['TILING']
             weight += slew
@@ -401,12 +401,12 @@ class Scheduler(object):
 
         # Search for other exposures in the same field
         field_id = self.target_fields['HEX'][index_select]
-        tiling = self.target_fields['TILING'][index_select]        
+        tiling = self.target_fields['TILING'][index_select]
 
         index = np.nonzero( (self.target_fields['HEX']==field_id) & \
                                    (self.target_fields['TILING']==tiling) & cut)[0]
 
-        
+
         timedelta = constants.FIELDTIME*np.arange(len(index))
         if np.any(slew[index] > 5.):
             # Apply a 30 second penalty for slews over 5 deg.
@@ -443,7 +443,7 @@ class Scheduler(object):
             print weight
             #ortho.plotWeight(field_select, self.target_fields, weight)
             raw_input('WAIT')
-            
+
 
         return field_select
 
@@ -451,13 +451,13 @@ class Scheduler(object):
     def run(self, tstart=None, tstop=None, clip=False, plot=True, mode=None):
         """
         Schedule a chunk of exposures.
-        
+
         Parameters:
         -----------
         tstart : Chunk start time
         tstop  : Chunk end time (may be replace with chunk length)
         plot   : Plot the chunk (may be removed)
-        
+
         Returns:
         --------
         fields : Scheduled fields
@@ -497,17 +497,17 @@ class Scheduler(object):
             if self.observation_windows is not None:
                 inside = False
                 for window in self.observation_windows:
-                    if date >= window[0] and date < window[-1]: 
-                        inside = True 
+                    if date >= window[0] and date < window[-1]:
+                        inside = True
 
                 if not inside:
-                    if clip: 
+                    if clip:
                         break
                     else:
                         msg = 'Date outside of nominal observing windows'
                         logging.warning(msg)
 
-                
+
             # FIXME: I think that ra_previous and dec_previous don't need to be passed
             compute_slew = True
             if len(self.completed_fields) == 0:
@@ -516,7 +516,7 @@ class Scheduler(object):
                 if (date - ephem.Date(self.completed_fields['DATE'][-1])) > (30. * ephem.minute):
                     compute_slew = False
 
-                
+
             if compute_slew:
                 field_select = self.selectField(date, ra_previous=self.completed_fields['RA'][-1], dec_previous=self.completed_fields['DEC'][-1], plot=plot,mode=mode)
             else:
@@ -537,7 +537,7 @@ class Scheduler(object):
                 logging.info(msg%params)
 
             #if plot: self.plotField(date, field_select)
-            if plot: 
+            if plot:
                 ortho.plotField(field_select[:-1],self.target_fields,self.completed_fields)
             if date >= tstop: break
 
@@ -554,11 +554,11 @@ class Scheduler(object):
         -----------
         hexid  : the hex ID of the field
         tiling : the tiling number of the field
-        band   : The band of the field 
+        band   : The band of the field
         date   : The date/time for observation
         plot   : Plot the output
         mode   : Mode for scheduler tactician
-        
+
         Returns:
         --------
         field : The scheduled field
@@ -574,24 +574,24 @@ class Scheduler(object):
         field = self.target_fields[select]
 
         field['DATE'] = map(datestring,select.sum()*[date])
-        #field['AIRMASS'] = 
-        #field['DATE'] = 
-        #field['SLEW'] = 
-        #field['MOONANGLE'] = 
-        #field['HOURANGLE'] = 
+        #field['AIRMASS'] =
+        #field['DATE'] =
+        #field['SLEW'] =
+        #field['MOONANGLE'] =
+        #field['HOURANGLE'] =
         return field
-        
+
     def schedule_chunk(self,tstart=None,chunk=60,clip=False,plot=False,mode=None):
         """
         Schedule a chunk of exposures.
-        
+
         Parameters:
         -----------
         tstart : Start time (UTC); in `None` use `ephem.now()`
         chunk  : Chunk of time to schedule.
         plot   : Dynamically plot each scheduled exposure
         mode   : Mode for scheduler tactician
-        
+
         Returns:
         --------
         fields : Scheduled fields
@@ -660,15 +660,15 @@ class Scheduler(object):
             if plot:
                 field_select = scheduled_fields[-1:]
                 ortho.plotField(field_select,self.target_fields,self.completed_fields)
-                if (raw_input(' ...continue ([y]/n)').lower()=='n'): 
+                if (raw_input(' ...continue ([y]/n)').lower()=='n'):
                     break
-            
+
             chunks.append(scheduled_fields)
             start = ephem.Date(chunks[-1]['DATE'][-1]) + constants.FIELDTIME
             #start = end
 
         if plot: raw_input(' ...finish... ')
-        
+
         return chunks
 
     def schedule_survey(self,start=None,end=None,chunk=60,plot=False,mode=None):
@@ -681,7 +681,7 @@ class Scheduler(object):
         end   : End of survey (int or str)
         chunk : The duration of a chunk of exposures (minutes)
         plot  : Dynamically plot the progress after each night
-        mode  : Mode of scheduler tactician 
+        mode  : Mode of scheduler tactician
 
         Returns:
         --------
@@ -689,7 +689,7 @@ class Scheduler(object):
         """
 
         nites = odict()
-        
+
         for tstart,tend in self.observation_windows:
             if start is not None and ephem.Date(tstart) < ephem.Date(start): continue
             if end is not None and ephem.Date(tend) > ephem.Date(end): continue
@@ -703,7 +703,7 @@ class Scheduler(object):
                 ortho.plotField(field_select,self.target_fields,self.completed_fields)
 
                 #self.plotField(end,field_select)
-                if (raw_input(' ...continue ([y]/n)').lower()=='n'): 
+                if (raw_input(' ...continue ([y]/n)').lower()=='n'):
                     break
 
         if plot: raw_input(' ...finish... ')
@@ -714,7 +714,7 @@ class Scheduler(object):
 
     @classmethod
     def common_parser(cls):
-        from maglites.utils.parser import Parser, DatetimeAction
+        from obztak.utils.parser import Parser, DatetimeAction
 
         description = __doc__
         parser = Parser(description=description)

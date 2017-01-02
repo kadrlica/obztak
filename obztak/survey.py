@@ -8,15 +8,15 @@ import numpy.lib.recfunctions as recfunc
 import numpy as np
 import ephem
 
-import maglites.utils.projector
-import maglites.utils.constants
-import maglites.utils.ortho
+import obztak.utils.projector
+import obztak.utils.constants
+import obztak.utils.ortho
 
-from maglites.utils.projector import cel2gal
-from maglites.utils.ortho import datestring
-from maglites.field import FieldArray
-from maglites.utils.constants import BANDS,SMASH_POLE,CCD_X,CCD_Y,STANDARDS
-from maglites.utils import fileio
+from obztak.utils.projector import cel2gal
+from obztak.utils.ortho import datestring
+from obztak.field import FieldArray
+from obztak.utils.constants import BANDS,SMASH_POLE,CCD_X,CCD_Y,STANDARDS
+from obztak.utils import fileio
 
 class Survey(object):
     """Base class for preparing a survey. Creates a list of observation
@@ -42,9 +42,9 @@ class Survey(object):
         """
 
         observatory = ephem.Observer()
-        observatory.lon = maglites.utils.constants.LON_CTIO
-        observatory.lat = maglites.utils.constants.LAT_CTIO
-        observatory.elevation = maglites.utils.constants.ELEVATION_CTIO
+        observatory.lon = obztak.utils.constants.LON_CTIO
+        observatory.lat = obztak.utils.constants.LAT_CTIO
+        observatory.elevation = obztak.utils.constants.ELEVATION_CTIO
         observatory.horizon = '%.2f'%(horizon)
 
         sun = ephem.Sun()
@@ -137,7 +137,7 @@ class Survey(object):
             fields['DEC'][idx0:idx1] = np.repeat(dec_dither,nbands)
 
         # Apply footprint selection after tiling/dither
-        sel = maglites.utils.projector.footprint(fields['RA'],fields['DEC']) # NORMAL OPERATION
+        sel = obztak.utils.projector.footprint(fields['RA'],fields['DEC']) # NORMAL OPERATION
 
     @staticmethod
     def footprint(ra,dec):
@@ -174,7 +174,7 @@ class Survey(object):
         """
         ra0,dec0 = SMASH_POLE
         # Rotate the pole at SMASH_POLE to (0,-90)
-        R1 = maglites.utils.projector.SphericalRotator(ra0,90+dec0);
+        R1 = obztak.utils.projector.SphericalRotator(ra0,90+dec0);
         ra1,dec1 = R1.rotate(ra,dec)
         # Dither the offset
         ra2 = ra1+dx/np.cos(np.radians(dec1))
@@ -200,7 +200,7 @@ class Survey(object):
         """
         out = []
         for _ra,_dec in zip(ra,dec):
-            out.append(maglites.utils.projector.SphericalRotator(_ra,_dec).rotate(dx,dy,invert=True))
+            out.append(obztak.utils.projector.SphericalRotator(_ra,_dec).rotate(dx,dy,invert=True))
         return np.array(out).T
 
     @staticmethod
@@ -221,10 +221,10 @@ class Survey(object):
         """
         ra0,dec0 = SMASH_POLE
         # Rotate the pole at SMASH_POLE to (0,-90)
-        R1 = maglites.utils.projector.SphericalRotator(ra0,90+dec0);
+        R1 = obztak.utils.projector.SphericalRotator(ra0,90+dec0);
         ra1,dec1 = R1.rotate(ra,dec)
         # Rotate around the SMASH pole
-        R2 = maglites.utils.projector.SphericalRotator(dx,dy)
+        R2 = obztak.utils.projector.SphericalRotator(dx,dy)
         ra2,dec2 = R2.rotate(ra1,dec1)
         # Rotate back to the original frame (keeping the R2 shift)
         return R1.rotate(ra2,dec2,invert=True)
@@ -382,7 +382,7 @@ class MagLiteS(Survey):
         data = np.recfromtxt(infile, names=True)
 
         # Apply footprint selection after tiling/dither
-        #sel = maglites.utils.projector.footprint(data['RA'],data['DEC'])
+        #sel = obztak.utils.projector.footprint(data['RA'],data['DEC'])
 
         # This is currently a non-op
         smash_id = data['ID']
@@ -425,7 +425,7 @@ class MagLiteS(Survey):
         #    # Include 'bridge' region between Magellanic Clouds
         #    sel_bridge = self.footprintBridge(fields['RA'],fields['DEC'])
         #    sel = sel | sel_bridge
-        sel = sel & (fields['DEC'] > maglites.utils.constants.SOUTHERN_REACH)
+        sel = sel & (fields['DEC'] > obztak.utils.constants.SOUTHERN_REACH)
         fields = fields[sel]
 
         logging.info("Number of target fields: %d"%len(fields))
@@ -434,9 +434,9 @@ class MagLiteS(Survey):
             import pylab as plt
             plt.ion()
 
-            fig, basemap = maglites.utils.ortho.makePlot('2016/2/11 03:00',center=(0,-90),airmass=False,moon=False)
+            fig, basemap = obztak.utils.ortho.makePlot('2016/2/11 03:00',center=(0,-90),airmass=False,moon=False)
 
-            proj = maglites.utils.ortho.safeProj(basemap,fields['RA'],fields['DEC'])
+            proj = obztak.utils.ortho.safeProj(basemap,fields['RA'],fields['DEC'])
             basemap.scatter(*proj, c=fields['TILING'], edgecolor='none', s=50, cmap='Spectral',vmin=0,vmax=len(TILINGS))
             colorbar = plt.colorbar(label='Tiling')
 
@@ -454,8 +454,8 @@ class MagLiteS(Survey):
     def footprint(ra,dec):
         l, b = cel2gal(ra, dec)
 
-        angsep_lmc = maglites.utils.projector.angsep(maglites.utils.constants.RA_LMC, maglites.utils.constants.DEC_LMC, ra, dec)
-        angsep_smc = maglites.utils.projector.angsep(maglites.utils.constants.RA_SMC, maglites.utils.constants.DEC_SMC, ra, dec)
+        angsep_lmc = obztak.utils.projector.angsep(obztak.utils.constants.RA_LMC, obztak.utils.constants.DEC_LMC, ra, dec)
+        angsep_smc = obztak.utils.projector.angsep(obztak.utils.constants.RA_SMC, obztak.utils.constants.DEC_SMC, ra, dec)
         sel = (np.fabs(b) > 10.) \
               & ((angsep_lmc < 30.) | (angsep_smc < 30.)) \
               & (dec < -55.) & (ra > 100.) & (ra < 300.)
@@ -470,8 +470,8 @@ class MagLiteS(Survey):
         """
         Special selection for pointings near the SMC Northern Overdensity (SMCNOD)
         """
-        sel = np.in1d(fields['HEX'], maglites.utils.constants.HEX_SMCNOD) \
-              & np.in1d(fields['TILING'], maglites.utils.constants.TILING_SMCNOD)
+        sel = np.in1d(fields['HEX'], obztak.utils.constants.HEX_SMCNOD) \
+              & np.in1d(fields['TILING'], obztak.utils.constants.TILING_SMCNOD)
         return sel
 
     @staticmethod
@@ -484,7 +484,7 @@ class MagLiteS(Survey):
 
 def parser():
     import argparse
-    from maglites.utils.parser import Parser, DatetimeAction
+    from obztak.utils.parser import Parser, DatetimeAction
     description = __doc__
     formatter = argparse.ArgumentDefaultsHelpFormatter
     parser = Parser(description=description,formatter_class=formatter)
