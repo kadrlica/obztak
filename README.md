@@ -1,13 +1,18 @@
-# obztak
+# Bizarro ObzTak
 
 [![Build](https://img.shields.io/travis/kadrlica/obztak.svg)](https://travis-ci.org/kadrlica/obztak)
 [![PyPI](https://img.shields.io/pypi/v/obztak.svg)](https://pypi.python.org/pypi/obztak)
 [![Release](https://img.shields.io/github/release/kadrlica/obztak.svg)](../../releases)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](../../)
 
-Bizarro observation tactician for the dark energy camera (DECam) at CTIO. Used for the **Mag**ellanic Satel**lite**s **S**urvey (MagLiteS) and the **BL**anco **I**maging of the **S**outhern **S**ky.
+Bizarro observation tactician for the Dark Energy Camera (DECam) at CTIO. Used for the **Mag**ellanic Satel**lite**s **S**urvey (MagLiteS) and the **BL**anco **I**maging of the **S**outhern **S**ky (BLISS).
 
 ### Installation
+
+Bizarro ObzTak is now distributed via `pip`:
+```
+pip install obztak
+```
 
 ### Running
 
