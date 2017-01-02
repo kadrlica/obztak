@@ -8,10 +8,12 @@ from collections import OrderedDict as odict
 import logging
 
 import numpy as np
+
 from obztak import __version__
 from obztak.utils import constants
 from obztak.utils import fileio
 
+# Default field array values
 DEFAULTS = odict([
     ('HEX',       dict(dtype=int,value=0)),
     ('RA',        dict(dtype=float,value=None)),
@@ -26,7 +28,6 @@ DEFAULTS = odict([
     ('MOONANGLE', dict(dtype=float,value=-1.0)),
     ('HOURANGLE', dict(dtype=float,value=-1.0)),
 ])
-
 DTYPES = odict([(k,v['dtype']) for k,v in DEFAULTS.items()])
 VALUES = odict([(k,v['value']) for k,v in DEFAULTS.items()])
 
@@ -34,7 +35,10 @@ OBJECT_PREFIX = 'MAGLITES field: '
 OBJECT_FMT = OBJECT_PREFIX + '%s'
 SEQID_PREFIX = 'MAGLITES scheduled: '
 SEQID_FMT = SEQID_PREFIX + '%(DATE)s'
+PROGRAM = 'maglites'
+PROPID  = '2016A-0366'
 
+# Default sispi dictionary
 SISPI_DICT = odict([
     ("object",  None),
     ("seqnum",  None), # 1-indexed
@@ -46,12 +50,13 @@ SISPI_DICT = odict([
     ("filter",  None),
     ("count",   1),
     ("expType", "object"),
-    ("program", "maglites"),
+    ("program", PROGRAM),
     ("wait",    "False"),
-    ("propid",  "2016A-0366"),
+    ("propid",  PROPID),
     ("comment", ""),
 ])
 
+# Mapping between sispi dict keys and field array columns
 SISPI_MAP = odict([
     ('expTime','EXPTIME'),
     ('RA','RA'),
@@ -195,7 +200,7 @@ class FieldArray(np.recarray):
             database = Database(database)
             database.connect()
 
-        defaults = dict(propid='2016A-0366', limit='')
+        defaults = dict(propid=PROPID, limit='')
         params = copy.deepcopy(defaults)
 
         query ="""
@@ -209,6 +214,7 @@ class FieldArray(np.recarray):
         ORDER BY utc_beg %(limit)s 
         """%params
 
+        logging.debug(query)
         data = database.execute(query)
         names = map(str.upper,database.get_columns())
         objidx = names.index('OBJECT')        
