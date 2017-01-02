@@ -12,8 +12,7 @@ import logging
 
 from obztak import __version__
 from obztak.utils.constants import FLOAT_FMT
-
-#from maglites.field import FieldArray
+from obztak.utils.ortho import datestring
 
 def get_username():
     import os,pwd
@@ -116,7 +115,7 @@ def header():
     import ephem
     now = ephem.now()
     header  = "# author: %s@%s\n"%(get_username(),get_hostname())
-    header += "# date: %s UTC\n"%(ephem.now())
+    header += "# date: %s UTC\n"%(datestring(ephem.now(),0))
     header += "# version: obztak v%s\n"%(__version__)
     return header
     
