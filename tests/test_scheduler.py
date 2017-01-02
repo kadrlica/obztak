@@ -6,30 +6,8 @@ __author__ = "Alex Drlica-Wagner"
 import os
 import glob
 import json
-import subprocess
-from subprocess import Popen, PIPE, check_call
 
-def call(cmd,**kwargs):
-    p = Popen(cmd,stdout=PIPE,stderr=PIPE,**kwargs)
-    stdout,stderr = p.communicate()
-    if p.returncode > 0:
-        msg = str(cmd + '\n' + str(stdout) + '\n' + str(stderr))
-        print(msg)
-        raise subprocess.CalledProcessError(msg)
-    print(stdout)
-    return stdout
-
-def check_dict(value,test):
-    for k,v in value.items():
-        val = test[k]
-        if val != v:
-            msg = '%s: %s (in), %s (out)'%(k,v,val)
-            raise ValueError(msg)
-
-    return test
-
-def make_options(kwargs):
-    return ' '.join(['--%s %s'%(k,v) for k,v in kwargs.items()])
+from obztak.utils.testing import call, check_dict, make_option
 
 def test_schedule_field():
     kwargs = dict(utc='2017-02-22T06:00:00',hex=6679,tiling=1,band='g',outfile='field_test.json')
