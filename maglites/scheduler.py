@@ -29,7 +29,10 @@ CONDITIONS = odict([
     ('poor',  [0.0, 1.5]),
     ('bad',   [0.0, 1.4]),
 ])
-logging.basicConfig(level=20) # KCB
+
+# For debugging (can also use the verbose command line argument)
+#logging.basicConfig(level=20) # KCB
+
 ############################################################
 
 class Scheduler(object):

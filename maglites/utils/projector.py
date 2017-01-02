@@ -71,6 +71,8 @@ def galToCel(ll, bb):
     ra = (ramragp + ra_gp + (2. * np.pi)) % (2. * np.pi)
     return np.degrees(ra), np.degrees(dec)
 
+gal2cel = galToCel
+
 ############################################################
 
 def celToGal(ra, dec):
@@ -97,6 +99,8 @@ def celToGal(ra, dec):
     bb = np.arcsin(sin_b)
     ll = (lcp - lcpml + (2. * np.pi)) % (2. * np.pi)
     return np.degrees(ll), np.degrees(bb)
+
+cel2gal = celToGal
 
 ############################################################
 
@@ -356,23 +360,6 @@ def footprint(ra,dec):
 
     return cut
 
-"""
-KB: This looks like a repeated function?
-def footprint(ra,dec):
-    l, b = celToGal(ra, dec)
-
-    angsep_lmc = maglites.utils.projector.angsep(maglites.utils.constants.RA_LMC, maglites.utils.constants.DEC_LMC, ra, dec)
-    angsep_smc = maglites.utils.projector.angsep(maglites.utils.constants.RA_SMC, maglites.utils.constants.DEC_SMC, ra, dec)
-    cut = (np.fabs(b) > 10.) \
-          & ((angsep_lmc < 30.) | (angsep_smc < 30.)) \
-          & (dec < -55.) & (ra > 100.) & (ra < 300.)
-    #cut = cut | ((dec < -65.) & (angsep_lmc > 5.) & (angsep_smc > 5.))
-    cut = cut | ((dec < -65.) & (ra > 300.) & (ra < 360.)) # SMC
-    cut = cut | (dec < -80.)
-
-    return cut
-"""
-
 def footprintSMCNOD(fields):
     """
     Special selection for pointings near the SMC Northern Overdensity (SMCNOD)
@@ -387,7 +374,4 @@ def footprintBridge(ra, dec):
     """
     cut = (ra > 30.) & (ra < 60.) & (dec < -65.) 
     return cut
-
-
-
 
