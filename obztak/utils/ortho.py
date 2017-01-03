@@ -12,7 +12,8 @@ import tempfile
 import subprocess
 
 import obztak.utils.projector
-import obztak.utils.constants as constants
+
+from obztak.utils import constants
 from obztak.utils import fileio
 from obztak.field import FieldArray
 from obztak.utils.date import datestring,nite2utc,utc2nite,get_nite
