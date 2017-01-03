@@ -13,10 +13,11 @@ from collections import OrderedDict as odict
 
 import obztak.utils.projector
 import obztak.utils.constants
-import obztak.utils.constants as constants
 import obztak.utils.ortho
-import obztak.utils.ortho as ortho
-import obztak.utils.fileio as fileio
+
+from obztak.utils import constants
+from obztak.utils import ortho
+from obztak.utils import fileio
 
 from obztak.field import FieldArray
 from obztak.utils.date import get_nite, datestring
