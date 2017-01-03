@@ -57,39 +57,5 @@ CCD_Y = NPIX_Y * PIXEL_SCALE # degree
 # Blanco characteritics
 SOUTHERN_REACH = -89.
 
-# SISPI json template formatting
-PROPID = '2016A-0366'
-OBJECT_FMT = "MAGLITES field - %(ID)d.%(TILING)d.%(PRIORITY)d"
-SEQID_FMT = "MAGLITES scheduled - %(DATE)s"
+# Formatting for floats
 FLOAT_FMT = '%.4f'
-SISPI_DICT = odict([
-    ("object",  None),
-    ("seqnum",  None), # 1-indexed
-    ("seqtot",  2),
-    ("seqid",   None),
-    ("expTime", 90),
-    ("RA",      None),
-    ("dec",     None),
-    ("filter",  None),
-    ("count",   1),
-    ("expType", "object"),
-    ("program", "maglites"),
-    ("wait",    "False"),
-    ("propid",  PROPID),
-    ("comment", ""),
-])
-
-def FIELD2OBJECT(field):
-    return OBJECT_FMT%(field)
-
-def OBJECT2FIELD(object_str):
-    ID,TILING,PRIORITY = map(int,object_str.split(' - ')[-1].split('.'))
-    return dict(ID=ID,TILING=TILING,PRIORITY=PRIORITY)
-
-def FIELD2SEQID(field):
-    return SEQID_FMT%(field)
-
-def SEQID2FIELD(seqid_str):
-    DATE = str(seqid_str.split(' - ')[-1].strip())
-    return dict(DATE=DATE)
-
