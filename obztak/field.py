@@ -193,12 +193,26 @@ class FieldArray(np.recarray):
     def load_database(cls,database='db-fnal'):
         """
         Load fields from the telemetry database.
-        """
-        from obztak.utils.database import Database
 
-        if not isinstance(database,Database):
-            database = Database(database)
-            database.connect()
+        Parameters:
+        -----------
+        database : String or Database object to connect to.
+
+        Returns:
+        --------
+        fields : A FieldArray filled from the database
+        """
+        try: from obztak.utils.database import Database
+        except ImportError as e:
+            logging.warn(e)
+            return FieldArray()
+
+        try: database = Database(database)
+        except IOError as e:
+            logging.warn(e)
+            return FieldArray()
+
+        database.connect()
 
         defaults = dict(propid=PROPID, limit='')
         params = copy.deepcopy(defaults)
@@ -218,7 +232,9 @@ class FieldArray(np.recarray):
         data = database.execute(query)
         names = map(str.upper,database.get_columns())
         objidx = names.index('OBJECT')        
-        if not len(data): return FieldArray(0)
+        if not len(data):
+            logging.warn("No fields found in database.")
+            return FieldArray()
 
         fields = cls()
         for d in data:

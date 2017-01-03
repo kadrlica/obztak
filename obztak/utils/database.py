@@ -8,9 +8,10 @@ https://opensource.ncsa.illinois.edu/confluence/x/lwCsAw
 """
 
 import os
+import logging
+
 import psycopg2
 import numpy as np
-import logging
 
 class Database(object):
     
