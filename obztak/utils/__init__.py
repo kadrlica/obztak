@@ -1,5 +1,5 @@
 """
-Observation planning for the Magellanic Satellites Survey.
+Nothing to see here
 """
 
 
