@@ -277,6 +277,14 @@ class MagLiteS(Survey):
         sel = (ra > 30.) & (ra < 60.) & (dec < -65.)
         return sel
 
+class MagLiteSFieldArray(FieldArray):
+    SISPI_DICT = copy.deepcopy(SISPI_DICT)
+    SISPI_DICT["program"] = PROGRAM
+    SISPI_DICT["propid"] = PROPID
+
+    OBJECT_FMT = 'MAGLITES field'+SEP+' %s'
+    SEQID_FMT  = 'MAGLITES scheduled'+SEP+' %(DATE)s'
+
 
 if __name__ == "__main__":
     import argparse
