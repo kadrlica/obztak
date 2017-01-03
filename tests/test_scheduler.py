@@ -7,7 +7,7 @@ import os
 import glob
 import json
 
-from obztak.utils.testing import call, check_dict, make_option
+from obztak.utils.testing import call, check_dict, make_options
 
 def test_schedule_field():
     kwargs = dict(utc='2017-02-22T06:00:00',hex=6679,tiling=1,band='g',outfile='field_test.json')

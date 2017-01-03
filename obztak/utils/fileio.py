@@ -12,7 +12,6 @@ import logging
 
 from obztak import __version__
 from obztak.utils.constants import FLOAT_FMT
-from obztak.utils.ortho import datestring
 
 def get_username():
     import os,pwd

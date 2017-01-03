@@ -5,7 +5,7 @@ Executable for simulating the survey.
 from obztak.scheduler import Scheduler
 from obztak.field import FieldArray
 from obztak.utils.parser import DatetimeAction
-import obztak.utils.ortho as ortho
+from obztak.utils import ortho
 
 ############################################################
 

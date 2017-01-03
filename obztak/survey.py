@@ -13,7 +13,7 @@ import obztak.utils.constants
 import obztak.utils.ortho
 
 from obztak.utils.projector import cel2gal
-from obztak.utils.ortho import datestring
+from obztak.utils.date import datestring
 from obztak.field import FieldArray
 from obztak.utils.constants import BANDS,SMASH_POLE,CCD_X,CCD_Y,STANDARDS
 from obztak.utils import fileio

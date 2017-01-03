@@ -5,7 +5,7 @@ Executable for simulating the survey.
 import os
 import ephem
 
-from obztak.utils.ortho import datestring
+from obztak.utils.date import datestring
 from obztak.scheduler import Scheduler
 from obztak.utils.parser import Parser
 from obztak.utils.constants import BANDS

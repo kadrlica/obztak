@@ -9,6 +9,7 @@ import os
 from obztak.field import FieldArray
 from obztak.utils.ortho import plotFields, movieFields
 from obztak.utils.parser import Parser
+
 if __name__ == "__main__":
     parser = Parser(description=__doc__)
     parser.add_argument('infiles',nargs='+',

@@ -19,7 +19,7 @@ import obztak.utils.ortho as ortho
 import obztak.utils.fileio as fileio
 
 from obztak.field import FieldArray
-from obztak.utils.ortho import get_nite, datestring
+from obztak.utils.date import get_nite, datestring
 
 CONDITIONS = odict([
     ('great', [1.4, 2.0]),
@@ -177,7 +177,7 @@ class Scheduler(object):
 
     def selectField(self, date, ra_previous=None, dec_previous=None, plot=False, mode='coverage'):
         """
-        Select the `best` field to observe at a given time.
+        Select the 'best' field to observe at a given time.
 
         A single field can contain multiple exposures (for example g- and r-band).
 

@@ -9,8 +9,8 @@ import ephem
 import numpy as np
 
 from obztak.field import FieldArray
-import obztak.utils.ortho
-from obztak.utils.ortho import makePlot, get_nite, nite2utc, utc2nite
+from obztak.utils.ortho import makePlot, safeProj
+from obztak.utils.date import get_nite, nite2utc, utc2nite
 from obztak.utils.parser import Parser, DatetimeAction
 from obztak.utils import Database
 
@@ -48,11 +48,11 @@ if __name__ == "__main__":
     fig,basemap = makePlot(date=nitestr,name='nightsum',moon=False,airmass=False,center=(0,-90))
     plt.title('Coverage (%s)'%nitestr)
     kwargs['cmap'] = 'gray_r'
-    proj = obztak.utils.ortho.safeProj(basemap, old_fields['RA'], old_fields['DEC'])
+    proj = safeProj(basemap, old_fields['RA'], old_fields['DEC'])
     basemap.scatter(*proj, c=old_fields['TILING'],**kwargs)
 
     kwargs['cmap'] = 'summer_r'
-    proj = obztak.utils.ortho.safeProj(basemap, new_fields['RA'], new_fields['DEC'])
+    proj = safeProj(basemap, new_fields['RA'], new_fields['DEC'])
     basemap.scatter(*proj, c=new_fields['TILING'],  **kwargs)
     colorbar = plt.colorbar()
     colorbar.set_label('Tiling')

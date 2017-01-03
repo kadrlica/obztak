@@ -8,7 +8,7 @@ import logging
 
 from obztak.scheduler import Scheduler
 from obztak.utils.parser import Parser, DatetimeAction
-from obztak.utils.ortho import nite2utc, utc2nite, datestring
+from obztak.utils.date import nite2utc, utc2nite, datestring
 
 def main():
     parser = Scheduler.parser()

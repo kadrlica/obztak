@@ -80,8 +80,7 @@ def test_sispi_fields():
 def test_database_fields():
     fields = obztak.field.FieldArray.load_database('db-fnal')
 
-    if fields == obztak.field.FieldArray():
-        return
+    if len(fields) == 0: return
 
 
 if __name__ == "__main__":
