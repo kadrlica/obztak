@@ -10,7 +10,10 @@ import json
 
 import numpy as np
 
-from obztak.survey import Survey, MagLiteS
+from obztak.survey import Survey
+from obztak.maglites import MagLiteS
+from obztak.utils.testing import call, make_options
+from obztak.utils import fileio
 
 def test_prepare_windows():
     nights = [['2017/2/21', 'full'],
@@ -40,6 +43,15 @@ def test_maglites_prepare_fields():
     np.testing.assert_equal(test['TILING'],[1,1,4])
     np.testing.assert_allclose(test['RA'],[358.03, 104.729, 342.55892077])
     np.testing.assert_allclose(test['DEC'],[-70.2678, -65.2038, -68.50739044])
+
+def test_survey_prepare():
+    kwargs = dict(fields='test_target_fields.csv',windows='test_windows.csv')
+    opts = make_options(kwargs)
+    cmd = 'survey_prepare %s'%(opts)
+    call(cmd,shell=True)
+
+    fields = fileio.csv2rec(kwargs['fields'])
+    windows = fileio.csv2rec(kwargs['windows'])
 
 if __name__ == "__main__":
     import argparse
