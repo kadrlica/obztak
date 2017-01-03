@@ -16,6 +16,13 @@ from obztak.utils.projector import cel2gal, angsep
 from obztak.utils.date import datestring
 from obztak.utils import fileio
 
+OBJECT_PREFIX = 'MAGLITES field: '
+OBJECT_FMT = OBJECT_PREFIX + '%s'
+SEQID_PREFIX = 'MAGLITES scheduled: '
+SEQID_FMT = SEQID_PREFIX + '%(DATE)s'
+PROGRAM = 'maglites'
+PROPID  = '2016A-0366'
+
 class MagLiteS(Survey):
     """ Survey sublcass for MagLiteS. """
 

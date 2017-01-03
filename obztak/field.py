@@ -192,9 +192,9 @@ class FieldArray(np.recarray):
     @classmethod
     def load_database(cls,database='db-fnal'):
         """
-        Get the fields that have been observed from the telemetry DB.
+        Load fields from the telemetry database.
         """
-        from obztak.utils import Database
+        from obztak.utils.database import Database
 
         if not isinstance(database,Database):
             database = Database(database)

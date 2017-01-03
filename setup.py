@@ -31,6 +31,7 @@ setup(
     install_requires=[
         'numpy >= 1.7',
         'scipy >= 0.10.1',
+        'matplotlib >= 1.2.0',
         'basemap >= 1.0.6',
         'pandas >= 0.8.1',
         'setuptools',
