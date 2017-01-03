@@ -31,10 +31,10 @@ DEFAULTS = odict([
 DTYPES = odict([(k,v['dtype']) for k,v in DEFAULTS.items()])
 VALUES = odict([(k,v['value']) for k,v in DEFAULTS.items()])
 
-OBJECT_PREFIX = 'MAGLITES field: '
-OBJECT_FMT = OBJECT_PREFIX + '%s'
-SEQID_PREFIX = 'MAGLITES scheduled: '
-SEQID_FMT = SEQID_PREFIX + '%(DATE)s'
+SEP = ':'
+OBJECT_FMT = 'MAGLITES field' + SEP + ' %s'
+SEQID_FMT  = 'MAGLITES scheduled' + SEP + ' %(DATE)s'
+
 PROGRAM = 'maglites'
 PROPID  = '2016A-0366'
 
@@ -65,6 +65,11 @@ SISPI_MAP = odict([
 ])
 
 class FieldArray(np.recarray):
+    """ Array for holding observation fields. """
+
+    SISPI_DICT = copy.deepcopy(SISPI_DICT)
+    OBJECT_FMT = 'OBZTAK field'+SEP+' %s'
+    SEQID_FMT  = 'OBZTAK scheduled'+SEP+' %(DATE)s'
 
     def __new__(cls,shape=0):
         # Need to do it this way so that array can be resized...
@@ -107,7 +112,8 @@ class FieldArray(np.recarray):
 
     @property
     def comment(self):
-        comment = 'MAGLITES v%s: '%__version__
+        #comment = 'MAGLITES v%s: '%__version__
+        comment = 'obztak v%s: '%__version__
         comment += 'PRIORITY=%(PRIORITY)i, '
 
         fmt = '%s=%%(%s).4f'
@@ -121,16 +127,18 @@ class FieldArray(np.recarray):
         self['TILING'] = tiling
 
     def from_object(self,string):
-        self.from_unique_id(string.lstrip(OBJECT_PREFIX))
+        #self.from_unique_id(string.lstrip(OBJECT_PREFIX))
+        self.from_unique_id(string.split(SEP,1)[-1].strip())
 
     def from_seqid(self, string):
-        date = string.lstrip(SEQID_PREFIX)
+        #date = string.lstrip(SEQID_PREFIX)
+        date = string.split(SEP,1)[-1].strip()
         self['DATE'] = date
 
     def from_comment(self, string):
         integers = ['PRIORITY']
         floats   = ['AIRMASS','SLEW','MOONANGLE','HOURANGLE']
-        values = dict([x.strip().split('=') for x in string.split(':')[-1].split(',')])
+        values = dict([x.strip().split('=') for x in string.split(SEP,1)[-1].split(',')])
         for key,val in values.items():
             if key in integers:
                 self[key] = int(val)
@@ -152,7 +160,7 @@ class FieldArray(np.recarray):
         seqids = self.seqid
         comments = self.comment
         for i,r in enumerate(self):
-            sispi_dict = copy.deepcopy(SISPI_DICT)
+            sispi_dict = copy.deepcopy(self.SISPI_DICT)
             for sispi_key,field_key in SISPI_MAP.items():
                 sispi_dict[sispi_key] = r[field_key]
             sispi_dict['object'] = objects[i]
@@ -205,12 +213,12 @@ class FieldArray(np.recarray):
         try: from obztak.utils.database import Database
         except ImportError as e:
             logging.warn(e)
-            return FieldArray()
+            return cls()
 
         try: database = Database(database)
         except IOError as e:
             logging.warn(e)
-            return FieldArray()
+            return cls()
 
         database.connect()
 
@@ -234,7 +242,7 @@ class FieldArray(np.recarray):
         objidx = names.index('OBJECT')        
         if not len(data):
             logging.warn("No fields found in database.")
-            return FieldArray()
+            return cls()
 
         fields = cls()
         for d in data:
@@ -247,7 +255,6 @@ class FieldArray(np.recarray):
 
         return fields
 
-        
     @classmethod
     def read(cls, filename):
         base,ext = os.path.splitext(filename)
