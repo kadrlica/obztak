@@ -4,10 +4,11 @@ Code related to the Magellanic Satellites Survey (MagLiteS).
 """
 import os,sys
 import logging
+import copy
 
 import numpy as np
 
-from obztak.field import FieldArray
+from obztak.field import FieldArray, SISPI_DICT, SEP
 from obztak.survey import Survey
 
 from obztak.utils import constants
@@ -16,11 +17,8 @@ from obztak.utils.projector import cel2gal, angsep
 from obztak.utils.date import datestring
 from obztak.utils import fileio
 
-OBJECT_PREFIX = 'MAGLITES field: '
-OBJECT_FMT = OBJECT_PREFIX + '%s'
-SEQID_PREFIX = 'MAGLITES scheduled: '
-SEQID_FMT = SEQID_PREFIX + '%(DATE)s'
-PROGRAM = 'maglites'
+NAME = 'MagLiteS'
+PROGRAM = NAME.lower()
 PROPID  = '2016A-0366'
 
 class MagLiteS(Survey):
@@ -282,8 +280,8 @@ class MagLiteSFieldArray(FieldArray):
     SISPI_DICT["program"] = PROGRAM
     SISPI_DICT["propid"] = PROPID
 
-    OBJECT_FMT = 'MAGLITES field'+SEP+' %s'
-    SEQID_FMT  = 'MAGLITES scheduled'+SEP+' %(DATE)s'
+    OBJECT_FMT = NAME.upper() + ' field'+SEP+' %s'
+    SEQID_FMT  = NAME.upper() + ' scheduled'+SEP+' %(DATE)s'
 
 
 if __name__ == "__main__":

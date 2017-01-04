@@ -32,11 +32,11 @@ DTYPES = odict([(k,v['dtype']) for k,v in DEFAULTS.items()])
 VALUES = odict([(k,v['value']) for k,v in DEFAULTS.items()])
 
 SEP = ':'
-OBJECT_FMT = 'MAGLITES field' + SEP + ' %s'
-SEQID_FMT  = 'MAGLITES scheduled' + SEP + ' %(DATE)s'
+#OBJECT_FMT = 'MAGLITES field' + SEP + ' %s'
+#SEQID_FMT  = 'MAGLITES scheduled' + SEP + ' %(DATE)s'
+#PROGRAM = 'maglites'
+#PROPID  = '2016A-0366'
 
-PROGRAM = 'maglites'
-PROPID  = '2016A-0366'
 
 # Default sispi dictionary
 SISPI_DICT = odict([
@@ -50,9 +50,11 @@ SISPI_DICT = odict([
     ("filter",  None),
     ("count",   1),
     ("expType", "object"),
-    ("program", PROGRAM),
+    #("program", PROGRAM),
+    ("program", None),
     ("wait",    "False"),
-    ("propid",  PROPID),
+    #("propid",  PROPID),
+    ("propid",  None),
     ("comment", ""),
 ])
 
@@ -66,10 +68,16 @@ SISPI_MAP = odict([
 
 class FieldArray(np.recarray):
     """ Array for holding observation fields. """
+    PROGRAM = 'maglites'
+    PROPID  = '2016A-0366'
 
     SISPI_DICT = copy.deepcopy(SISPI_DICT)
-    OBJECT_FMT = 'OBZTAK field'+SEP+' %s'
-    SEQID_FMT  = 'OBZTAK scheduled'+SEP+' %(DATE)s'
+    SISPI_DICT['program'] = PROGRAM
+    SISPI_DICT['propid'] = PROPID
+    #OBJECT_FMT = 'OBZTAK field'+SEP+' %s'
+    #SEQID_FMT  = 'OBZTAK scheduled'+SEP+' %(DATE)s'
+    OBJECT_FMT = 'MAGLITES field'+SEP+' %s'
+    SEQID_FMT  = 'MAGLITES scheduled'+SEP+' %(DATE)s'
 
     def __new__(cls,shape=0):
         # Need to do it this way so that array can be resized...
@@ -100,11 +108,11 @@ class FieldArray(np.recarray):
 
     @property
     def object(self):
-        return np.char.mod(OBJECT_FMT,self.unique_id).astype('S80')
+        return np.char.mod(self.OBJECT_FMT,self.unique_id).astype('S80')
 
     @property
     def seqid(self):
-        return np.char.mod(SEQID_FMT,self).astype('S80')
+        return np.char.mod(self.SEQID_FMT,self).astype('S80')
 
     @property
     def seqnum(self):
@@ -222,7 +230,7 @@ class FieldArray(np.recarray):
 
         database.connect()
 
-        defaults = dict(propid=PROPID, limit='')
+        defaults = dict(propid=cls.SISPI_DICT['propid'], limit='')
         params = copy.deepcopy(defaults)
 
         query ="""
