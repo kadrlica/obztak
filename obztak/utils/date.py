@@ -9,6 +9,7 @@ import time
 import logging
 
 import obztak.utils.constants as constants
+from obztak.ctio import CTIO
 
 def datestring(date,precision=4):
     """
@@ -29,7 +30,6 @@ def datestring(date,precision=4):
     datestr += '{:.{precision}f}'.format(date.microsecond/1.e6,
                                          precision=precision)[1:]
     """
-
     if precision < 0:
         msg = "Precision must be positive."
         raise Exception(msg)
@@ -54,16 +54,48 @@ def datestring(date,precision=4):
 
     return datestr
 
+def nitestring(nite,sep=''):
+    """
+    Convert an ephem.Date object to a nite string.
+
+    Parameters:
+    -----------
+    nite     : ephem.Date object
+    sep      : Output separator
+
+    Returns:
+    --------
+    nitestr  : String representation of the nite
+    """
+    import dateutil.parser
+    if isinstance(nite,basestring):
+        nite = dateutil.parser.parse(nite)
+    nite = ephem.Date(nite)
+    strtuple = nite.tuple()[:3]
+    nitestr = '{:4d}{sep}{:02d}{sep}{:02d}'
+    nitestr = nitestr.format(*strtuple,sep=sep)
+    return nitestr
+
 def nite2utc(nite, observer=None):
+    """ Convert a nite string to an ephem.Date of the UTC at sunset. 
+
+    Parameters:
+    -----------
+    nite     : The nite (string or datetime)
+    observer : An ephem.Observer object (defaults to CTIO)
+
+    Returns:
+    --------
+    utc      : The UTC of sunset (ephem.Date)
+    """
+    
     import dateutil.parser
     import dateutil.tz
     import datetime
 
-    if observer is None:
-        observer = ephem.Observer()
-        observer.lon = constants.LON_CTIO
-        observer.lat = constants.LAT_CTIO
-        observer.elevation = constants.ELEVATION_CTIO
+    if observer is None: observer = CTIO()
+    else:                observer = observer.copy()
+    observer.horizon = '-14'
 
     if not isinstance(nite,datetime.datetime):
         nite = dateutil.parser.parse(str(nite))
@@ -80,30 +112,39 @@ def nite2utc(nite, observer=None):
     #utc = ephem.Date(nite - nite.utcoffset())
 
     observer.date = utc
-    observer.horizon = '-14'
     #ret = observer.next_antitransit(ephem.Sun())
     ret = observer.next_setting(ephem.Sun(), use_center=True)
 
-    observer.horizon = '0'
     return ret
 
 def utc2nite(utc, observer=None):
+    """ Convert the input time (UTC) to the UTC of the start of the
+    corresponding nite. This will return the UTC of the previous
+    sunset `utc` is at night, or the UTC of the next sunset of `utc`
+    is during the day.
+
+    Parameters:
+    -----------
+    utc     : The time to determine sunset for (ephem.Date)
+    observer: The observer location (defaults to CTIO)
+    
+    Returns:
+    --------
+    nite    : The UTC of sunset on the corresponding nite (ephem.Date)
+    """
     sun = ephem.Sun()
 
-    if observer is None:
-        observer = ephem.Observer()
-        observer.lon = constants.LON_CTIO
-        observer.lat = constants.LAT_CTIO
-        observer.elevation = constants.ELEVATION_CTIO
-
+    if observer is None: observer = CTIO()
+    else:                observer = observer.copy()
     observer.date = utc
+    observer.horizon = '-14'
 
     if observer.previous_setting(sun) > observer.previous_rising(sun):
         # It's night time, use the date of the previous setting
-        nite = ephem.localtime(observer.previous_setting(sun))
+        nite = ephem.localtime(observer.previous_setting(sun, use_center=True))
     else:
         # It's daytime, use the next setting
-        nite = ephem.localtime(observer.next_setting(sun))
+        nite = ephem.localtime(observer.next_setting(sun, use_center=True))
 
     return ephem.Date(nite)
 
