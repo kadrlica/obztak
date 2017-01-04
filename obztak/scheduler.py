@@ -40,6 +40,10 @@ class Scheduler(object):
     """
     Deal with survey scheduling.
     """
+    _defaults = odict([
+            ('windows',None),
+            ('targets',None),
+            ])
 
     def __init__(self,target_fields=None,observation_windows=None,completed_fields=None):
         self.loadTargetFields(target_fields)
@@ -49,10 +53,12 @@ class Scheduler(object):
 
         self.scheduled_fields = FieldArray()
 
-        self.observatory = ephem.Observer()
-        self.observatory.lon = obztak.utils.constants.LON_CTIO
-        self.observatory.lat = obztak.utils.constants.LAT_CTIO
-        self.observatory.elevation = obztak.utils.constants.ELEVATION_CTIO
+        #self.observatory = ephem.Observer()
+        #self.observatory.lon = obztak.utils.constants.LON_CTIO
+        #self.observatory.lat = obztak.utils.constants.LAT_CTIO
+        #self.observatory.elevation = obztak.utils.constants.ELEVATION_CTIO
+
+        self.observatory = CTIO()
 
         self.loadBlancoConstraints()
 
@@ -64,7 +70,8 @@ class Scheduler(object):
         if isinstance(target_fields,basestring):
             self.target_fields = FieldArray.read(target_fields)
         else:
-            self.target_fields = target_fields
+            self.target_fields = FieldArray(target_fields)
+        return self.target_fields
 
     def loadObservationWindows(self, observation_windows=None):
         """
@@ -75,7 +82,6 @@ class Scheduler(object):
             observation_windows = os.path.join(datadir,"maglites-windows.csv")
             logging.info("Setting default observing windows: %s"%observation_windows)
 
-
         if isinstance(observation_windows,basestring):
             observation_windows = fileio.csv2rec(observation_windows)
 
@@ -83,14 +89,14 @@ class Scheduler(object):
         for start,end in observation_windows:
             self.observation_windows.append([ephem.Date(start), ephem.Date(end)])
 
-        # Do a sanity check to make sure that observation windows are properly sorted
+        # Sanity check that observation windows are properly sorted
         for ii in range(0, len(self.observation_windows)):
             if self.observation_windows[ii][1] < self.observation_windows[ii][0]:
-                logging.warning('Observation windows are not properly sorted')
+                logging.warn('Observation windows are not properly sorted')
                 logging.info('%s -- %s'%(self.observation_windows[ii][0],self.observation_windows[ii][1]))
             if ii > 0:
                 if self.observation_windows[ii][0] < self.observation_windows[ii - 1][1]:
-                    logging.warning('Observation windows are not properly sorted')
+                    logging.warn('Observation windows are not properly sorted')
                     logging.info('%s -- %s'%(self.observation_windows[ii][0],self.observation_windows[ii][1]))
 
         logging.info('Observation Windows:')
@@ -98,14 +104,14 @@ class Scheduler(object):
             logging.info('  %s UTC -- %s UTC'%(start,end))
         logging.info(30*'-')
 
-    def loadObservedFields(self, **kwargs):
+    def loadObservedFields(self):
         """
-        Load observed fields from the telemetry database.
+        Load fields that were already observed from the telemetry database.
         """
         try:
             fields = FieldArray.load_database()
         except Exception as e:
-            logging.warning("Failed to load completed exposures from database")
+            logging.warn("Failed to load completed exposures from database")
             logging.info(e)
             fields = FieldArray()
         self.observed_fields = fields
@@ -160,7 +166,6 @@ class Scheduler(object):
         """
         Load telescope pointing constraints
         """
-        # Updated to remove the dependence on scipy (which is broken on the mountain)
         datadir = fileio.get_datadir()
         data = np.recfromtxt(os.path.join(datadir,'blanco_hour_angle_limits.dat'), names=True)
 
@@ -171,14 +176,14 @@ class Scheduler(object):
 
         ha_degrees -= 1.25 # Buffer to protect us from the chicken
 
+        # Remove the dependence on scipy (which is broken on the mountain)
         self.f_hour_angle_limit = lambda dec: np.interp(dec,self.blanco_constraints['Dec'], ha_degrees, left=-1, right=-1)
         self.f_airmass_limit = lambda dec: np.interp(dec,self.blanco_constraints['Dec'], self.blanco_constraints['AirmassLimit'], left=-1, right=-1)
 
         return self.f_hour_angle_limit,self.f_airmass_limit
 
     def selectField(self, date, ra_previous=None, dec_previous=None, plot=False, mode='coverage'):
-        """
-        Select the 'best' field to observe at a given time.
+        """ Select the 'best' field to observe at a given time.
 
         A single field can contain multiple exposures (for example g- and r-band).
 
@@ -434,7 +439,7 @@ class Scheduler(object):
             raw_input('WAIT')
 
         if len(field_select) == 0:
-            msg = 'No field selected... now we\'ve got problems'
+            msg = "No field selected... now we've got problems"
             logging.warning(msg)
             print field_id, tiling
             print index_select
@@ -444,7 +449,6 @@ class Scheduler(object):
             print weight
             #ortho.plotWeight(field_select, self.target_fields, weight)
             raw_input('WAIT')
-
 
         return field_select
 
@@ -607,7 +611,8 @@ class Scheduler(object):
         """
         Schedule a night of observing.
 
-        A `nite` is defined by the day (UTC) at noon local time before observing started.
+        A `nite` is defined by the day (UTC) at noon local time before
+        observing started.
 
         Parameters:
         -----------
@@ -639,7 +644,6 @@ class Scheduler(object):
             msg += '['+', '.join(['%s/%s/%s'%t for t in nite_tuples])+']'
             logging.warning(msg)
 
-            # WARNING: copy.deepcopy doesn't work for ephem.Observer
             start = date
             self.observatory.date = date
             self.observatory.horizon = '-14'
