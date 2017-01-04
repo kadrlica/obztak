@@ -10,9 +10,8 @@ import numpy as np
 
 from obztak.field import FieldArray, SISPI_DICT, SEP
 from obztak.survey import Survey
+from obztak.scheduler import Scheduler
 
-from obztak.utils import constants
-from obztak.utils.date import datestring
 from obztak.utils import fileio
 
 PROGRAM = 'bliss'
@@ -32,3 +31,9 @@ class BlissFieldArray(FieldArray):
 
     OBJECT_FMT = 'BLISS field' + SEP + ' %s'
     SEQID_FMT = 'BLISS scheduled' + SEP + ' %(DATE)s'
+
+class BlissScheduler(Scheduler):
+
+    def write(self,filename):
+        fields = BlissFieldArray(self.scheduled_fields)
+        fields.write(filename)
