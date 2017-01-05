@@ -21,7 +21,7 @@ from obztak.utils import fileio
 
 from obztak.ctio import CTIO
 from obztak.field import FieldArray
-from obztak.utils.date import get_nite, datestring
+from obztak.utils.date import get_nite, datestring, nitestring
 
 CONDITIONS = odict([
     ('great', [1.4, 2.0]),
@@ -102,7 +102,7 @@ class Scheduler(object):
 
         logging.info('Observation Windows:')
         for start,end in self.observation_windows:
-            logging.info('  %s UTC -- %s UTC'%(start,end))
+            logging.info('  %s UTC -- %s UTC'%(datestring(start,0),datestring(end,0)))
         logging.info(30*'-')
 
     def loadObservedFields(self):
@@ -627,6 +627,7 @@ class Scheduler(object):
         chunks : A list of the chunks generated for the scheduled nite.
         """
 
+        """
         # Create the nite
         nite = get_nite(date)
         nite_tuple = nite.tuple()[:3]
@@ -653,6 +654,31 @@ class Scheduler(object):
 
             logging.info("Night start time: %s"%datestring(start))
             logging.info("Night finish time: %s"%datestring(finish))
+        """
+
+        # Create the nite
+        nite = get_nite(date)
+
+        # Convert chunk to MJD
+        if chunk > 1: chunk = chunk*ephem.minute
+
+        try:
+            nites = [get_nite(w[0]) for w in self.observation_windows]
+            idx = nites.index(nite)
+            start,finish = self.observation_windows[idx]
+        except (TypeError, ValueError):
+            msg = "Requested nite (%s) not found in windows:\n"%nite
+            msg += '['+', '.join([n for n in nites])+']'
+            logging.warning(msg)
+
+            start = date
+            self.observatory.date = date
+            self.observatory.horizon = self.observatory.twilight
+            finish = self.observatory.next_rising(ephem.Sun(), use_center=True)
+            self.observatory.horizon = '0'
+
+            logging.info("Night start (UTC):  %s"%datestring(start,0))
+            logging.info("Night finish (UTC): %s"%datestring(finish,0))
 
         chunks = []
         i = 0
@@ -701,7 +727,8 @@ class Scheduler(object):
             if end is not None and ephem.Date(tend) > ephem.Date(end): continue
 
             chunks = self.schedule_nite(tstart,chunk,clip=True,plot=False,mode=mode)
-            nite_name = '%d%02d%02d'%tstart.tuple()[:3]
+            #nite_name = '%d%02d%02d'%tstart.tuple()[:3]
+            nite_name = nitestring(tstart)
             nites[nite_name] = chunks
 
             if plot:

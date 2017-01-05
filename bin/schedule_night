@@ -8,7 +8,7 @@ import logging
 
 from obztak.scheduler import Scheduler
 from obztak.utils.parser import Parser, DatetimeAction
-from obztak.utils.date import nite2utc, utc2nite, datestring
+from obztak.utils.date import nite2utc, utc2nite, datestring, nitestring
 
 def main():
     parser = Scheduler.parser()
@@ -28,12 +28,13 @@ def main():
     else:
         date = ephem.now()
 
-    nite = utc2nite(date)
+    #nite = utc2nite(date)
+    #nitestr ='%d%02d%02d'%nite.tuple()[:3]
+    nitestr = utc2nite(date)
+    datestr = datestring(date,0)
 
-    nitestr ='%d%02d%02d'%nite.tuple()[:3]
-        
     logging.info("Scheduling nite: %s"%(nitestr))
-    logging.info("Start Time (UTC): %s"%(date))
+    logging.info("Start Time (UTC): %s"%(datestr))
 
     scheduler = Scheduler(args.fields,args.windows,args.complete)  
     chunks = scheduler.schedule_nite(date,chunk=args.chunk,plot=args.plot,mode=args.mode)
