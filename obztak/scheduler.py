@@ -19,6 +19,7 @@ from obztak.utils import constants
 from obztak.utils import ortho
 from obztak.utils import fileio
 
+from obztak.ctio import CTIO
 from obztak.field import FieldArray
 from obztak.utils.date import get_nite, datestring
 
