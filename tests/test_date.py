@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 """
-Generic python script.
+Testing for the date utils.
 """
-__author__ = "Alex Drlica-Wagner"
 
 import numpy as np
 import ephem
@@ -40,22 +39,27 @@ def test_nite2utc():
         ('20160628','2016/6/28 22:59:18'),
         ('20170222','2017/2/23 00:27:05'),
         ]
-    for val1,val2 in values:
-        utc = nite2utc(val1)
-        test = ephem.Date(val2)
-        np.testing.assert_almost_equal(utc,test,5)
+    for string,test in values:
+        dt = dateutil.parser.parse(val1)
+        eph = ephem.Date(dt)
+
+        np.testing.assert_almost_equal(nite2utc(string),ephem.Date(test)n,5)
+        np.testing.assert_almost_equal(nite2utc(eph),ephem.Date(test),5)
+        np.testing.assert_almost_equal(nite2utc(dt),ephem.Date(test),5)
 
 def test_utc2nite():
     values = [
-        ('2016/02/14 18:13:00','2016/2/14 18:36:51'),
-        ('2016/06/29 00:10:00','2016/6/28 17:59:17'),
-        ('2017/02/23 06:00:01','2017/2/22 18:27:05'),
+        ('2016/02/14 18:13:00','20160214'),
+        ('2016/06/29 00:10:00','20160628'),
+        ('2017/02/23 06:00:01','20170222'),
         ]
-    for val1,val2 in values:
-        nite = utc2nite(val1)
-        test = ephem.Date(val2)
-        np.testing.assert_almost_equal(nite,test,5)
-    
+    for string,test in values:
+        dt = dateutil.parser.parse(val1)
+        eph = ephem.Date(val1)
+
+        np.testing.assert_equal(utc2nite(string),test)
+        np.testing.assert_equal(utc2nite(eph),test)
+        np.testing.assert_equal(utc2nite(dt),test)
 
 if __name__ == "__main__":
     import argparse
