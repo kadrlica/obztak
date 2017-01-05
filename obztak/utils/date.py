@@ -34,7 +34,8 @@ def datestring(date,precision=4):
         msg = "Precision must be positive."
         raise Exception(msg)
 
-    # This is a bit annoying, but works better than converting to datetime
+    # This is a bit annoying, but works better (more accurate) than
+    # using the built-in datetime conversion
     date = ephem.Date(date)
     datetuple = date.tuple()
     seconds = round(datetuple[-1],precision)
@@ -77,7 +78,7 @@ def nitestring(nite,sep=''):
     return nitestr
 
 def nite2utc(nite, observer=None):
-    """ Convert a nite string to an ephem.Date of the UTC at sunset. 
+    """ Convert a nite string to an ephem.Date of the UTC at sunset.
 
     Parameters:
     -----------
@@ -86,67 +87,59 @@ def nite2utc(nite, observer=None):
 
     Returns:
     --------
-    utc      : The UTC of sunset (ephem.Date)
+    utc      : The UTC at sunset on this nite (ephem.Date)
     """
-    
-    import dateutil.parser
-    import dateutil.tz
-    import datetime
+    import datetime, pytz, dateutil.parser
 
     if observer is None: observer = CTIO()
     else:                observer = observer.copy()
-    observer.horizon = '-14'
+    observer.horizon = observer.twilight
 
+    # Parse the nite string (or ephem.Date)
     if not isinstance(nite,datetime.datetime):
         nite = dateutil.parser.parse(str(nite))
 
-    # Move to (local) noon
-    # This depends on where the user is and isn't very safe
-    nite = nite.replace(hour=12,tzinfo=dateutil.tz.tzlocal())
-    utc = ephem.Date(nite - nite.utcoffset())
+    # Find local noon at the observer
+    noon = observer.tz.localize(nite).replace(hour=12)
+    utc_noon = ephem.Date(noon.astimezone(pytz.utc))
 
-    # Maybe something like this instead...
-    #offset = int( (observer.lon/(2*np.pi)) * 24. * 60) * 60
-    #tzinfo = dateutil.tz.tzoffset('OBS',offset)
-    #nite = nite.replace(hour=12,tzinfo=tzinfo)
-    #utc = ephem.Date(nite - nite.utcoffset())
-
-    observer.date = utc
-    #ret = observer.next_antitransit(ephem.Sun())
-    ret = observer.next_setting(ephem.Sun(), use_center=True)
-
-    return ret
+    observer.date = utc_noon
+    sunset = observer.next_setting(ephem.Sun(), use_center=True)
+    return sunset
 
 def utc2nite(utc, observer=None):
-    """ Convert the input time (UTC) to the UTC of the start of the
-    corresponding nite. This will return the UTC of the previous
-    sunset `utc` is at night, or the UTC of the next sunset of `utc`
-    is during the day.
+    """Convert the input time (UTC) to the start of the corresponding
+    nite. This will return the UTC of the previous sunset `utc` is at
+    night, or the UTC of the next sunset of `utc` is during the day.
 
     Parameters:
     -----------
     utc     : The time to determine sunset for (ephem.Date)
     observer: The observer location (defaults to CTIO)
-    
+
     Returns:
     --------
     nite    : The UTC of sunset on the corresponding nite (ephem.Date)
+
     """
-    sun = ephem.Sun()
+    import pytz
 
     if observer is None: observer = CTIO()
     else:                observer = observer.copy()
-    observer.date = utc
-    observer.horizon = '-14'
+    observer.horizon = observer.twilight
+    observer.date = ephem.Date(utc)
 
+    sun = ephem.Sun()
     if observer.previous_setting(sun) > observer.previous_rising(sun):
         # It's night time, use the date of the previous setting
-        nite = ephem.localtime(observer.previous_setting(sun, use_center=True))
+        sunset_utc = observer.previous_setting(sun,use_center=True).datetime()
     else:
         # It's daytime, use the next setting
-        nite = ephem.localtime(observer.next_setting(sun, use_center=True))
+        sunset_utc = observer.next_setting(sun,use_center=True).datetime()
 
-    return ephem.Date(nite)
+    sunset = pytz.utc.localize(sunset_utc).astimezone(observer.tz)
+    #return ephem.Date(sunset)
+    return nitestring(sunset)
 
 def get_nite(utc=None, observer=None):
     """Convert from a UTC date and time to the 'nite'.
