@@ -47,6 +47,9 @@ def test_nite2utc():
         np.testing.assert_almost_equal(nite2utc(eph),ephem.Date(test),5)
         np.testing.assert_almost_equal(nite2utc(dt),ephem.Date(test),5)
 
+        # Convert from nite->utc->nite
+        np.testing.assert_equal(string,utc2nite(nite2utc(string)))
+
 def test_utc2nite():
     values = [
         ('2016/02/14 18:13:00','20160214'),
@@ -60,6 +63,7 @@ def test_utc2nite():
         np.testing.assert_equal(utc2nite(string),test)
         np.testing.assert_equal(utc2nite(eph),test)
         np.testing.assert_equal(utc2nite(dt),test)
+
 
 if __name__ == "__main__":
     import argparse
