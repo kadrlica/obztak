@@ -139,6 +139,12 @@ class Survey(object):
         # Apply footprint selection after tiling/dither
         sel = obztak.utils.projector.footprint(fields['RA'],fields['DEC']) # NORMAL OPERATION
 
+    def survey_prepare(self, args):
+        windows = self.prepare_windows(self.nights, outfile=args.windows, standards=args.standards)
+        infile = os.path.join(fileio.get_datadir(),'smash_fields_alltiles.txt')
+        return self.prepare_fields(infile=infile,outfile=args.fields,plot=args.plot,smcnod=args.smcnod)
+
+
     @staticmethod
     def footprint(ra,dec):
         """" Dummy footprint selection.
@@ -229,13 +235,14 @@ class Survey(object):
         # Rotate back to the original frame (keeping the R2 shift)
         return R1.rotate(ra2,dec2,invert=True)
 
-
 def parser():
     import argparse
     from obztak.utils.parser import Parser, DatetimeAction
     description = __doc__
     formatter = argparse.ArgumentDefaultsHelpFormatter
     parser = Parser(description=description,formatter_class=formatter)
+    parser.add_argument('--survey',default='Survey',
+                        help='Type of survey to schedule.')
     parser.add_argument('-p','--plot',action='store_true',
                         help='Plot output.')
     parser.add_argument('-f','--fields',default='target_fields.csv',
@@ -246,16 +253,9 @@ def parser():
                         help='Dithering scheme.')
     parser.add_argument('-s','--smcnod',action='store_true',
                         help='Include SMC Northern Overdensity fields.')
-    parser.add_argument('--no-standards',action='store_false',dest='standards', help = "Don't include time for standard star observations.")
+    parser.add_argument('--no-standards',action='store_false',dest='standards',
+                        help = "Don't include time for standard star observations.")
     return parser
-
-def main():
-    args = parser().parse_args()
-    survey = MagLiteS()
-    windows = survey.prepare_windows(survey.nights, outfile=args.windows, standards=args.standards)
-    infile = os.path.join(fileio.get_datadir(),'smash_fields_alltiles.txt')
-    survey.prepare_fields(infile=infile,outfile=args.fields,plot=args.plot,smcnod=args.smcnod)
-
 
 ############################################################
 
