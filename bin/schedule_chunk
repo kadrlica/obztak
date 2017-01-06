@@ -5,16 +5,15 @@ Executable for simulating the survey.
 import os
 import ephem
 
-from obztak.utils.date import datestring
 from obztak.scheduler import Scheduler
-from obztak.utils.parser import Parser
+from obztak.factory import scheduler_factory
 
 def main():
     parser = Scheduler.parser()
     args = parser.parse_args()
 
     start = ephem.Date(args.utc_start) if args.utc_start else ephem.now()
-    scheduler = Scheduler(args.fields,args.windows,args.complete)
+    scheduler = scheduler_factory('MaglitesScheduler',target_fields=args.fields,observation_windows=args.windows,completed_fields=args.complete)
     scheduler.schedule_chunk(start,args.chunk,plot=args.plot,mode=args.mode)
 
     outfile = args.outfile
