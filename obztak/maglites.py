@@ -10,6 +10,7 @@ import numpy as np
 
 from obztak.field import FieldArray, SISPI_DICT, SEP
 from obztak.survey import Survey
+from obztak.scheduler import Scheduler
 
 from obztak.utils import constants
 from obztak.utils.constants import BANDS,SMASH_POLE,CCD_X,CCD_Y,STANDARDS
@@ -21,7 +22,7 @@ NAME = 'MagLiteS'
 PROGRAM = NAME.lower()
 PROPID  = '2016A-0366'
 
-class MagLiteS(Survey):
+class MaglitesSurvey(Survey):
     """ Survey sublcass for MagLiteS. """
 
     # 2016A ACTUAL
@@ -189,7 +190,7 @@ class MagLiteS(Survey):
         sel = (ra > 30.) & (ra < 60.) & (dec < -65.)
         return sel
 
-class MagLiteSFieldArray(FieldArray):
+class MaglitesFieldArray(FieldArray):
     SISPI_DICT = copy.deepcopy(SISPI_DICT)
     SISPI_DICT["program"] = PROGRAM
     SISPI_DICT["propid"] = PROPID
@@ -197,10 +198,9 @@ class MagLiteSFieldArray(FieldArray):
     OBJECT_FMT = NAME.upper() + ' field'+SEP+' %s'
     SEQID_FMT  = NAME.upper() + ' scheduled'+SEP+' %(DATE)s'
 
-class MagLiteSScheduler(Scheduler):
-
+class MaglitesScheduler(Scheduler):
     def write(self,filename):
-        fields = MagLiteSFieldArray(self.scheduled_fields)
+        fields = MaglitesFieldArray(self.scheduled_fields)
         fields.write(filename)
 
 if __name__ == "__main__":
