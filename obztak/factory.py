@@ -47,6 +47,10 @@ def scheduler_factory(cls, **kwargs):
     modules = ['obztak.scheduler','obztak.maglites','obztak.bliss']
     return factory(cls, modules=modules, **kwargs)
 
+def survey_factory(cls, **kwargs):
+    modules = ['obztak.survey','obztak.maglites','obztak.bliss']
+    return factory(cls, modules=modules, **kwargs)
+
 def field_factory(cls, **kwargs):
     modules = ['obztak.field','obztak.maglites','obztak.bliss']
     return factory(cls, modules=modules, **kwargs)
