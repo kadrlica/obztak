@@ -12,12 +12,15 @@ from obztak.field import FieldArray, SISPI_DICT, SEP
 from obztak.survey import Survey
 from obztak.scheduler import Scheduler
 
+from obztak.utils.projector import cel2gal
+from obztak.utils import constants
 from obztak.utils import fileio
 
 PROGRAM = 'bliss'
 PROPID  = '2017A-0260'
+BANDS = ['g','r','i','z']
 
-class Bliss(Survey):
+class BlissSurvey(Survey):
     """ Survey sublcass for BLISS. """
 
     # 2017A ACTUAL
@@ -64,16 +67,16 @@ class Bliss(Survey):
         if mode is None or mode.lower() == 'none':
             def dither(ra,dec,dx,dy):
                 return ra,dec
-            TILINGS = [(0,0),(0,0),(0,0),(0,0)]
+            TILINGS = [(0,0),(0,0),(0,0)]
         elif mode.lower() == 'smash_dither':
-            TILINGS = [(0,0), (1.0,0.0), (-1.0,0.0), (0.0,-0.75)]
+            TILINGS = [(0,0), (1.0,0.0), (-1.0,0.0)]
             dither = self.smash_dither
         elif mode.lower() == 'smash_rotate':
-            TILINGS = [(0,0), (0.75,0.75), (-0.75,0.75), (0.0,-0.75)]
+            TILINGS = [(0,0), (0.75,0.75), (-0.75,0.75)]
             dither = self.smash_rotate
         elif mode.lower() == 'decam_dither':
             TILINGS = [(0., 0.),(8/3.*CCD_X, -11/3.*CCD_Y),
-                       (8/3.*CCD_X, 8/3.*CCD_Y),(-8/3.*CCD_X, 0.)]
+                       (8/3.*CCD_X, 8/3.*CCD_Y)]
             dither = self.decam_dither
 
         if infile is None:
@@ -123,7 +126,7 @@ class Bliss(Survey):
             import pylab as plt
             from obztak.utils.ortho import makePlot, safeProj
 
-            fig, basemap = makePlot('2016/2/11 03:00',center=(0,-70),airmass=False,moon=False)
+            fig, basemap = makePlot('2016/2/11 03:00',center=(180,-30),airmass=False,moon=False)
 
             proj = safeProj(basemap,fields['RA'],fields['DEC'])
             basemap.scatter(*proj, c=fields['TILING'], edgecolor='none', s=50, cmap='Spectral',vmin=0,vmax=len(TILINGS))
@@ -144,7 +147,7 @@ class Bliss(Survey):
         l, b = cel2gal(ra, dec)
         sel  = (np.fabs(b) > 10.)
         sel &= (ra > 120) & (ra < 180)
-        sel &= (dec < 0 ) & (dec > -45)
+        sel &= (dec < 10 ) & (dec > -30)
         return sel
 
 class BlissFieldArray(FieldArray):
