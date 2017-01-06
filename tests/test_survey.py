@@ -11,7 +11,8 @@ import json
 import numpy as np
 
 from obztak.survey import Survey
-from obztak.maglites import MagLiteS
+from obztak.maglites import MaglitesSurvey
+from obztak.bliss import BlissSurvey
 from obztak.utils.testing import call, make_options
 from obztak.utils import fileio
 
@@ -31,7 +32,7 @@ def test_prepare_windows():
     assert windows['UTC_END'][2] == '2017/02/24 04:46:37'
 
 def test_maglites_prepare_fields():
-    survey = MagLiteS()
+    survey = MaglitesSurvey()
     fields = survey.prepare_fields(plot=False)
 
     assert len(fields) == 4478
