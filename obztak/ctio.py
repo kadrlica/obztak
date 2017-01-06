@@ -15,6 +15,7 @@ from obztak.utils import constants
 class CTIO(ephem.Observer):
     """ Utility class for defining CTIO """
     def __init__(self):
+        super(ephem.Observer,self).__init__()
         self.lon = constants.LON_CTIO
         self.lat = constants.LAT_CTIO
         self.elevation = constants.ELEVATION_CTIO
