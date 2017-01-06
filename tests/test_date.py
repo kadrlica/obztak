@@ -40,10 +40,10 @@ def test_nite2utc():
         ('20170222','2017/2/23 00:27:05'),
         ]
     for string,test in values:
-        dt = dateutil.parser.parse(val1)
+        dt = dateutil.parser.parse(string)
         eph = ephem.Date(dt)
 
-        np.testing.assert_almost_equal(nite2utc(string),ephem.Date(test)n,5)
+        np.testing.assert_almost_equal(nite2utc(string),ephem.Date(test),5)
         np.testing.assert_almost_equal(nite2utc(eph),ephem.Date(test),5)
         np.testing.assert_almost_equal(nite2utc(dt),ephem.Date(test),5)
 
@@ -54,8 +54,8 @@ def test_utc2nite():
         ('2017/02/23 06:00:01','20170222'),
         ]
     for string,test in values:
-        dt = dateutil.parser.parse(val1)
-        eph = ephem.Date(val1)
+        dt = dateutil.parser.parse(string)
+        eph = ephem.Date(dt)
 
         np.testing.assert_equal(utc2nite(string),test)
         np.testing.assert_equal(utc2nite(eph),test)
