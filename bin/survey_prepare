@@ -4,15 +4,14 @@
 import os
 
 from obztak.survey import parser
-from obztak.maglites import MagLiteS
 from obztak.utils import fileio
+from obztak.factory import survey_factory
 
 def main():
     args = parser().parse_args()
-    survey = MagLiteS()
-    windows = survey.prepare_windows(survey.nights, outfile=args.windows, standards=args.standards)
-    infile = os.path.join(fileio.get_datadir(),'smash_fields_alltiles.txt')
-    survey.prepare_fields(infile=infile,outfile=args.fields,plot=args.plot,smcnod=args.smcnod)
+    #survey = survey_factory('BlissSurvey')
+    survey = survey_factory('MaglitesSurvey')
+    survey.survey_prepare(args)
 
 if __name__ == "__main__":
     main()
