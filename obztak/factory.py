@@ -7,6 +7,7 @@ import sys
 from collections import OrderedDict as odict
 import inspect
 import importlib
+import logging
 
 def factory(cls, modules=None, **kwargs):
     """
@@ -19,7 +20,6 @@ def factory(cls, modules=None, **kwargs):
     
     # Import the requested modules
     for module in modules:
-        print module
         importlib.import_module(module)
     
     # Define a preticate for selecting class members
