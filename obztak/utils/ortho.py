@@ -74,6 +74,17 @@ class DECamBasemap(Basemap):
         filename = os.path.join(fileio.get_datadir(),'maglites-poly.txt')
         self.draw_polygon(filename,**kwargs)
 
+    def draw_bliss(self,**kwargs):
+        defaults=dict(color='magenta', lw=2)
+        for k,v in defaults.items():
+            kwargs.setdefault(k,v)
+
+        filename = os.path.join(fileio.get_datadir(),'bliss-poly1.txt')
+        self.draw_polygon(filename,**kwargs)
+
+        filename = os.path.join(fileio.get_datadir(),'bliss-poly2.txt')
+        self.draw_polygon(filename,**kwargs)
+
     def draw_des(self,**kwargs):
         """ Draw the DES footprint on this Basemap instance.
         """
@@ -288,7 +299,7 @@ def drawMoon(basemap, date):
 ############################################################
 
 
-def makePlot(date=None, name=None, figsize=(10.5,8.5), dpi=80, s=50, center=None, airmass=True, moon=True, des=True, smash=True, maglites=True):
+def makePlot(date=None, name=None, figsize=(10.5,8.5), dpi=80, s=50, center=None, airmass=True, moon=True, des=True, smash=True, maglites=True, bliss=True):
     """
     Create map in orthographic projection
     """
@@ -334,6 +345,7 @@ def makePlot(date=None, name=None, figsize=(10.5,8.5), dpi=80, s=50, center=None
     if des:   drawDES(basemap)
     if smash: drawSMASH(basemap, s=s)
     if maglites: drawMAGLITES(basemap)
+    if bliss: basemap.draw_bliss()
     if airmass: drawAirmassContour(basemap, observatory, 2., s=s)
     if moon: drawMoon(basemap, date)
     plt.title('%s UTC'%(datestring(date)))
@@ -378,12 +390,16 @@ def plotField(field, target_fields=None, completed_fields=None, options_basemap=
         proj = obztak.utils.ortho.safeProj(basemap,completed_fields['RA'],completed_fields['DEC'])
         basemap.scatter(*proj, c=completed_fields['TILING'], **kwargs)
 
-    # Draw colorbar in existing axis
-    if len(fig.axes) == 2:
-        colorbar = plt.colorbar(cax=fig.axes[-1])
-    else:
-        colorbar = plt.colorbar()
-    colorbar.set_label('Tiling')
+    # Try to draw the colorbar
+    try: 
+        if len(fig.axes) == 2:
+            # Draw colorbar in existing axis
+            colorbar = plt.colorbar(cax=fig.axes[-1])
+        else:
+            colorbar = plt.colorbar()
+        colorbar.set_label('Tiling')
+    except TypeError:
+        pass
 
     # Show the selected field
     proj = obztak.utils.ortho.safeProj(basemap, field['RA'], field['DEC'])
