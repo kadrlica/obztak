@@ -127,7 +127,7 @@ class BlissSurvey(Survey):
             import pylab as plt
             from obztak.utils.ortho import makePlot, safeProj
 
-            fig, basemap = makePlot('2016/2/11 03:00',center=(180,-30),airmass=False,moon=False)
+            fig, basemap = makePlot('2016/2/11 03:00',center=(30,-30),airmass=False,moon=False)
 
             proj = safeProj(basemap,fields['RA'],fields['DEC'])
             basemap.scatter(*proj, c=fields['TILING'], edgecolor='none', s=50, cmap='Spectral',vmin=0,vmax=len(TILINGS))
@@ -147,8 +147,8 @@ class BlissSurvey(Survey):
     def footprint(ra,dec):
         l, b = cel2gal(ra, dec)
         sel  = (np.fabs(b) > 10.)
-        sel &= (ra > 120) & (ra < 180)
-        sel &= (dec < 10 ) & (dec > -30)
+        sel &= (ra > 120) & (ra < 360)
+        sel &= (dec < -10 ) & (dec > -40)
         return sel
 
 class BlissFieldArray(FieldArray):
