@@ -452,7 +452,9 @@ class Scheduler(object):
             msg += "index_select=%s, index=%s\n"%(index_select,index)
             msg += "nselected=%s, selection=%s\n"%(cut.sum(),cut[index_select])
             msg += "weights=%s"%weight
-            ortho.plotWeight(self.scheduled_fields[-1], self.target_fields, weight)
+            logging.info(msg)
+            #ortho.plotWeight(self.scheduled_fields[-1], self.target_fields, weight)
+            ortho.plotField(self.scheduled_fields[-1],self.scheduled_fields,options_basemap=dict(date='2017/02/20 05:00:00'))
             raw_input('WAIT')
             import pdb; pdb.set_trace()
             raise Exception()
