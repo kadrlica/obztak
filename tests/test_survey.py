@@ -31,20 +31,6 @@ def test_prepare_windows():
     assert windows['UTC_START'][2] == '2017/02/24 00:27:14'
     assert windows['UTC_END'][2] == '2017/02/24 04:46:37'
 
-def test_maglites_prepare_fields():
-    survey = MaglitesSurvey()
-    fields = survey.prepare_fields(plot=False)
-
-    assert len(fields) == 4478
-
-    idx = [17,583,3389]
-    test=fields[idx]
-
-    np.testing.assert_equal(test['HEX'],[2042,4947,2207])
-    np.testing.assert_equal(test['TILING'],[1,1,4])
-    np.testing.assert_allclose(test['RA'],[358.03, 104.729, 342.55892077])
-    np.testing.assert_allclose(test['DEC'],[-70.2678, -65.2038, -68.50739044])
-
 def test_survey_prepare():
     kwargs = dict(fields='test_target_fields.csv',windows='test_windows.csv')
     opts = make_options(kwargs)
