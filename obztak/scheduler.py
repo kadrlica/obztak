@@ -42,9 +42,10 @@ class Scheduler(object):
     Deal with survey scheduling.
     """
     _defaults = odict([
-            ('windows',None),
-            ('targets',None),
-            ])
+        ('windows',os.path.join(fileio.get_datadir(),"maglites-windows.csv")),
+        ('targets',os.path.join(fileio.get_datadir(),"maglites-target-fields.csv")),
+    ])
+    FieldType = FieldArray
 
     def __init__(self,target_fields=None,observation_windows=None,completed_fields=None):
         self.loadTargetFields(target_fields)
@@ -52,7 +53,7 @@ class Scheduler(object):
         self.loadObservedFields()
         self.loadCompletedFields(completed_fields)
 
-        self.scheduled_fields = FieldArray()
+        self.scheduled_fields = self.FieldType()
 
         #self.observatory = ephem.Observer()
         #self.observatory.lon = obztak.utils.constants.LON_CTIO
@@ -65,13 +66,14 @@ class Scheduler(object):
 
     def loadTargetFields(self, target_fields=None):
         if target_fields is None:
-            datadir = fileio.get_datadir()
-            target_fields = os.path.join(datadir,"maglites-target-fields.csv")
+            #datadir = fileio.get_datadir()
+            #target_fields = os.path.join(datadir,"maglites-target-fields.csv")
+            target_fields = self._defaults['targets']
 
         if isinstance(target_fields,basestring):
-            self.target_fields = FieldArray.read(target_fields)
+            self.target_fields = self.FieldType.read(target_fields)
         else:
-            self.target_fields = FieldArray(target_fields)
+            self.target_fields = self.FieldType(target_fields)
         return self.target_fields
 
     def loadObservationWindows(self, observation_windows=None):
@@ -79,8 +81,9 @@ class Scheduler(object):
         Load the set of start and stop times for the observation windows.
         """
         if observation_windows is None:
-            datadir = fileio.get_datadir()
-            observation_windows = os.path.join(datadir,"maglites-windows.csv")
+            #datadir = fileio.get_datadir()
+            #observation_windows = os.path.join(datadir,"maglites-windows.csv")
+            observation_windows = self._defaults['windows']
             logging.info("Setting default observing windows: %s"%observation_windows)
 
         if isinstance(observation_windows,basestring):
@@ -110,11 +113,11 @@ class Scheduler(object):
         Load fields that were already observed from the telemetry database.
         """
         try:
-            fields = FieldArray.load_database()
+            fields = self.FieldType.load_database()
         except Exception as e:
             logging.warn("Failed to load completed exposures from database")
             logging.info(e)
-            fields = FieldArray()
+            fields = self.FieldType()
         self.observed_fields = fields
         return self.observed_fields
 
@@ -122,25 +125,25 @@ class Scheduler(object):
     def loadCompletedFields(self, completed_fields=None):
         """Load completed fields. The default behavior is to load the
         observed fields as completed fields. However, if the string
-        'None' is passed then return an empty FieldArray.
+        'None' is passed then return an empty self.FieldType.
 
         Parameters:
         -----------
-        completed_fields : Filename, list of filenames, or FieldArray object.
+        completed_fields : Filename, list of filenames, or self.FieldType object.
 
         Returns:
         --------
-        FieldArray of the completed fields
+        self.FieldType of the completed fields
 
         """
         # Deal with 'None' string
         if isinstance(completed_fields,list):
             if completed_fields[0].lower()=='none':
-                self.completed_fields = FieldArray()
+                self.completed_fields = self.FieldType()
                 return self.completed_fields
         elif isinstance(completed_fields,basestring):
             if completed_fields.lower()=='none':
-                self.completed_fields = FieldArray()
+                self.completed_fields = self.FieldType()
                 return self.completed_fields
 
         self.completed_fields = copy.deepcopy(self.observed_fields)
@@ -152,9 +155,9 @@ class Scheduler(object):
             completed_fields = [completed_fields]
 
         if isinstance(completed_fields,list):
-            fields = FieldArray()
+            fields = self.FieldType()
             for filename in completed_fields:
-                fields = fields + FieldArray.read(filename)
+                fields = fields + self.FieldType.read(filename)
 
             completed_fields = fields
 
@@ -203,7 +206,7 @@ class Scheduler(object):
 
         Returns:
         --------
-        field        :  The selected exposures as a FieldArray object
+        field        :  The selected exposures as a self.FieldType object
         """
 
         self.observatory.date = ephem.Date(date)
@@ -230,6 +233,9 @@ class Scheduler(object):
             slew = np.tile(0., len(self.target_fields['RA']))
             slew_ra = np.tile(0., len(self.target_fields['RA']))
             slew_dec = np.tile(0., len(self.target_fields['RA']))
+
+        # ADW: I *think* that 'cut' should actually be 'sel' (i.e.,
+        # 'cut = True' means that the field is viable)
 
         # Hour angle restrictions
         #hour_angle_degree = copy.copy(self.target_fields['RA']) - ra_zenith # BUG
@@ -441,15 +447,15 @@ class Scheduler(object):
 
         if len(field_select) == 0:
             msg = "No field selected... now we've got problems"
-            logging.warning(msg)
-            print field_id, tiling
-            print index_select
-            print cut[index_select]
-            print index
-            print cut.sum()
-            print weight
-            #ortho.plotWeight(field_select, self.target_fields, weight)
+            logging.error(msg)
+            msg  = "date=%s\n"%(datestring(date,0))
+            msg += "index_select=%s, index=%s\n"%(index_select,index)
+            msg += "nselected=%s, selection=%s\n"%(cut.sum(),cut[index_select])
+            msg += "weights=%s"%weight
+            ortho.plotWeight(self.scheduled_fields[-1], self.target_fields, weight)
             raw_input('WAIT')
+            import pdb; pdb.set_trace()
+            raise Exception()
 
         return field_select
 
@@ -471,7 +477,7 @@ class Scheduler(object):
         if mode is None: mode='coverage'
 
         # Reset the scheduled fields
-        self.scheduled_fields = FieldArray(0)
+        self.scheduled_fields = self.FieldType(0)
 
         # If no tstop, run for 90 minutes
         timedelta = 90*ephem.minute
@@ -727,15 +733,13 @@ class Scheduler(object):
             if end is not None and ephem.Date(tend) > ephem.Date(end): continue
 
             chunks = self.schedule_nite(tstart,chunk,clip=True,plot=False,mode=mode)
-            #nite_name = '%d%02d%02d'%tstart.tuple()[:3]
-            nite_name = nitestring(tstart)
-            nites[nite_name] = chunks
+            nite = nitestring(tstart)
+            nites[nite] = chunks
 
             if plot:
                 field_select = self.completed_fields[-1:]
-                ortho.plotField(field_select,self.target_fields,self.completed_fields)
+                ortho.plotField(field_select,self.target_fields,self.completed_fields,options_basemap=dict(date='2017/02/21 05:00:00'))
 
-                #self.plotField(end,field_select)
                 if (raw_input(' ...continue ([y]/n)').lower()=='n'):
                     break
 

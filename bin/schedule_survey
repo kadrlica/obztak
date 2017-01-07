@@ -13,7 +13,6 @@ from obztak.factory import scheduler_factory
 def main():
     parser = Scheduler.parser()
     args = parser.parse_args()
-    args.survey = 'maglites'
 
     #scheduler = Scheduler(args.fields,args.windows,args.complete)
     scheduler = scheduler_factory(args.survey,target_fields=args.fields,observation_windows=args.windows,completed_fields=args.complete)
@@ -38,7 +37,7 @@ def main():
                 outfile = base+'_%02d'%(i+1)+ext
             logging.debug("Writing %s..."%outfile)
             chunk.write(outfile)
-        
+
     return survey
 
 if __name__ == "__main__":

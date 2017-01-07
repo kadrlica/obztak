@@ -79,6 +79,8 @@ class FieldArray(np.recarray):
     OBJECT_FMT = 'MAGLITES field'+SEP+' %s'
     SEQID_FMT  = 'MAGLITES scheduled'+SEP+' %(DATE)s'
 
+    BANDS = constants.BANDS
+
     def __new__(cls,shape=0):
         # Need to do it this way so that array can be resized...
         dtype = DTYPES.items()
@@ -116,7 +118,7 @@ class FieldArray(np.recarray):
 
     @property
     def seqnum(self):
-        return np.array([constants.BANDS.index(f)+1 for f in self['FILTER']],dtype=int)
+        return np.array([self.BANDS.index(f)+1 for f in self['FILTER']],dtype=int)
 
     @property
     def comment(self):

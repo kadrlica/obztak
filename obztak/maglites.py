@@ -5,6 +5,7 @@ Code related to the Magellanic Satellites Survey (MagLiteS).
 import os,sys
 import logging
 import copy
+from collections import OrderedDict as odict
 
 import numpy as np
 
@@ -13,7 +14,7 @@ from obztak.survey import Survey
 from obztak.scheduler import Scheduler
 
 from obztak.utils import constants
-from obztak.utils.constants import BANDS,SMASH_POLE,CCD_X,CCD_Y,STANDARDS
+from obztak.utils.constants import SMASH_POLE,CCD_X,CCD_Y,STANDARDS
 from obztak.utils.projector import cel2gal, angsep
 from obztak.utils.date import datestring
 from obztak.utils import fileio
@@ -21,6 +22,7 @@ from obztak.utils import fileio
 NAME = 'MagLiteS'
 PROGRAM = NAME.lower()
 PROPID  = '2016A-0366'
+BANDS = ['g','r']
 
 class MaglitesSurvey(Survey):
     """ Survey sublcass for MagLiteS. """
@@ -198,10 +200,15 @@ class MaglitesFieldArray(FieldArray):
     OBJECT_FMT = NAME.upper() + ' field'+SEP+' %s'
     SEQID_FMT  = NAME.upper() + ' scheduled'+SEP+' %(DATE)s'
 
+    BANDS = BANDS
+
 class MaglitesScheduler(Scheduler):
-    def write(self,filename):
-        fields = MaglitesFieldArray(self.scheduled_fields)
-        fields.write(filename)
+    _defaults = odict([
+        ('windows',os.path.join(fileio.get_datadir(),"maglites-windows.csv")),
+        ('targets',os.path.join(fileio.get_datadir(),"maglites-target-fields.csv")),
+    ])
+
+    FieldType = MaglitesFieldArray
 
 if __name__ == "__main__":
     import argparse

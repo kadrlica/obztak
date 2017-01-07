@@ -16,7 +16,6 @@ def main():
                         help='The *local* nite to schedule')
     parser.remove_argument('--utc-end')
     args = parser.parse_args()
-    args.survey = 'maglites'
 
     if args.utc_start and args.nite:
         msg = "Can't specify '--utc-start' and '--nite'"

@@ -5,6 +5,7 @@ Code related to the Magellanic Satellites Survey (MagLiteS).
 import os,sys
 import logging
 import copy
+from collections import OrderedDict as odict
 
 import numpy as np
 
@@ -158,8 +159,11 @@ class BlissFieldArray(FieldArray):
 
     OBJECT_FMT = 'BLISS field' + SEP + ' %s'
     SEQID_FMT = 'BLISS scheduled' + SEP + ' %(DATE)s'
+    BANDS = BANDS
 
 class BlissScheduler(Scheduler):
-    def write(self,filename):
-        fields = BlissFieldArray(self.scheduled_fields)
-        fields.write(filename)
+    _defaults = odict([
+        ('windows',os.path.join(fileio.get_datadir(),"bliss-windows.csv")),
+        ('targets',os.path.join(fileio.get_datadir(),"bliss-target-fields.csv")),
+    ])
+    FieldType = BlissFieldArray
