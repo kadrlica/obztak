@@ -25,6 +25,31 @@ class Survey(object):
     subclassed for specific surveys.
     """
 
+    # 2016A ACTUAL
+    nights_2016A = [
+        ['2016/02/11', 'second'],
+        ['2016/02/12', 'second'],
+        ['2016/02/13', 'second'],
+        ['2016/02/14', 'second'],
+        ['2016/02/15', 'second'],
+        ['2016/02/16', 'second'],
+        ['2016/06/27', 'full'],
+        ['2016/06/28', 'full'],
+        ['2016/06/29', 'full'],
+        ]
+
+    # 2017A ACTUAL
+    nights_2017A = [
+        ['2017/2/21', 'full'],
+        ['2017/2/22', 'full'],
+        ['2017/2/23', 'full'],
+        ['2017/6/18', 'full'],
+        ['2017/6/19', 'full'],
+        ['2017/6/20', 'full']
+        ]
+
+    nights = nights_2016A + nights_2017A
+
     def prepare_windows(self, nights, horizon=-14., standards=True, outfile=None):
         """Create a list of observation windows consisting of start-stop
         times for all dates of observation.
@@ -45,7 +70,7 @@ class Survey(object):
         observatory.lon = obztak.utils.constants.LON_CTIO
         observatory.lat = obztak.utils.constants.LAT_CTIO
         observatory.elevation = obztak.utils.constants.ELEVATION_CTIO
-        observatory.horizon = '%.2f'%(horizon)
+        observatory.horizon = str(horizon)
 
         sun = ephem.Sun()
 
@@ -85,7 +110,7 @@ class Survey(object):
 
         return observation_windows
 
-    def prepare_fields(self,polygon, mode=None):
+    def prepare_fields(self, infile=None, outfile=None, mode='smash_dither', plot=True, smcnod=False):
         """ Create the list of fields to be targeted by this survey.
 
         Parameters:
@@ -99,6 +124,10 @@ class Survey(object):
         --------
         fields : A FieldArray of the selected fields.
         """
+        # Import the dither function here...
+        #def dither(ra,dec,dx,dy):
+        #    return ra,dec
+
         if mode is None or mode.lower() == 'none':
             def dither(ra,dec,dx,dy):
                 return ra,dec
@@ -114,9 +143,17 @@ class Survey(object):
                        (8/3.*CCD_X, 8/3.*CCD_Y),(-8/3.*CCD_X, 0.)]
             dither = self.decam_dither
 
-        if not infile:
+        if infile is None:
             infile = os.path.join(fileio.get_datadir(),'smash_fields_alltiles.txt')
         data = np.recfromtxt(infile, names=True)
+
+        # Apply footprint selection after tiling/dither
+        #sel = obztak.utils.projector.footprint(data['RA'],data['DEC'])
+
+        # This is currently a non-op
+        smash_id = data['ID']
+        ra       = data['RA']
+        dec      = data['DEC']
 
         nhexes = len(data)
         #ntilings = len(DECAM_DITHERS)
@@ -128,6 +165,12 @@ class Survey(object):
         logging.info("Number of tilings: %d"%ntilings)
         logging.info("Number of filters: %d"%nbands)
 
+        fields = FieldArray(nfields)
+        fields['HEX'] = np.tile(np.repeat(smash_id,nbands),ntilings)
+        fields['PRIORITY'].fill(1)
+        fields['TILING'] = np.repeat(np.arange(1,ntilings+1),nhexes*nbands)
+        fields['FILTER'] = np.tile(BANDS,nhexes*ntilings)
+
         #for i in range(ntilings):
         for i,tiling in enumerate(TILINGS):
             idx0 = i*nhexes*nbands
@@ -137,7 +180,43 @@ class Survey(object):
             fields['DEC'][idx0:idx1] = np.repeat(dec_dither,nbands)
 
         # Apply footprint selection after tiling/dither
-        sel = obztak.utils.projector.footprint(fields['RA'],fields['DEC']) # NORMAL OPERATION
+        sel = self.footprint(fields['RA'],fields['DEC']) # NORMAL OPERATION
+        if smcnod:
+            # Include SMC northern overdensity fields
+            sel_smcnod = self.footprintSMCNOD(fields) # SMCNOD OPERATION
+            sel = sel | sel_smcnod
+            #sel = sel_smcnod
+            fields['PRIORITY'][sel_smcnod] = 99
+        #if True:
+        #    # Include 'bridge' region between Magellanic Clouds
+        #    sel_bridge = self.footprintBridge(fields['RA'],fields['DEC'])
+        #    sel = sel | sel_bridge
+        sel = sel & (fields['DEC'] > constants.SOUTHERN_REACH)
+        fields = fields[sel]
+
+        logging.info("Number of target fields: %d"%len(fields))
+
+        if plot:
+            import pylab as plt
+            import obztak.utils.ortho
+
+            plt.ion()
+
+            fig, basemap = obztak.utils.ortho.makePlot('2016/2/11 03:00',center=(0,-90),airmass=False,moon=False)
+
+            proj = obztak.utils.ortho.safeProj(basemap,fields['RA'],fields['DEC'])
+            basemap.scatter(*proj, c=fields['TILING'], edgecolor='none', s=50, cmap='Spectral',vmin=0,vmax=len(TILINGS))
+            colorbar = plt.colorbar(label='Tiling')
+
+            if outfile:
+                outfig = os.path.splitext(outfile)[0]+'.png'
+                fig.savefig(outfig,bbox_inches='tight')
+            if not sys.flags.interactive:
+                plt.show(block=True)
+
+        if outfile: fields.write(outfile)
+
+        return fields
 
     def survey_prepare(self, args):
         windows = self.prepare_windows(self.nights, outfile=args.windows, standards=args.standards)
@@ -241,7 +320,7 @@ def parser():
     description = __doc__
     formatter = argparse.ArgumentDefaultsHelpFormatter
     parser = Parser(description=description,formatter_class=formatter)
-    parser.add_argument('--survey',default='Survey',
+    parser.add_argument('--survey',default=None,
                         help='Type of survey to schedule.')
     parser.add_argument('-p','--plot',action='store_true',
                         help='Plot output.')

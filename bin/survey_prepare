@@ -9,8 +9,7 @@ from obztak.factory import survey_factory
 
 def main():
     args = parser().parse_args()
-    #survey = survey_factory('BlissSurvey')
-    survey = survey_factory('MaglitesSurvey')
+    survey = survey_factory(args.survey)
     survey.survey_prepare(args)
 
 if __name__ == "__main__":

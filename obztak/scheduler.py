@@ -751,6 +751,8 @@ class Scheduler(object):
 
         description = __doc__
         parser = Parser(description=description)
+        parser.add_argument('--survey',choices=['obztak','maglites','bliss'],
+                            default = None, help='choose survey to schedule.')
         parser.add_argument('-p','--plot',action='store_true',
                             help='create visual output.')
         parser.add_argument('--utc','--utc-start',dest='utc_start',action=DatetimeAction,
