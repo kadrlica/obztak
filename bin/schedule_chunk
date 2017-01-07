@@ -2,7 +2,6 @@
 """
 Executable for simulating the survey.
 """
-import os
 import ephem
 
 from obztak.scheduler import Scheduler
@@ -11,9 +10,10 @@ from obztak.factory import scheduler_factory
 def main():
     parser = Scheduler.parser()
     args = parser.parse_args()
+    args.survey = 'maglites'
 
     start = ephem.Date(args.utc_start) if args.utc_start else ephem.now()
-    scheduler = scheduler_factory('MaglitesScheduler',target_fields=args.fields,observation_windows=args.windows,completed_fields=args.complete)
+    scheduler = scheduler_factory(args.survey,target_fields=args.fields,observation_windows=args.windows,completed_fields=args.complete)
     scheduler.schedule_chunk(start,args.chunk,plot=args.plot,mode=args.mode)
 
     outfile = args.outfile

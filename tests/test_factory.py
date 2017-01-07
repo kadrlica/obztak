@@ -27,10 +27,14 @@ def test_survey_factory():
 
 def test_scheduler_factory():
     TEST = [
+        (None,obztak.scheduler.Scheduler),
         ('Scheduler',obztak.scheduler.Scheduler),
+        ('obztak',obztak.scheduler.Scheduler),
         ('MaglitesScheduler',obztak.maglites.MaglitesScheduler),
         ('maglitesscheduler',obztak.maglites.MaglitesScheduler),
+        ('maglites',obztak.maglites.MaglitesScheduler),
         ('BlissScheduler',obztak.bliss.BlissScheduler),
+        ('bliss',obztak.bliss.BlissScheduler),
     ]
     for string,cls in TEST:
         obj = obztak.factory.scheduler_factory(string)
@@ -39,10 +43,14 @@ def test_scheduler_factory():
 
 def test_field_factory():
     TEST = [
+        (None,obztak.field.FieldArray),
         ('FieldArray',obztak.field.FieldArray),
+        ('obztak',obztak.field.FieldArray),
         ('MaglitesFieldArray',obztak.maglites.MaglitesFieldArray),
         ('magliTEsFieldArray',obztak.maglites.MaglitesFieldArray),
+        ('maglites',obztak.maglites.MaglitesFieldArray),
         ('BlissFieldArray',obztak.bliss.BlissFieldArray),
+        ('bliss',obztak.bliss.BlissFieldArray),
     ]
     for string,cls in TEST:
         obj = obztak.factory.field_factory(string)

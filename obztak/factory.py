@@ -9,6 +9,28 @@ import inspect
 import importlib
 import logging
 
+SURVEYS = odict([
+    (None,'Survey'),
+    ('obztak','Survey'),
+    ('maglites','MaglitesSurvey'),
+    ('bliss','BlissSurvey'),
+])
+
+SCHEDULERS = odict([
+    (None,'Scheduler'),
+    ('obztak','Scheduler'),
+    ('maglites','MaglitesScheduler'),
+    ('bliss','BlissScheduler'),
+])
+
+FIELDS = odict([
+    (None,'FieldArray'),
+    ('obztak','FieldArray'),
+    ('maglites','MaglitesFieldArray'),
+    ('bliss','BlissFieldArray'),
+])
+
+
 def factory(cls, modules=None, **kwargs):
     """
     Factory for creating objects. Arguments are passed directly to the
@@ -45,14 +67,17 @@ def factory(cls, modules=None, **kwargs):
 
 def scheduler_factory(cls, **kwargs):
     modules = ['obztak.scheduler','obztak.maglites','obztak.bliss']
+    cls = SCHEDULERS.get(cls,cls)
     return factory(cls, modules=modules, **kwargs)
 
 def survey_factory(cls, **kwargs):
     modules = ['obztak.survey','obztak.maglites','obztak.bliss']
+    cls = SURVEYS.get(cls,cls)
     return factory(cls, modules=modules, **kwargs)
 
 def field_factory(cls, **kwargs):
     modules = ['obztak.field','obztak.maglites','obztak.bliss']
+    cls = FIELDS.get(cls,cls)
     return factory(cls, modules=modules, **kwargs)
 
 

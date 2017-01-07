@@ -4,20 +4,19 @@ Executable for simulating the survey.
 """
 import os
 import logging
-import itertools
 
 import ephem
-import numpy as np
 
 from obztak.scheduler import Scheduler
-from obztak.utils.parser import Parser, DatetimeAction
-from obztak.field import FieldArray
+from obztak.factory import scheduler_factory
 
 def main():
     parser = Scheduler.parser()
     args = parser.parse_args()
+    args.survey = 'maglites'
 
-    scheduler = Scheduler(args.fields,args.windows,args.complete)
+    #scheduler = Scheduler(args.fields,args.windows,args.complete)
+    scheduler = scheduler_factory(args.survey,target_fields=args.fields,observation_windows=args.windows,completed_fields=args.complete)
     survey = scheduler.schedule_survey(start=args.utc_start,end=args.utc_end,
                                        chunk=args.chunk,plot=args.plot)
 
