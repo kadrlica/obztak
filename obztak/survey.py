@@ -9,14 +9,16 @@ import numpy as np
 import ephem
 
 import obztak.utils.projector
-import obztak.utils.constants
 import obztak.utils.ortho
+import obztak.ctio
+
+from obztak.utils import constants
+from obztak.utils import fileio
+from obztak.field import FieldArray
 
 from obztak.utils.projector import cel2gal
 from obztak.utils.date import datestring
-from obztak.field import FieldArray
 from obztak.utils.constants import BANDS,SMASH_POLE,CCD_X,CCD_Y,STANDARDS
-from obztak.utils import fileio
 
 class Survey(object):
     """Base class for preparing a survey. Creates a list of observation
@@ -65,11 +67,7 @@ class Survey(object):
         --------
         observation_windows : Record array of observation windows.
         """
-
-        observatory = ephem.Observer()
-        observatory.lon = obztak.utils.constants.LON_CTIO
-        observatory.lat = obztak.utils.constants.LAT_CTIO
-        observatory.elevation = obztak.utils.constants.ELEVATION_CTIO
+        observatory = obztak.ctio.CTIO()
         observatory.horizon = str(horizon)
 
         sun = ephem.Sun()
