@@ -54,20 +54,11 @@ class Scheduler(object):
         self.loadCompletedFields(completed_fields)
 
         self.scheduled_fields = self.FieldType()
-
-        #self.observatory = ephem.Observer()
-        #self.observatory.lon = obztak.utils.constants.LON_CTIO
-        #self.observatory.lat = obztak.utils.constants.LAT_CTIO
-        #self.observatory.elevation = obztak.utils.constants.ELEVATION_CTIO
-
         self.observatory = CTIO()
-
         self.loadBlancoConstraints()
 
     def loadTargetFields(self, target_fields=None):
         if target_fields is None:
-            #datadir = fileio.get_datadir()
-            #target_fields = os.path.join(datadir,"maglites-target-fields.csv")
             target_fields = self._defaults['targets']
 
         if isinstance(target_fields,basestring):
@@ -81,8 +72,6 @@ class Scheduler(object):
         Load the set of start and stop times for the observation windows.
         """
         if observation_windows is None:
-            #datadir = fileio.get_datadir()
-            #observation_windows = os.path.join(datadir,"maglites-windows.csv")
             observation_windows = self._defaults['windows']
             logging.info("Setting default observing windows: %s"%observation_windows)
 
@@ -245,7 +234,7 @@ class Scheduler(object):
         hour_angle_degree[hour_angle_degree > 180.] -= 360.
         cut_hour_angle = np.fabs(hour_angle_degree) < self.f_hour_angle_limit(self.target_fields['DEC']) # Check the hour angle restrictions at south pole
 
-        # Airmass restrictions
+        # Blanco airmass restrictions
         cut_airmass = airmass < self.f_airmass_limit(self.target_fields['DEC'])
 
         # Declination restrictions
@@ -253,7 +242,8 @@ class Scheduler(object):
 
         # Don't consider fields which have already been observed
         cut_todo = np.logical_not(np.in1d(self.target_fields['ID'], self.completed_fields['ID']))
-        cut = cut_todo & cut_hour_angle & cut_airmass & cut_declination & (airmass < 2.) # Now with Blanco telescope constraints
+        # Now with Blanco telescope constraints
+        cut = cut_todo & cut_hour_angle & cut_airmass & cut_declination & (airmass < 2.) 
         #cut = cut_todo & (airmass < 2.) # Original
 
         # Exclude special fields unless using special tacticians
@@ -268,8 +258,10 @@ class Scheduler(object):
 
         if mode == 'airmass':
             airmass_effective = copy.copy(airmass)
-            airmass_effective[np.logical_not(cut)] = np.inf # Do not observe fields that are unavailable
-            airmass_effective += self.target_fields['TILING'] # Priorize coverage over multiple tilings
+            # Do not observe fields that are unavailable
+            airmass_effective[np.logical_not(cut)] = np.inf 
+            # Priorize coverage over multiple tilings
+            airmass_effective += self.target_fields['TILING'] 
             index_select = np.argmin(airmass_effective)
         elif mode == 'ra':
             # Different selection
@@ -417,7 +409,7 @@ class Scheduler(object):
         tiling = self.target_fields['TILING'][index_select]
 
         index = np.nonzero( (self.target_fields['HEX']==field_id) & \
-                                   (self.target_fields['TILING']==tiling) & cut)[0]
+                                (self.target_fields['TILING']==tiling) & cut)[0]
 
 
         timedelta = constants.FIELDTIME*np.arange(len(index))
@@ -479,7 +471,7 @@ class Scheduler(object):
         if mode is None: mode='coverage'
 
         # Reset the scheduled fields
-        self.scheduled_fields = self.FieldType(0)
+        self.scheduled_fields = self.FieldType()
 
         # If no tstop, run for 90 minutes
         timedelta = 90*ephem.minute
@@ -588,11 +580,6 @@ class Scheduler(object):
         field = self.target_fields[select]
 
         field['DATE'] = map(datestring,select.sum()*[date])
-        #field['AIRMASS'] =
-        #field['DATE'] =
-        #field['SLEW'] =
-        #field['MOONANGLE'] =
-        #field['HOURANGLE'] =
         return field
 
     def schedule_chunk(self,tstart=None,chunk=60,clip=False,plot=False,mode=None):
@@ -740,7 +727,7 @@ class Scheduler(object):
 
             if plot:
                 field_select = self.completed_fields[-1:]
-                ortho.plotField(field_select,self.target_fields,self.completed_fields,options_basemap=dict(date='2017/02/21 05:00:00'))
+                ortho.plotField(field_select,self.target_fields,self.completed_fields)#,options_basemap=dict(date='2017/02/21 05:00:00'))
 
                 if (raw_input(' ...continue ([y]/n)').lower()=='n'):
                     break
