@@ -118,7 +118,11 @@ class BlissSurvey(Survey):
 
         # Apply footprint selection after tiling/dither
         sel = self.footprint(fields['RA'],fields['DEC']) # NORMAL OPERATION
-        sel = sel & (fields['DEC'] > constants.SOUTHERN_REACH)
+        sel &= (fields['DEC'] > constants.SOUTHERN_REACH)
+
+        # Apply covered fields
+        sel &= self.uncovered(fields['RA'],fields['DEC'],fields['FILTER'])[0]
+
         fields = fields[sel]
 
         logging.info("Number of target fields: %d"%len(fields))
@@ -147,9 +151,38 @@ class BlissSurvey(Survey):
     def footprint(ra,dec):
         l, b = cel2gal(ra, dec)
         sel  = (np.fabs(b) > 10.)
-        sel &= (ra > 120) & (ra < 360)
-        sel &= (dec < -10 ) & (dec > -40)
+        sel &= (ra > 90) & (ra < 360)
+        sel &= (dec < -30 ) & (dec > -40)
         return sel
+
+    @staticmethod
+    def uncovered(ra,dec,band):
+        import healpy as hp
+        dirname = '/home/s1/kadrlica/projects/bliss/v0/data'
+        basename = 'decam_coverage_90s_%s_n1024.fits.gz'
+        
+        sel = np.ones_like(ra,dtype=bool)
+        frac = np.zeros_like(ra,dtype=float)
+        ra,dec,band=np.atleast_1d(ra),np.atleast_1d(dec),np.atleast_1d(band)
+
+        for b in np.unique(band):
+            idx = (band==b)
+            filename = os.path.join(dirname,basename%b)
+            logging.info("Reading %s..."%filename)
+            skymap = hp.read_map(filename,verbose=True)
+            nside = hp.get_nside(skymap)
+            vec = hp.ang2vec(np.radians(90.-dec[idx]),np.radians(ra[idx]))
+            f = []
+            for i,v in enumerate(vec):
+                print '\r%s/%s'%(i+1,len(vec)),
+                sys.stdout.flush()
+                pix = hp.query_disc(nside,v,np.radians(constants.DECAM))
+                f.append(skymap[pix].sum()/float(len(pix)))
+            print
+            frac[idx] = np.array(f)
+            
+        sel = (frac < 2/3.)
+        return sel,frac
 
 class BlissFieldArray(FieldArray):
     """ Array of BLISS fields """
@@ -160,6 +193,7 @@ class BlissFieldArray(FieldArray):
     OBJECT_FMT = 'BLISS field' + SEP + ' %s'
     SEQID_FMT = 'BLISS scheduled' + SEP + ' %(DATE)s'
     BANDS = BANDS
+
 
 class BlissScheduler(Scheduler):
     _defaults = odict([
