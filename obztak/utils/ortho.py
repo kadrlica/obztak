@@ -12,6 +12,7 @@ import tempfile
 import subprocess
 
 import obztak.utils.projector
+from obztak.utils.projector import gal2cel
 
 from obztak.utils import constants
 from obztak.utils import fileio
@@ -42,11 +43,32 @@ matplotlib.rcParams.update(params)
 
 ############################################################
 
+def setdefaults(kwargs,defaults):
+    for k,v in defaults.items():
+        kwargs.setdefault(k,v)
+    return kwargs
+
 class DECamBasemap(Basemap):
 
     def __init__(self, *args, **kwargs):
         super(DECamBasemap,self).__init__(self,*args,**kwargs)
+        self.draw_parallels()
+        self.draw_meridians()
 
+    def draw_parallels(self,*args,**kwargs):
+        defaults = dict()
+        if not args: defaults.update(circles=np.arange(-90,120,30))
+        setdefaults(kwargs,defaults)
+        self.drawparallels(*args, **kwargs)
+
+    def draw_meridians(self,*args,**kwargs):
+        defaults = dict(labels=[1,0,0,1])
+        if self.projection in ['ortho','geos','nsper','aeqd']:
+            defaults.update(labels=[0,0,0,0])
+        if not args: defaults.update(meridians=np.arange(0,420,60))
+        setdefaults(kwargs,defaults)
+        self.drawmeridians(*args,**kwargs)
+        
     def proj(self,lon,lat):
         """ Remove points outside of projection """
         x, y = self(np.atleast_1d(lon),np.atleast_1d(lat))
@@ -54,6 +76,17 @@ class DECamBasemap(Basemap):
         y[y > 1e29] = None
         #return np.ma.array(x,mask=x>1e2),np.ma.array(y,mask=y>1e2)
         return x, y
+
+    @staticmethod
+    def roll(ra,dec):
+        idx = np.abs(ra - 180).argmin()
+        if   (ra[idx]<180) and (ra[idx+1]>180): idx += 1
+        elif (ra[idx]>180) and (ra[idx+1]<180): idx += 1
+        return np.roll(ra,-idx), np.roll(dec,-idx)
+
+    @staticmethod
+    def split(ra,angle=180):
+        pass
 
     def draw_polygon(self,filename,**kwargs):
         """ Draw a polygon footprint on this Basemap instance.
@@ -63,9 +96,30 @@ class DECamBasemap(Basemap):
             kwargs.setdefault(k,v)
 
         perim = np.loadtxt(filename,dtype=[('ra',float),('dec',float)])
-        xy = self.proj(perim['ra'],perim['dec'])
-        self.plot(*xy,**kwargs)
+        self.draw_polygon_radec(perim['ra'],perim['dec'],**kwargs)
 
+    def draw_polygon_radec(self,ra,dec,**kwargs):
+        xy = self.proj(ra,dec)
+        self.plot(*xy,**kwargs)
+        
+    def draw_galaxy(self,width=None,**kwargs):
+        defaults = dict(color='k',lw=1.5,ls='-')
+        setdefaults(kwargs,defaults)
+
+
+        glon = np.linspace(0,360,100)
+        glat = np.zeros_like(glon)
+        ra,dec = self.roll(*gal2cel(glon,glat))
+
+        self.draw_polygon_radec(ra,dec,**kwargs)
+        
+        if width:
+            kwargs.update(dict(ls='--',lw=1))
+            for delta in [+width,-width]:
+                ra,dec = self.roll(*gal2cel(glon,glat+delta))
+                self.draw_polygon_radec(ra,dec,**kwargs)
+            
+        
     def draw_maglites(self,**kwargs):
         defaults=dict(color='blue', lw=2)
         for k,v in defaults.items():
@@ -105,6 +159,21 @@ class DECamBasemap(Basemap):
         xy = self.proj(smash['ra'],smash['dec'])
         self.scatter(*xy,**kwargs)
 
+    def draw_decals(self,**kwargs):
+        defaults=dict(color='red', lw=2)
+        for k,v in defaults.items():
+            kwargs.setdefault(k,v)
+
+        filename = os.path.join(fileio.get_datadir(),'decals-perimeter.txt')
+        decals = np.genfromtxt(filename,names=['poly','ra','dec'])
+        poly1 = decals[decals['poly'] == 1]
+        poly2 = decals[decals['poly'] == 2]
+        #self.draw_polygon_radec(poly1['ra'],poly1['dec'],**kwargs)
+        #self.draw_polygon_radec(poly2['ra'],poly2['dec'],**kwargs)
+        self.scatter(*self.proj(poly1['ra'],poly1['dec']))
+        self.scatter(*self.proj(poly2['ra'],poly2['dec']))
+        
+
     def draw_airmass(self, observatory, airmass, npts=360, **kwargs):
         defaults = dict(color='green', lw=2)
         for k,v in defaults.items():
@@ -122,6 +191,48 @@ class DECamBasemap(Basemap):
 
         self.drawZenith(observatory)
 
+    def draw_jethwa(self,filename=None,log=True,**kwargs):
+        import healpy as hp
+        if not filename: 
+            datadir = '/home/s1/kadrlica/projects/bliss/v0/data/'
+            filename = os.path.join(datadir,'jethwa_satellites_n256.fits.gz')
+        hpxmap = hp.read_map(filename)
+        if log:
+            return self.draw_hpxmap(np.log10(hpxmap),**kwargs)
+        else:
+            return self.draw_hpxmap(hpxmap,**kwargs)
+
+    def draw_planet9(self,**kwargs):
+        from scipy.interpolate import interp1d
+        defaults=dict(color='b',lw=3)
+        setdefaults(kwargs,defaults)
+        datadir = '/home/s1/kadrlica/projects/bliss/v0/data/'
+        ra_lo,dec_lo=np.genfromtxt(datadir+'p9_lo.txt',usecols=(0,1)).T
+        ra_lo,dec_lo = self.roll(ra_lo,dec_lo)
+        ra_hi,dec_hi=np.genfromtxt(datadir+'p9_hi.txt',usecols=(0,1)).T
+        ra_hi,dec_hi = self.roll(ra_hi,dec_hi)
+        self.plot(ra_lo,dec_lo,latlon=True,**kwargs)
+        self.plot(ra_hi,dec_hi,latlon=True,**kwargs)
+
+        orb = fileio.csv2rec(datadir+'P9_orbit_Cassini.csv')[::7]
+        kwargs = dict(marker='o',s=40,edgecolor='none',cmap='jet_r')
+        self.scatter(*self.proj(orb['ra'],orb['dec']),c=orb['cassini'],**kwargs)
+    def draw_ligo(self,filename=None, log=True,**kwargs):
+        import healpy as hp
+        from astropy.io import fits as pyfits
+        if not filename:
+            datadir = '/home/s1/kadrlica/projects/bliss/v0/data/'
+            filename = datadir + 'obsbias_heatmap_semesterA.fits'
+        hpxmap = pyfits.open(filename)[0].data
+        if log: self.draw_hpxmap(np.log10(hpxmap))
+        else:   self.draw_hpxmap(hpxmap)
+        
+        
+    def draw_fields(self,fields,**kwargs):
+        defaults = dict(edgecolor='k',facecolor='none',s=15)
+        setdefaults(kwargs,defaults)
+        self.scatter(*self.proj(fields['RA'],fields['DEC']),**kwargs)
+        
     def draw_zenith(self, observatory):
         """
         Plot a to-scale representation of the focal plane size at the zenith.
@@ -137,24 +248,66 @@ class DECamBasemap(Basemap):
         self.plot(*xy,marker='+',ms=10,mew=1.5, **kwargs)
         self.tissot(ra_zenith, dec_zenith, constants.DECAM, 100, fc='none',**kwargs)
 
+    def draw_moon(self, date):
+        moon = ephem.Moon()
+        moon.compute(date)
+        ra_moon = np.degrees(moon.ra)
+        dec_moon = np.degrees(moon.dec)
+     
+        proj = self.proj(np.array([ra_moon]), np.array([dec_moon]))
+     
+        if np.isnan(proj[0]).all() or np.isnan(proj[1]).all(): return
+     
+        self.scatter(*proj, color='%.2f'%(0.01 * moon.phase), edgecolor='black', s=500)
+        color = 'black' if moon.phase > 50. else 'white'
+        plt.text(proj[0], proj[1], '%.2f'%(0.01 * moon.phase),
+                 fontsize=10, ha='center', va='center', color=color)
 
-############################################################
 
-def drawMoon(basemap, date):
-    moon = ephem.Moon()
-    moon.compute(date)
-    ra_moon = np.degrees(moon.ra)
-    dec_moon = np.degrees(moon.dec)
+    def draw_hpxmap(self, hpxmap, xsize=800, **kwargs):
+        """
+        Use pcolormesh to draw healpix map
+        """
+        import healpy
+        if not isinstance(hpxmap,np.ma.MaskedArray):
+            mask = ~np.isfinite(hpxmap) | (hpxmap==healpy.UNSEEN)
+            hpxmap = np.ma.MaskedArray(hpxmap,mask=mask)
 
-    proj = safeProj(basemap, np.array([ra_moon]), np.array([dec_moon]))
+        vmin,vmax = np.percentile(hpxmap.compressed(),[0.1,99.9])
 
-    if np.isnan(proj[0]).all() or np.isnan(proj[1]).all(): return
+        defaults = dict(latlon=True, rasterized=True, vmin=vmin, vmax=vmax)
+        setdefaults(kwargs,defaults)
 
-    basemap.scatter(*proj, color='%.2f'%(0.01 * moon.phase), edgecolor='black', s=500)
-    color = 'black' if moon.phase > 50. else 'white'
-    plt.text(proj[0], proj[1], '%.2f'%(0.01 * moon.phase),
-             fontsize=10, ha='center', va='center', color=color)
+        ax = plt.gca()
+        
+        lon = np.linspace(0, 360., xsize) 
+        lat = np.linspace(-90., 90., xsize) 
+        lon, lat = np.meshgrid(lon, lat)
 
+        nside = healpy.get_nside(hpxmap.data)
+        pix = healpy.ang2pix(nside,lon,lat,lonlat=True)
+
+        values = hpxmap[pix]
+        #mask = ((values == healpy.UNSEEN) | (~np.isfinite(values)))
+        #values = np.ma.array(values,mask=mask)
+        if self.projection is 'ortho':
+            im = self.pcolor(lon,lat,values,**kwargs)
+        else:
+            im = self.pcolormesh(lon,lat,values,**kwargs)
+
+        return im
+
+class DECamMcBride(DECamBasemap):
+    def __init__(self,*args,**kwargs):
+        defaults = dict(projection='mbtfpq',lon_0=0,rsphere=1.0,celestial=True)
+        setdefaults(kwargs,defaults)
+        super(DECamMcBride,self).__init__(*args, **kwargs)
+
+class DECamOrtho(DECamBasemap):
+    def __init__(self,*args,**kwargs):
+        defaults = dict(projection='ortho',celestial=True,lon_0=0,lat_0=-30.17)
+        setdefaults(kwargs,defaults)
+        super(DECamOrtho,self).__init__(*args, **kwargs)
 
 ############################################################
 
@@ -337,10 +490,10 @@ def makePlot(date=None, name=None, figsize=(10.5,8.5), dpi=80, s=50, center=None
     proj_kwargs.update(lon_0=lon_0, lat_0=lat_0)
     basemap = DECamBasemap(**proj_kwargs)
 
-    parallels = np.arange(-90.,120.,30.)
-    basemap.drawparallels(parallels)
-    meridians = np.arange(0.,420.,60.)
-    basemap.drawmeridians(meridians)
+    #parallels = np.arange(-90.,120.,30.)
+    #basemap.drawparallels(parallels)
+    #meridians = np.arange(0.,420.,60.)
+    #basemap.drawmeridians(meridians)
 
     if des:   drawDES(basemap)
     if smash: drawSMASH(basemap, s=s)
@@ -366,8 +519,7 @@ def plotField(field, target_fields=None, completed_fields=None, options_basemap=
         tmp[0] = field
         field = tmp
 
-    msg = "  Plotting -- "
-    msg += "%s (time=%.8s, "%(field['ID'][0],field['DATE'][0].split(' ')[-1])
+    msg = "%s (date=%s, "%(field['ID'][0],datestring(field['DATE'][0],0))
     msg +="ra=%(RA)-6.2f, dec=%(DEC)-6.2f, secz=%(AIRMASS)-4.2f)"%field[0]
     logging.info(msg)
 
@@ -424,7 +576,7 @@ def plotFields(fields=None,target_fields=None,completed_fields=None,options_base
     for i,f in enumerate(fields):
         plotField(fields[i],target_fields,completed_fields,options_basemap,**kwargs)
         #plt.savefig('field_%08i.png'%i)
-        if completed_fields is None: completed_fields = FieldArray(0)
+        if completed_fields is None: completed_fields = FieldArray()
         completed_fields = completed_fields + fields[[i]]
 
         #time.sleep(0.01)
@@ -448,7 +600,7 @@ def movieFields(outfile,fields=None,target_fields=None,completed_fields=None,**k
         plotField(fields[i],target_fields,completed_fields,**kwargs)
         png = os.path.join(tmpdir,'field_%08i.png'%i)
         plt.savefig(png,bbox_inches='tight',dpi=100)
-        if completed_fields is None: completed_fields = FieldArray(0)
+        if completed_fields is None: completed_fields = FieldArray()
         completed_fields = completed_fields + fields[[i]]
 
     cmd = 'convert -delay 10 -loop 0 %s/*.png %s'%(tmpdir,outfile)
