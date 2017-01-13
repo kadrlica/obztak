@@ -465,14 +465,14 @@ class Scheduler(object):
         else:
             previous_field = None
 
-        self.tactician = CoverageTactician(self.target_fields)
+        sel = ~np.in1d(self.target_fields['ID'],self.completed_fields['ID'])
+        self.tactician = CoverageTactician(self.target_fields[sel])
         self.tactician.set_date(date)
         self.tactician.set_previous_field(previous_field)
 
         field_select = self.tactician.select_fields()
 
-        msg = str(field_select)
-        logging.debug(msg)
+        logging.debug(str(field_select))
 
         # For diagnostic purposes
         if False and len(self.scheduled_fields) % 10 == 0:

@@ -117,7 +117,10 @@ class Tactician(object):
         # Declination restrictions
         sel_declination = self.fields['DEC'] > constants.SOUTHERN_REACH
 
-        viable = sel_hour_angle & sel_airmass & sel_declination
+        # Exclude special fields (unless using special tacticians)
+        sel_special = self.fields['PRIORITY'] < 90
+
+        viable = sel_hour_angle & sel_airmass & sel_declination & sel_special
         return viable
 
     @property
