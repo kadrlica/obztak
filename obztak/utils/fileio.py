@@ -12,7 +12,6 @@ import logging
 
 from obztak import __version__
 from obztak.utils.constants import FLOAT_FMT
-from obztak.utils.date import datestring
 
 def get_username():
     import os,pwd
@@ -113,6 +112,7 @@ def fields2sispi(infile,outfile=None,force=False):
 
 def header():    
     import ephem
+    from obztak.utils.date import datestring
     now = ephem.now()
     header  = "# author: %s@%s\n"%(get_username(),get_hostname())
     header += "# date: %s UTC\n"%(datestring(ephem.now(),0))
