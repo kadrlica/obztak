@@ -455,7 +455,48 @@ class Scheduler(object):
         return field_select
 
 
-    def run(self, tstart=None, tstop=None, clip=False, plot=True, mode=None):
+    def selectField2(self, date, ra_previous=None, dec_previous=None, plot=False, mode='coverage'):
+        from obztak.tactician import CoverageTactician
+
+        if ra_previous or dec_previous:
+            previous_field = FieldArray(1)
+            previous_field['RA'] = ra_previous
+            previous_field['DEC'] = dec_previous
+        else:
+            previous_field = None
+
+        self.tactician = CoverageTactician(self.target_fields)
+        self.tactician.set_date(date)
+        self.tactician.set_previous_field(previous_field)
+
+        field_select = self.tactician.select_fields()
+
+        msg = str(field_select)
+        logging.debug(msg)
+
+        # For diagnostic purposes
+        if False and len(self.scheduled_fields) % 10 == 0:
+            ortho.plotWeight(field_select[-1], self.target_fields, weight)
+            raw_input('WAIT')
+
+        if len(field_select) == 0:
+            msg = "No field selected... we've got problems."
+            logging.error(msg)
+            msg  = "date=%s\n"%(datestring(date,0))
+            msg += "index_select=%s, index=%s\n"%(index_select,index)
+            msg += "nselected=%s, selection=%s\n"%(cut.sum(),cut[index_select])
+            msg += "weights=%s"%weight
+            logging.info(msg)
+            #ortho.plotWeight(self.scheduled_fields[-1], self.target_fields, weight)
+            ortho.plotField(self.scheduled_fields[-1],self.scheduled_fields,options_basemap=dict(date='2017/02/20 05:00:00'))
+            raw_input('WAIT')
+            import pdb; pdb.set_trace()
+            raise Exception()
+
+        return field_select
+
+
+    def run(self, tstart=None, tstop=None, clip=False, plot=False, mode=None):
         """
         Schedule a chunk of exposures.
 
