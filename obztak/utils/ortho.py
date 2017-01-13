@@ -10,6 +10,7 @@ import time
 import logging
 import tempfile
 import subprocess
+import warnings
 
 import obztak.utils.projector
 from obztak.utils.projector import gal2cel
@@ -18,6 +19,7 @@ from obztak.utils import constants
 from obztak.utils import fileio
 from obztak.field import FieldArray
 from obztak.utils.date import datestring,nite2utc,utc2nite,get_nite
+from obztak.ctio import CTIO
 
 plt.ion()
 
@@ -106,8 +108,7 @@ class DECamBasemap(Basemap):
         defaults = dict(color='k',lw=1.5,ls='-')
         setdefaults(kwargs,defaults)
 
-
-        glon = np.linspace(0,360,100)
+        glon = np.linspace(0,360,200)
         glat = np.zeros_like(glon)
         ra,dec = self.roll(*gal2cel(glon,glat))
 
@@ -189,7 +190,37 @@ class DECamBasemap(Basemap):
         xy = self.proj(ra_contour, dec_contour)
         self.plot(*xy, **kwargs)
 
-        self.drawZenith(observatory)
+        self.draw_zenith(observatory,**kwargs)
+
+    def draw_zenith(self, observatory,**kwargs):
+        """
+        Plot a to-scale representation of the focal plane size at the zenith.
+        """
+        defaults = dict(color='green',alpha=0.75,lw=1.5)
+        for k,v in defaults.items():
+            kwargs.setdefault(k,v)
+
+        # RA and Dec of zenith
+        ra_zenith, dec_zenith = np.degrees(observatory.radec_of(0, '90'))
+        xy = self.proj(ra_zenith, dec_zenith)
+
+        self.plot(*xy,marker='+',ms=10,mew=1.5, **kwargs)
+        self.tissot(ra_zenith, dec_zenith, constants.DECAM, 100, fc='none',**kwargs)
+
+    def draw_moon(self, date):
+        moon = ephem.Moon()
+        moon.compute(date)
+        ra_moon = np.degrees(moon.ra)
+        dec_moon = np.degrees(moon.dec)
+     
+        proj = self.proj(np.array([ra_moon]), np.array([dec_moon]))
+     
+        if np.isnan(proj[0]).all() or np.isnan(proj[1]).all(): return
+     
+        self.scatter(*proj, color='%.2f'%(0.01 * moon.phase), edgecolor='black', s=500)
+        color = 'black' if moon.phase > 50. else 'white'
+        plt.text(proj[0], proj[1], '%.2f'%(0.01 * moon.phase),
+                 fontsize=10, ha='center', va='center', color=color)
 
     def draw_jethwa(self,filename=None,log=True,**kwargs):
         import healpy as hp
@@ -230,38 +261,11 @@ class DECamBasemap(Basemap):
         
     def draw_fields(self,fields,**kwargs):
         defaults = dict(edgecolor='k',facecolor='none',s=15)
+        if self.projection == 'ortho': defaults.update(s=50)
+        else: defaults.update(s=15)
         setdefaults(kwargs,defaults)
         self.scatter(*self.proj(fields['RA'],fields['DEC']),**kwargs)
         
-    def draw_zenith(self, observatory):
-        """
-        Plot a to-scale representation of the focal plane size at the zenith.
-        """
-        defaults = dict(color='green',alpha=0.75,lw=1.5)
-        for k,v in defaults.items():
-            kwargs.setdefault(k,v)
-
-        # RA and Dec of zenith
-        ra_zenith, dec_zenith = np.degrees(observatory.radec_of(0, '90'))
-        xy = self.proj(ra_zenith, dec_zenith)
-
-        self.plot(*xy,marker='+',ms=10,mew=1.5, **kwargs)
-        self.tissot(ra_zenith, dec_zenith, constants.DECAM, 100, fc='none',**kwargs)
-
-    def draw_moon(self, date):
-        moon = ephem.Moon()
-        moon.compute(date)
-        ra_moon = np.degrees(moon.ra)
-        dec_moon = np.degrees(moon.dec)
-     
-        proj = self.proj(np.array([ra_moon]), np.array([dec_moon]))
-     
-        if np.isnan(proj[0]).all() or np.isnan(proj[1]).all(): return
-     
-        self.scatter(*proj, color='%.2f'%(0.01 * moon.phase), edgecolor='black', s=500)
-        color = 'black' if moon.phase > 50. else 'white'
-        plt.text(proj[0], proj[1], '%.2f'%(0.01 * moon.phase),
-                 fontsize=10, ha='center', va='center', color=color)
 
 
     def draw_hpxmap(self, hpxmap, xsize=800, **kwargs):
@@ -322,6 +326,8 @@ def safeProj(proj, lon, lat):
 ############################################################
 
 def drawDES(basemap, color='red'):
+    msg = "drawDES is depricated; use DECamBasemap.draw_des instead."
+    warnings.warn(msg)
     infile = os.path.join(fileio.get_datadir(),'round13-poly.txt')
     reader_poly = open(infile)
     lines_poly = reader_poly.readlines()
@@ -346,6 +352,8 @@ def drawDES(basemap, color='red'):
 ############################################################
 
 def drawSMASH(basemap, color='none', edgecolor='black', marker='h', s=50):
+    msg = "drawSMASH is depricated; use DECamBasemap.draw_smash instead."
+    warnings.warn(msg)
     # SMASH fields
     infile = os.path.join(fileio.get_datadir(),'smash_fields_final.txt')
     reader = open(infile)
@@ -370,10 +378,11 @@ def drawSMASH(basemap, color='none', edgecolor='black', marker='h', s=50):
 
     #basemap.scatter(ra_smash, dec_smash, latlon=True, edgecolor='black', color='none', marker='h', s=50)
 
-
 ############################################################
 
 def drawMAGLITES(basemap, color='blue'):
+    msg = "drawMAGLITES is depricated; use DECamBasemap.draw_smash instead."
+    warnings.warn(msg)
     infile = os.path.join(fileio.get_datadir(),'maglites-poly.txt')
     reader_poly = open(infile)
     lines_poly = reader_poly.readlines()
@@ -398,6 +407,8 @@ def drawMAGLITES(basemap, color='blue'):
 ############################################################
 
 def drawAirmassContour(basemap, observatory, airmass, n=360, s=50):
+    msg = "drawAirmassContour is depricated; use DECamBasemap.draw_airmass instead."
+    warnings.warn(msg)
     #airmass = 1. / cos(90. - altitude)
     #90 - alt = arccos(1. / airmass)
     altitude_radians = (0.5 * np.pi) - np.arccos(1. / airmass)
@@ -422,6 +433,8 @@ def drawZenith(basemap, observatory):
     """
     Plot a to-scale representation of the focal plane size at the zenith.
     """
+    msg = "drawZenith is depricated; use DECamBasemap.draw_zenith instead."
+    warnings.warn(msg)
     ra_zenith, dec_zenith = observatory.radec_of(0, '90') # RA and Dec of zenith
     ra_zenith = np.degrees(ra_zenith)
     dec_zenith = np.degrees(dec_zenith)
@@ -431,10 +444,11 @@ def drawZenith(basemap, observatory):
     basemap.plot(*proj,marker='+',ms=10,mew=1.5, **zen_kwargs)
     basemap.tissot(ra_zenith, dec_zenith, constants.DECAM, 100, fc='none',**zen_kwargs)
 
-
 ############################################################
 
 def drawMoon(basemap, date):
+    msg = "drawMoon is depricated; use DECamBasemap.draw_moon instead."
+    warnings.warn(msg)
     moon = ephem.Moon()
     moon.compute(date)
     ra_moon = np.degrees(moon.ra)
@@ -451,7 +465,6 @@ def drawMoon(basemap, date):
 
 ############################################################
 
-
 def makePlot(date=None, name=None, figsize=(10.5,8.5), dpi=80, s=50, center=None, airmass=True, moon=True, des=True, smash=True, maglites=True, bliss=True):
     """
     Create map in orthographic projection
@@ -460,10 +473,11 @@ def makePlot(date=None, name=None, figsize=(10.5,8.5), dpi=80, s=50, center=None
     if type(date) != ephem.Date:
         date = ephem.Date(date)
 
-    observatory = ephem.Observer()
-    observatory.lon = constants.LON_CTIO
-    observatory.lat = constants.LAT_CTIO
-    observatory.elevation = constants.ELEVATION_CTIO
+    observatory = CTIO()
+    #observatory = ephem.Observer()
+    #observatory.lon = constants.LON_CTIO
+    #observatory.lat = constants.LAT_CTIO
+    #observatory.elevation = constants.ELEVATION_CTIO
     observatory.date = date
 
     #fig, ax = plt.subplots(fig='ortho', figsize=FIGSIZE, dpi=DPI)
@@ -495,12 +509,20 @@ def makePlot(date=None, name=None, figsize=(10.5,8.5), dpi=80, s=50, center=None
     #meridians = np.arange(0.,420.,60.)
     #basemap.drawmeridians(meridians)
 
-    if des:   drawDES(basemap)
-    if smash: drawSMASH(basemap, s=s)
-    if maglites: drawMAGLITES(basemap)
+    #if des:   drawDES(basemap)
+    #if smash: drawSMASH(basemap, s=s)
+    #if maglites: drawMAGLITES(basemap)
+    #if bliss: basemap.draw_bliss()
+    #if airmass: drawAirmassContour(basemap, observatory, 2., s=s)
+    #if moon: drawMoon(basemap, date)
+
+    if des:   basemap.draw_des()
+    if smash: basemap.draw_smash(s=s)
+    if maglites: basemap.draw_maglites()
     if bliss: basemap.draw_bliss()
-    if airmass: drawAirmassContour(basemap, observatory, 2., s=s)
-    if moon: drawMoon(basemap, date)
+    if airmass: basemap.draw_airmass(observatory, 2.)
+    if moon: basemap.draw_moon(date)
+
     plt.title('%s UTC'%(datestring(date)))
 
     #return fig, ax, basemap
