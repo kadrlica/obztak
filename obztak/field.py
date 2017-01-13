@@ -88,6 +88,16 @@ class FieldArray(np.recarray):
         values = VALUES.items()
         for k,v in values: self[k].fill(v)
         return self
+    
+    #def __array_finalize__(self,obj):
+    #    print('In array_finalize:')
+    #    print('   self type is %s' % type(self))
+    #    print('   obj type is %s' % type(obj))
+
+    #def __array_wrap__(self, out_arr, context=None):
+    #    print('In __array_wrap__:')
+    #    print('   self is %s' % repr(self))
+    #    print('   arr is %s' % repr(out_arr))
 
     def __add__(self, other):
         return np.concatenate([self,other]).view(self.__class__)
