@@ -14,10 +14,12 @@ def main():
     parser = Scheduler.parser()
     args = parser.parse_args()
 
-    #scheduler = Scheduler(args.fields,args.windows,args.complete)
-    scheduler = scheduler_factory(args.survey,target_fields=args.fields,observation_windows=args.windows,completed_fields=args.complete)
+    scheduler = scheduler_factory(args.survey,target_fields=args.fields,
+                                  observation_windows=args.windows,
+                                  completed_fields=args.complete)
     survey = scheduler.schedule_survey(start=args.utc_start,end=args.utc_end,
-                                       chunk=args.chunk,plot=args.plot)
+                                       chunk=args.chunk,plot=args.plot,
+                                       mode=args.mode)
 
     # Write all completed fields
     scheduler.completed_fields.write('survey_fields.csv')
