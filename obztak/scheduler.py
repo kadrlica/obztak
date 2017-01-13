@@ -159,6 +159,7 @@ class Scheduler(object):
         """
         Load telescope pointing constraints
         """
+        # ADW: This really belongs associated with the observatory
         datadir = fileio.get_datadir()
         data = np.recfromtxt(os.path.join(datadir,'blanco_hour_angle_limits.dat'), names=True)
 
@@ -195,12 +196,12 @@ class Scheduler(object):
 
         Returns:
         --------
-        field        :  The selected exposures as a self.FieldType object
+        field        :  The selected exposures as a FieldArray-like object
         """
 
         self.observatory.date = ephem.Date(date)
-
-        ra_zenith, dec_zenith = self.observatory.radec_of(0, '90') # RA and Dec of zenith
+        # RA and Dec of zenith
+        ra_zenith, dec_zenith = self.observatory.radec_of(0, '90') 
         ra_zenith = np.degrees(ra_zenith)
         dec_zenith = np.degrees(dec_zenith)
         airmass = obztak.utils.projector.airmass(ra_zenith, dec_zenith, self.target_fields['RA'], self.target_fields['DEC'])
