@@ -42,16 +42,16 @@ class Scheduler(object):
     FieldType = FieldArray
 
     def __init__(self,target_fields=None,observation_windows=None,completed_fields=None,tactician=None):
-        self.loadTargetFields(target_fields)
-        self.loadObservationWindows(observation_windows)
-        self.loadObservedFields()
-        self.loadCompletedFields(completed_fields)
+        self.load_target_fields(target_fields)
+        self.load_observation_windows(observation_windows)
+        self.load_observed_fields()
+        self.load_completed_fields(completed_fields)
 
         self.scheduled_fields = self.FieldType()
         self.observatory = CTIO()
         self.create_tactician(tactician)
 
-    def loadTargetFields(self, target_fields=None):
+    def load_target_fields(self, target_fields=None):
         if target_fields is None:
             target_fields = self._defaults['targets']
 
@@ -61,7 +61,7 @@ class Scheduler(object):
             self.target_fields = self.FieldType(target_fields)
         return self.target_fields
 
-    def loadObservationWindows(self, observation_windows=None):
+    def load_observation_windows(self, observation_windows=None):
         """
         Load the set of start and stop times for the observation windows.
         """
@@ -91,7 +91,7 @@ class Scheduler(object):
             logging.info('  %s UTC -- %s UTC'%(datestring(start,0),datestring(end,0)))
         logging.info(30*'-')
 
-    def loadObservedFields(self):
+    def load_observed_fields(self):
         """
         Load fields that were already observed from the telemetry database.
         """
@@ -105,7 +105,7 @@ class Scheduler(object):
         return self.observed_fields
 
 
-    def loadCompletedFields(self, completed_fields=None):
+    def load_completed_fields(self, completed_fields=None):
         """Load completed fields. The default behavior is to load the
         observed_fields as completed_fields. However, if the string
         'None' is passed then return an empty FieldArray.
