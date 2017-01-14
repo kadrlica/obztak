@@ -240,7 +240,8 @@ class BlissFieldArray(FieldArray):
 
 
 class BlissScheduler(Scheduler):
-    _defaults = odict([
+    _defaults = odict(Scheduler._defaults.items() + [
+        ('tactician','coverage'),
         ('windows',os.path.join(fileio.get_datadir(),"bliss-windows.csv")),
         ('targets',os.path.join(fileio.get_datadir(),"bliss-target-fields.csv")),
     ])

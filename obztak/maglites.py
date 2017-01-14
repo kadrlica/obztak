@@ -203,7 +203,8 @@ class MaglitesFieldArray(FieldArray):
     BANDS = BANDS
 
 class MaglitesScheduler(Scheduler):
-    _defaults = odict([
+    _defaults = odict(Scheduler._defaults.items() + [
+        ('tactician','coverage'),
         ('windows',os.path.join(fileio.get_datadir(),"maglites-windows.csv")),
         ('targets',os.path.join(fileio.get_datadir(),"maglites-target-fields.csv")),
     ])

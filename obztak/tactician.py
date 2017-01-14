@@ -27,8 +27,8 @@ CONDITIONS = odict([
 class Tactician(object):
     name = 'tactician'
 
-    def __init__(self,fields,observatory=None):
-        """ Initialize the scheduling tactician.
+    def __init__(self, fields=None, observatory=None):
+        """ Initialize the survey scheduling tactician.
 
         Parameters:
         -----------
@@ -39,21 +39,28 @@ class Tactician(object):
         --------
         Tactician   : The Tactician object
         """
-        self.fields = fields.copy()
         if not observatory: observatory = CTIO()
         self.observatory = observatory
         self.moon = ephem.Moon()
-        self.previous_field = None
+
+        self.set_fields(fields)
+        self.set_date(None)
+        self.set_previous_field(None)
 
     def set_date(self,date):
         if date is not None:
             self.observatory.date = ephem.Date(date)
             self.moon.compute(self.observatory.date)
-        return self.observatory.date
+
+    def set_fields(self,fields):
+        if fields is not None:
+            self.fields = fields.copy()
+        else:
+            self.fields = None
 
     def set_previous_field(self,field):
         if field is not None:
-            self.previous_field = np.copy(field)
+            self.previous_field = field.copy()
         else:
             self.previous_field = None
 
@@ -391,3 +398,153 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description=__doc__)
     args = parser.parse_args()
+
+
+
+#        if mode == 'airmass':
+#            airmass_effective = copy.copy(airmass)
+#            # Do not observe fields that are unavailable
+#            airmass_effective[np.logical_not(cut)] = np.inf
+#            # Priorize coverage over multiple tilings
+#            airmass_effective += self.target_fields['TILING']
+#            index_select = np.argmin(airmass_effective)
+#        elif mode == 'ra':
+#            # Different selection
+#            #ra_effective = copy.copy(self.target_fields['RA'])
+#            ra_effective = copy.copy(self.target_fields['RA']) - ra_zenith
+#            ra_effective[ra_effective > 180.] = ra_effective[ra_effective > 180.] - 360.
+#            ra_effective[np.logical_not(cut)] = np.inf
+#            ra_effective += 360. * self.target_fields['TILING']
+#            index_select = np.argmin(ra_effective)
+#        elif mode == 'slew':
+#            #ra_effective = copy.copy(self.target_fields['RA'])
+#            ra_effective = copy.copy(self.target_fields['RA']) - ra_zenith
+#            ra_effective[ra_effective > 180.] = ra_effective[ra_effective > 180.] - 360.
+#            ra_effective[np.logical_not(cut)] = np.inf
+#            ra_effective += 360. * self.target_fields['TILING']
+#            ra_effective += slew**2
+#            #ra_effective += 2. * slew
+#            index_select = np.argmin(ra_effective)
+#        elif mode == 'balance':
+#            """
+#            ra_effective = copy.copy(self.target_fields['RA']) - ra_zenith
+#            ra_effective[ra_effective > 180.] = ra_effective[ra_effective > 180.] - 360.
+#            ra_effective[np.logical_not(cut)] = np.inf
+#            ra_effective += 360. * self.target_fields['TILING']
+#            #ra_effective += 720. * self.target_fields['TILING']
+#            ra_effective += slew**2
+#            ra_effective += 100. * (airmass - 1.)**3
+#            weight = ra_effective
+#            index_select = np.argmin(weight)
+#            weight = hour_angle_degree
+#            """
+#            weight = copy.copy(hour_angle_degree)
+#            weight[np.logical_not(cut)] = np.inf
+#            weight += 3. * 360. * self.target_fields['TILING']
+#            weight += slew**3 # slew**2
+#            weight += 100. * (airmass - 1.)**3
+#            index_select = np.argmin(weight)
+#        elif mode == 'balance2':
+#            weight = copy.copy(hour_angle_degree)
+#            weight[np.logical_not(cut)] = np.inf
+#            weight += 360. * self.target_fields['TILING']
+#            weight += slew_ra**2
+#            weight += slew_dec
+#            weight += 100. * (airmass - 1.)**3
+#            index_select = np.argmin(weight)
+#        elif mode == 'balance3':
+#            logging.debug("Slew: %s"%slew)
+#            weight = copy.copy(hour_angle_degree)
+#            weight[np.logical_not(cut)] = np.inf
+#            weight += 3. * 360. * self.target_fields['TILING']
+#            """
+#            x_slew, y_slew = zip(*[[0., 0.],
+#                                   [2.5, 10.],
+#                                   [5., 30.],
+#                                   [10., 150.],
+#                                   [20., 250.],
+#                                   [50., 500.],
+#                                   [180., 5000.]])
+#            """
+#            x_slew, y_slew = zip(*[[0., 0.],
+#                                   [2.5, 10.],
+#                                   [5., 30.],
+#                                   [10., 500.], #
+#                                   [20., 1000.], # 500
+#                                   [50., 5000.], # 1000
+#                                   [180., 5000.]])
+#            weight += np.interp(slew, x_slew, y_slew, left=np.inf, right=np.inf)
+#            weight += 100. * (airmass - 1.)**3
+#            index_select = np.argmin(weight)
+#        elif mode == 'airmass2':
+#            weight = 200. * (airmass - airmass_next)
+#            weight[np.logical_not(cut)] = np.inf
+#            weight += 360. * self.target_fields['TILING']
+#            weight += 100. * (airmass - 1.)**3
+#            weight += slew**2
+#            index_select = np.argmin(weight)
+#        elif mode in ('coverage','good'):
+#            weight = copy.copy(hour_angle_degree)
+#            #weight[np.logical_not(cut)] = 9999.
+#            weight[np.logical_not(cut)] = np.inf
+#            weight += 6. * 360. * self.target_fields['TILING'] # Was 6, 60
+#            weight += slew**3 # slew**2
+#            weight += 100. * (airmass - 1.)**3
+#            index_select = np.argmin(weight)
+#        elif mode == 'coverage2':
+#            weight = copy.copy(hour_angle_degree)
+#            weight *= 2.
+#            weight[np.logical_not(cut)] = np.inf
+#            weight += 6. * 360. * self.target_fields['TILING']
+#            weight += slew**3 # slew**2
+#            weight += 100. * (airmass - 1.)**3
+#            index_select = np.argmin(weight)
+#        elif mode == 'coverage3':
+#            weight = copy.copy(hour_angle_degree)
+#            weight *= 0.5
+#            weight[np.logical_not(cut)] = np.inf
+#            weight += 6. * 360. * self.target_fields['TILING']
+#            weight += slew**3 # slew**2
+#            weight += 100. * (airmass - 1.)**3
+#            index_select = np.argmin(weight)
+#        elif mode == 'lowairmass':
+#            weight = 2.0 * copy.copy(hour_angle_degree)
+#            #if len(self.scheduled_fields) == 0:
+#            #    weight += 200. * obztak.utils.projector.angsep(self.target_fields['RA'],
+#            #                                                     self.target_fields['DEC'],
+#            #                                                     90., -70.)
+#            weight[np.logical_not(cut)] = np.inf
+#            weight += 3. * 360. * self.target_fields['TILING']
+#            weight += slew**3 # slew**2
+#            #weight += 2000. * (airmass - 1.)**3 # 200
+#            weight += 5000. * (airmass > 1.5)
+#            index_select = np.argmin(weight)
+#
+#            """
+#            weight = copy.copy(hour_angle_degree)
+#            weight[np.logical_not(cut)] = np.inf
+#            weight += 3. * 360. * self.target_fields['TILING']
+#            weight += slew**3 # slew**2
+#            weight += 1000. * (airmass - 1.)**3
+#            index_select = np.argmin(weight)
+#            """
+#        elif mode in CONDITIONS.keys():
+#            weight = 2.0 * copy.copy(hour_angle_degree)
+#            weight[np.logical_not(cut)] = np.inf
+#            weight += 3. * 360. * self.target_fields['TILING']
+#            weight += slew**3
+#            airmass_min, airmass_max = CONDITIONS[mode]
+#            airmass_sel = ((airmass < airmass_min) | (airmass > airmass_max))
+#            # ADW: This should probably also be in there
+#            weight += 100. * (airmass - 1.)**3
+#            weight += 5000. * airmass_sel
+#            index_select = np.argmin(weight)
+#        elif mode == 'smcnod':
+#            weight = 10000. * np.logical_not(np.in1d(self.target_fields['HEX'], obztak.utils.constants.HEX_SMCNOD)).astype(float)
+#            weight[np.logical_not(cut)] = np.inf
+#            weight += 360. * self.target_fields['TILING']
+#            weight += slew
+#            index_select = np.argmin(weight)
+#        else:
+#            msg = "Unrecognized mode: %s"%mode
+#            raise Exception(msg)

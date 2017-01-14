@@ -30,6 +30,13 @@ FIELDS = odict([
     ('bliss','BlissFieldArray'),
 ])
 
+TACTICIANS = odict([
+    (None,'Tactician'),
+    ('tactician','tactician'),
+    ('coverage','CoverageTactician'),
+])
+
+
 
 def factory(cls, modules=None, **kwargs):
     """
@@ -78,6 +85,11 @@ def survey_factory(cls, **kwargs):
 def field_factory(cls, **kwargs):
     modules = ['obztak.field','obztak.maglites','obztak.bliss']
     cls = FIELDS.get(cls,cls)
+    return factory(cls, modules=modules, **kwargs)
+
+def tactician_factory(cls, **kwargs):
+    modules = ['obztak.tactician','obztak.maglites','obztak.bliss']
+    cls = TACTICIANS.get(cls,cls)
     return factory(cls, modules=modules, **kwargs)
 
 
