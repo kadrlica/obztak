@@ -55,7 +55,9 @@ def datestring(date,precision=4):
 
     return datestr
 
-def nitestring(nite,sep=''):
+def datestr(date,precision=0): return datestring(date,precision)
+
+def nitestr(nite,sep=''):
     """
     Convert an ephem.Date object to a nite string.
 
@@ -76,6 +78,8 @@ def nitestring(nite,sep=''):
     nitestr = '{:4d}{sep}{:02d}{sep}{:02d}'
     nitestr = nitestr.format(*strtuple,sep=sep)
     return nitestr
+
+nitestring = nitestr
 
 def nite2utc(nite, observer=None):
     """ Convert a nite string to an ephem.Date of the UTC at sunset.

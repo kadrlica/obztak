@@ -9,7 +9,7 @@ import time
 import datetime
 import dateutil.parser
 
-from obztak.utils.date import datestring,nitestring
+from obztak.utils.date import datestring,datestr,nitestring
 from obztak.utils.date import nite2utc,utc2nite,get_nite
 
 def test_datestring():
@@ -22,13 +22,23 @@ def test_datestring():
         for i,j in [(4,None),(3,-1),(2,-2),(1,-3),(0,-5)]:
             np.testing.assert_equal(datestring(d,i),string[slice(j)])
 
+def test_datestr():
+    string = '2016/02/14 01:30:00.0000'
+    dt = dateutil.parser.parse(string)
+    eph = ephem.Date(string)
+
+    for d in [dt,eph,string]:
+        np.testing.assert_equal(datestr(d),string[:-5])
+        for i,j in [(0,-5),(3,-1),(2,-2),(1,-3),(0,-5)]:
+            np.testing.assert_equal(datestring(d,i),string[slice(j)],
+                                    err_msg="i=%s, j=%s"%(i,j))
+
 def test_nitestring():
     string = '20160214'
     dt = dateutil.parser.parse(string)
     eph = ephem.Date(dt)
-    np.testing.assert_equal(nitestring(string),string)
-    np.testing.assert_equal(nitestring(dt),string)
-    np.testing.assert_equal(nitestring(eph),string)
+    for d in [dt,eph,string]:
+        np.testing.assert_equal(nitestring(d),string)
 
     np.testing.assert_equal(nitestring(eph,'/'),'2016/02/14')
     np.testing.assert_equal(nitestring(eph,'-'),'2016-02-14')

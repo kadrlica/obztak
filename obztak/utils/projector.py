@@ -41,7 +41,7 @@ def airmass(lon_zenith, lat_zenith, lon, lat):
     Safety handling when angular separation to zenith is more than 90 deg
     """
     airmass = 1. / np.cos(np.radians(angsep(lon, lat, lon_zenith, lat_zenith)))
-    airmass[airmass < 1.] = 999.
+    airmass[airmass < 1.] = np.inf
     return airmass
 
 ############################################################

@@ -119,6 +119,10 @@ class FieldArray(np.recarray):
         return np.char.mod('%(HEX)i-%(TILING)02d-%(FILTER)s',self)
 
     @property
+    def field_id(self):
+        return np.char.mod('%(HEX)i-%(TILING)02d',self)
+
+    @property
     def object(self):
         return np.char.mod(self.OBJECT_FMT,self.unique_id).astype('S80')
 
@@ -242,9 +246,11 @@ class FieldArray(np.recarray):
 
         database.connect()
 
-        defaults = dict(propid=cls.SISPI_DICT['propid'], limit='')
+        defaults = dict(propid=cls.SISPI_DICT['propid'], limit='',
+                        object_fmt = cls.OBJECT_FMT%'')
         params = copy.deepcopy(defaults)
 
+        # Should pull this out to be accessible (self.query())?
         query ="""
         SELECT object, seqid, seqnum, telra as RA, teldec as dec, 
         expTime, filter, 
@@ -253,7 +259,8 @@ class FieldArray(np.recarray):
         COALESCE(ha, -1) as HOURANGLE, COALESCE(slewangl,-1) as SLEW 
         FROM exposure where propid = '%(propid)s' and exptime > 89 
         and discard = False and delivered = True and flavor = 'object'
-        ORDER BY utc_beg %(limit)s 
+        and object like '%(object_fmt)s%%'
+        ORDER BY utc_beg %(limit)s
         """%params
 
         logging.debug(query)

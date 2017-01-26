@@ -202,8 +202,8 @@ class Survey(object):
 
             fig, basemap = obztak.utils.ortho.makePlot('2016/2/11 03:00',center=(0,-90),airmass=False,moon=False)
 
-            proj = obztak.utils.ortho.safeProj(basemap,fields['RA'],fields['DEC'])
-            basemap.scatter(*proj, c=fields['TILING'], edgecolor='none', s=50, cmap='Spectral',vmin=0,vmax=len(TILINGS))
+            proj = basemap.proj(fields['RA'],fields['DEC'])
+            basemap.scatter(*proj, c=fields['TILING'], edgecolor='none', s=50, cmap='viridis_r',vmin=0,vmax=len(TILINGS))
             colorbar = plt.colorbar(label='Tiling')
 
             if outfile:
@@ -218,7 +218,8 @@ class Survey(object):
 
     def survey_prepare(self, args):
         windows = self.prepare_windows(self.nights, outfile=args.windows, standards=args.standards)
-        infile = os.path.join(fileio.get_datadir(),'smash_fields_alltiles.txt')
+        #infile = os.path.join(fileio.get_datadir(),'smash_fields_alltiles.txt')
+        infile = None # Use survey default
         return self.prepare_fields(infile=infile,outfile=args.fields,plot=args.plot,smcnod=args.smcnod)
 
 
@@ -311,6 +312,70 @@ class Survey(object):
         ra2,dec2 = R2.rotate(ra1,dec1)
         # Rotate back to the original frame (keeping the R2 shift)
         return R1.rotate(ra2,dec2,invert=True)
+
+    @staticmethod
+    def rotate(ra,dec,dx,dy):
+        """Rotate the celesitial coordinate system by desired offset and
+        convert back.  dx, dy specify offset in decimal degrees.
+
+        Parameters:
+        -----------
+        ra : Input right ascension
+        dec: Input declination
+        dx : Offset in x-dimension/ra (decimal degrees)
+        dy : Offset in y-dimension/dec (decimal degrees)
+
+        Returns:
+        --------
+        ra, dec : Dithered ra,dec tuple
+        """
+        R = obztak.utils.projector.SphericalRotator(dx,dy)
+        return R.rotate(ra,dec)
+
+    @staticmethod
+    def coord_rotate(ra,dec,dx,dy):
+        """Rotate the celesitial coordinate system by desired offset and
+        convert back.  dx, dy specify offset in decimal degrees.
+
+        Parameters:
+        -----------
+        ra : Input right ascension
+        dec: Input declination
+        dx : Offset in x-dimension/ra (decimal degrees)
+        dy : Offset in y-dimension/dec (decimal degrees)
+
+        Returns:
+        --------
+        ra, dec : Dithered ra,dec tuple
+        """
+        ra0,dec0 = (0,-90)
+        # Rotate the pole at SMASH_POLE to (0,-90)
+        R1 = obztak.utils.projector.SphericalRotator(ra0,90+dec0);
+        ra1,dec1 = R1.rotate(ra,dec)
+        # Rotate around the SMASH pole
+        R2 = obztak.utils.projector.SphericalRotator(dx,dy)
+        ra2,dec2 = R2.rotate(ra1,dec1)
+        # Rotate back to the original frame (keeping the R2 shift)
+        return R1.rotate(ra2,dec2,invert=True)
+
+    @staticmethod
+    def decals_rotate(ra,dec,dx,dy):
+        """Rotate the celesitial coordinate system by desired offset and
+        convert back.  dx, dy specify offset in decimal degrees.
+
+        Parameters:
+        -----------
+        ra : Input right ascension
+        dec: Input declination
+        dx : Offset in x-dimension/ra (decimal degrees)
+        dy : Offset in y-dimension/dec (decimal degrees)
+
+        Returns:
+        --------
+        ra, dec : Dithered ra,dec tuple
+        """
+        R = obztak.utils.projector.SphericalRotator(dx,dy)
+        return R.rotate(ra,dec,invert=True)
 
 def parser():
     import argparse

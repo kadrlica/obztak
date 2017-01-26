@@ -21,16 +21,9 @@ from obztak.utils import fileio
 
 from obztak.ctio import CTIO
 from obztak.field import FieldArray
-from obztak.utils.date import get_nite, datestring, nitestring
-
-CONDITIONS = odict([
-    ('great', [1.4, 2.0]),
-    ('good',  [0.0, 2.0]),
-    ('fine',  [0.0, 1.9]),
-    ('ok',    [0.0, 1.6]),
-    ('poor',  [0.0, 1.5]),
-    ('bad',   [0.0, 1.4]),
-])
+from obztak.tactician import CoverageTactician
+from obztak.utils.date import get_nite, datestr, datestring, nitestring
+from obztak.factory import tactician_factory
 
 # For debugging (can also use the verbose command line argument)
 #logging.basicConfig(level=20) # KCB
@@ -42,22 +35,22 @@ class Scheduler(object):
     Deal with survey scheduling.
     """
     _defaults = odict([
+        ('tactician','coverage'),
         ('windows',os.path.join(fileio.get_datadir(),"maglites-windows.csv")),
         ('targets',os.path.join(fileio.get_datadir(),"maglites-target-fields.csv")),
     ])
     FieldType = FieldArray
 
     def __init__(self,target_fields=None,observation_windows=None,completed_fields=None):
-        self.loadTargetFields(target_fields)
-        self.loadObservationWindows(observation_windows)
-        self.loadObservedFields()
-        self.loadCompletedFields(completed_fields)
+        self.load_target_fields(target_fields)
+        self.load_observation_windows(observation_windows)
+        self.load_observed_fields()
+        self.load_completed_fields(completed_fields)
 
         self.scheduled_fields = self.FieldType()
         self.observatory = CTIO()
-        self.loadBlancoConstraints()
 
-    def loadTargetFields(self, target_fields=None):
+    def load_target_fields(self, target_fields=None):
         if target_fields is None:
             target_fields = self._defaults['targets']
 
@@ -67,7 +60,7 @@ class Scheduler(object):
             self.target_fields = self.FieldType(target_fields)
         return self.target_fields
 
-    def loadObservationWindows(self, observation_windows=None):
+    def load_observation_windows(self, observation_windows=None):
         """
         Load the set of start and stop times for the observation windows.
         """
@@ -83,23 +76,22 @@ class Scheduler(object):
             self.observation_windows.append([ephem.Date(start), ephem.Date(end)])
 
         # Sanity check that observation windows are properly sorted
-        for ii in range(0, len(self.observation_windows)):
-            if self.observation_windows[ii][1] < self.observation_windows[ii][0]:
-                logging.warn('Observation windows are not properly sorted')
-                logging.info('%s -- %s'%(self.observation_windows[ii][0],self.observation_windows[ii][1]))
-            if ii > 0:
-                if self.observation_windows[ii][0] < self.observation_windows[ii - 1][1]:
-                    logging.warn('Observation windows are not properly sorted')
-                    logging.info('%s -- %s'%(self.observation_windows[ii][0],self.observation_windows[ii][1]))
+        for ii,(start,end) in enumerate(self.observation_windows):
+            msg = 'Observation windows are not properly sorted\n'
+            msg+= '%s -- %s'%(datestr(start),datestr(end))
+            if (end < start):
+                logging.warn(msg)
+            if ii > 0 and (start < self.observation_windows[ii-1][1]):
+                logging.warn(msg)
 
         logging.info('Observation Windows:')
         for start,end in self.observation_windows:
-            logging.info('  %s UTC -- %s UTC'%(datestring(start,0),datestring(end,0)))
+            logging.info(' %s UTC -- %s UTC'%(datestr(start),datestr(end)))
         logging.info(30*'-')
 
-    def loadObservedFields(self):
+    def load_observed_fields(self):
         """
-        Load fields that were already observed from the telemetry database.
+        Load fields from the telemetry database that were already observed.
         """
         try:
             fields = self.FieldType.load_database()
@@ -110,20 +102,18 @@ class Scheduler(object):
         self.observed_fields = fields
         return self.observed_fields
 
-
-    def loadCompletedFields(self, completed_fields=None):
+    def load_completed_fields(self, completed_fields=None):
         """Load completed fields. The default behavior is to load the
-        observed fields as completed fields. However, if the string
-        'None' is passed then return an empty self.FieldType.
+        observed_fields as completed_fields. However, if the string
+        'None' is passed then return an empty FieldArray.
 
         Parameters:
         -----------
-        completed_fields : Filename, list of filenames, or self.FieldType object.
+        completed_fields : Filename, list of filenames, or FieldArray-type object.
 
         Returns:
         --------
-        self.FieldType of the completed fields
-
+        fields           : FieldArray of the completed fields
         """
         # Deal with 'None' string
         if isinstance(completed_fields,list):
@@ -155,339 +145,48 @@ class Scheduler(object):
         self.completed_fields = self.completed_fields + new_fields
         return self.completed_fields
 
-    def loadBlancoConstraints(self):
+    def create_tactician(self,tactician=None):
+        if tactician is None: tactician = self._defaults['tactician']
+        return tactician_factory(tactician,mode=tactician)
+
+    def select_field(self, date, mode='coverage'):
         """
-        Load telescope pointing constraints
-        """
-        # ADW: This really belongs associated with the observatory
-        datadir = fileio.get_datadir()
-        data = np.recfromtxt(os.path.join(datadir,'blanco_hour_angle_limits.dat'), names=True)
-
-        self.blanco_constraints = data
-        ha_degrees = np.tile(0., len(self.blanco_constraints['HA']))
-        for ii in range(0, len(self.blanco_constraints['HA'])):
-            ha_degrees[ii] = obztak.utils.projector.hms2dec(self.blanco_constraints['HA'][ii])
-
-        ha_degrees -= 1.25 # Buffer to protect us from the chicken
-
-        # Remove the dependence on scipy (which is broken on the mountain)
-        self.f_hour_angle_limit = lambda dec: np.interp(dec,self.blanco_constraints['Dec'], ha_degrees, left=-1, right=-1)
-        self.f_airmass_limit = lambda dec: np.interp(dec,self.blanco_constraints['Dec'], self.blanco_constraints['AirmassLimit'], left=-1, right=-1)
-
-        return self.f_hour_angle_limit,self.f_airmass_limit
-
-    def selectField(self, date, ra_previous=None, dec_previous=None, plot=False, mode='coverage'):
-        """ Select the 'best' field to observe at a given time.
-
-        A single field can contain multiple exposures (for example g- and r-band).
-
-        Available modes:
-        `balance`  :
-        `balance2` :
-        `balance3` :
+        Select field(s) using the survey tactician.
 
         Parameters:
         -----------
-        date         : The time to schedule the exposure
-        ra_previous  : The ra of the previous exposure
-        dec_previous : The dec of the previous exposure
-        plot         : Plot the output
-        mode         : Algorithm used to select the exposure
+        date       : ephem.Date object
+        mode       : Type of tactician to use for selecting field
 
         Returns:
         --------
-        field        :  The selected exposures as a FieldArray-like object
+        field      : selected field(s) from tactician
         """
+        sel = ~np.in1d(self.target_fields['ID'],self.completed_fields['ID'])
 
-        self.observatory.date = ephem.Date(date)
-        # RA and Dec of zenith
-        ra_zenith, dec_zenith = self.observatory.radec_of(0, '90') 
-        ra_zenith = np.degrees(ra_zenith)
-        dec_zenith = np.degrees(dec_zenith)
-        airmass = obztak.utils.projector.airmass(ra_zenith, dec_zenith, self.target_fields['RA'], self.target_fields['DEC'])
-        airmass_next = obztak.utils.projector.airmass(ra_zenith + 15., dec_zenith, self.target_fields['RA'], self.target_fields['DEC'])
-
-        # Include moon angle
-        moon = ephem.Moon()
-        moon.compute(date)
-        ra_moon = np.degrees(moon.ra)
-        dec_moon = np.degrees(moon.dec)
-        moon_angle = obztak.utils.projector.angsep(ra_moon, dec_moon, self.target_fields['RA'], self.target_fields['DEC'])
-
-        # Slew from the previous pointing
-        if ra_previous is not None and dec_previous is not None:
-            slew = obztak.utils.projector.angsep(ra_previous, dec_previous, self.target_fields['RA'], self.target_fields['DEC'])
-            slew_ra = np.fabs(ra_previous - self.target_fields['RA'])
-            slew_dec = np.fabs(dec_previous - self.target_fields['DEC'])
-        else:
-            slew = np.tile(0., len(self.target_fields['RA']))
-            slew_ra = np.tile(0., len(self.target_fields['RA']))
-            slew_dec = np.tile(0., len(self.target_fields['RA']))
-
-        # ADW: I *think* that 'cut' should actually be 'sel' (i.e.,
-        # 'cut = True' means that the field is viable)
-
-        # Hour angle restrictions
-        #hour_angle_degree = copy.copy(self.target_fields['RA']) - ra_zenith # BUG
-        #hour_angle_degree[hour_angle_degree > 180.] = hour_angle_degree[hour_angle_degree > 180.] - 360. # BUG
-        hour_angle_degree = copy.copy(self.target_fields['RA']) - ra_zenith
-        hour_angle_degree[hour_angle_degree < -180.] += 360.
-        hour_angle_degree[hour_angle_degree > 180.] -= 360.
-        cut_hour_angle = np.fabs(hour_angle_degree) < self.f_hour_angle_limit(self.target_fields['DEC']) # Check the hour angle restrictions at south pole
-
-        # Blanco airmass restrictions
-        cut_airmass = airmass < self.f_airmass_limit(self.target_fields['DEC'])
-
-        # Declination restrictions
-        cut_declination = self.target_fields['DEC'] > obztak.utils.constants.SOUTHERN_REACH
-
-        # Don't consider fields which have already been observed
-        cut_todo = np.logical_not(np.in1d(self.target_fields['ID'], self.completed_fields['ID']))
-        # Now with Blanco telescope constraints
-        cut = cut_todo & cut_hour_angle & cut_airmass & cut_declination & (airmass < 2.) 
-        #cut = cut_todo & (airmass < 2.) # Original
-
-        # Exclude special fields unless using special tacticians
-        if mode not in ['smcnod']:
-            cut = cut & (self.target_fields['PRIORITY'] < 90)
-
-        # Need to figure out what to do if there are no available fields...
-
-        # Now apply some kind of selection criteria, e.g.,
-        # select the field with the lowest airmass
-        #airmass[np.logical_not(cut)] = 999.
-
-        if mode == 'airmass':
-            airmass_effective = copy.copy(airmass)
-            # Do not observe fields that are unavailable
-            airmass_effective[np.logical_not(cut)] = np.inf 
-            # Priorize coverage over multiple tilings
-            airmass_effective += self.target_fields['TILING'] 
-            index_select = np.argmin(airmass_effective)
-        elif mode == 'ra':
-            # Different selection
-            #ra_effective = copy.copy(self.target_fields['RA'])
-            ra_effective = copy.copy(self.target_fields['RA']) - ra_zenith
-            ra_effective[ra_effective > 180.] = ra_effective[ra_effective > 180.] - 360.
-            ra_effective[np.logical_not(cut)] = np.inf
-            ra_effective += 360. * self.target_fields['TILING']
-            index_select = np.argmin(ra_effective)
-        elif mode == 'slew':
-            #ra_effective = copy.copy(self.target_fields['RA'])
-            ra_effective = copy.copy(self.target_fields['RA']) - ra_zenith
-            ra_effective[ra_effective > 180.] = ra_effective[ra_effective > 180.] - 360.
-            ra_effective[np.logical_not(cut)] = np.inf
-            ra_effective += 360. * self.target_fields['TILING']
-            ra_effective += slew**2
-            #ra_effective += 2. * slew
-            index_select = np.argmin(ra_effective)
-        elif mode == 'balance':
-            """
-            ra_effective = copy.copy(self.target_fields['RA']) - ra_zenith
-            ra_effective[ra_effective > 180.] = ra_effective[ra_effective > 180.] - 360.
-            ra_effective[np.logical_not(cut)] = np.inf
-            ra_effective += 360. * self.target_fields['TILING']
-            #ra_effective += 720. * self.target_fields['TILING']
-            ra_effective += slew**2
-            ra_effective += 100. * (airmass - 1.)**3
-            weight = ra_effective
-            index_select = np.argmin(weight)
-            weight = hour_angle_degree
-            """
-            weight = copy.copy(hour_angle_degree)
-            weight[np.logical_not(cut)] = np.inf
-            weight += 3. * 360. * self.target_fields['TILING']
-            weight += slew**3 # slew**2
-            weight += 100. * (airmass - 1.)**3
-            index_select = np.argmin(weight)
-        elif mode == 'balance2':
-            weight = copy.copy(hour_angle_degree)
-            weight[np.logical_not(cut)] = np.inf
-            weight += 360. * self.target_fields['TILING']
-            weight += slew_ra**2
-            weight += slew_dec
-            weight += 100. * (airmass - 1.)**3
-            index_select = np.argmin(weight)
-        elif mode == 'balance3':
-            logging.debug("Slew: %s"%slew)
-            weight = copy.copy(hour_angle_degree)
-            weight[np.logical_not(cut)] = np.inf
-            weight += 3. * 360. * self.target_fields['TILING']
-            """
-            x_slew, y_slew = zip(*[[0., 0.],
-                                   [2.5, 10.],
-                                   [5., 30.],
-                                   [10., 150.],
-                                   [20., 250.],
-                                   [50., 500.],
-                                   [180., 5000.]])
-            """
-            x_slew, y_slew = zip(*[[0., 0.],
-                                   [2.5, 10.],
-                                   [5., 30.],
-                                   [10., 500.], #
-                                   [20., 1000.], # 500
-                                   [50., 5000.], # 1000
-                                   [180., 5000.]])
-            weight += np.interp(slew, x_slew, y_slew, left=np.inf, right=np.inf)
-            weight += 100. * (airmass - 1.)**3
-            index_select = np.argmin(weight)
-        elif mode == 'airmass2':
-            weight = 200. * (airmass - airmass_next)
-            weight[np.logical_not(cut)] = np.inf
-            weight += 360. * self.target_fields['TILING']
-            weight += 100. * (airmass - 1.)**3
-            weight += slew**2
-            index_select = np.argmin(weight)
-        elif mode in ('coverage','good'):
-            weight = copy.copy(hour_angle_degree)
-            #weight[np.logical_not(cut)] = 9999.
-            weight[np.logical_not(cut)] = np.inf
-            weight += 6. * 360. * self.target_fields['TILING'] # Was 6, 60
-            weight += slew**3 # slew**2
-            weight += 100. * (airmass - 1.)**3
-            index_select = np.argmin(weight)
-        elif mode == 'coverage2':
-            weight = copy.copy(hour_angle_degree)
-            weight *= 2.
-            weight[np.logical_not(cut)] = np.inf
-            weight += 6. * 360. * self.target_fields['TILING']
-            weight += slew**3 # slew**2
-            weight += 100. * (airmass - 1.)**3
-            index_select = np.argmin(weight)
-        elif mode == 'coverage3':
-            weight = copy.copy(hour_angle_degree)
-            weight *= 0.5
-            weight[np.logical_not(cut)] = np.inf
-            weight += 6. * 360. * self.target_fields['TILING']
-            weight += slew**3 # slew**2
-            weight += 100. * (airmass - 1.)**3
-            index_select = np.argmin(weight)
-        elif mode == 'lowairmass':
-            weight = 2.0 * copy.copy(hour_angle_degree)
-            #if len(self.scheduled_fields) == 0:
-            #    weight += 200. * obztak.utils.projector.angsep(self.target_fields['RA'],
-            #                                                     self.target_fields['DEC'],
-            #                                                     90., -70.)
-            weight[np.logical_not(cut)] = np.inf
-            weight += 3. * 360. * self.target_fields['TILING']
-            weight += slew**3 # slew**2
-            #weight += 2000. * (airmass - 1.)**3 # 200
-            weight += 5000. * (airmass > 1.5)
-            index_select = np.argmin(weight)
-
-            """
-            weight = copy.copy(hour_angle_degree)
-            weight[np.logical_not(cut)] = np.inf
-            weight += 3. * 360. * self.target_fields['TILING']
-            weight += slew**3 # slew**2
-            weight += 1000. * (airmass - 1.)**3
-            index_select = np.argmin(weight)
-            """
-        elif mode in CONDITIONS.keys():
-            weight = 2.0 * copy.copy(hour_angle_degree)
-            weight[np.logical_not(cut)] = np.inf
-            weight += 3. * 360. * self.target_fields['TILING']
-            weight += slew**3
-            airmass_min, airmass_max = CONDITIONS[mode]
-            airmass_sel = ((airmass < airmass_min) | (airmass > airmass_max))
-            # ADW: This should probably also be in there
-            weight += 100. * (airmass - 1.)**3
-            weight += 5000. * airmass_sel
-            index_select = np.argmin(weight)
-        elif mode == 'smcnod':
-            weight = 10000. * np.logical_not(np.in1d(self.target_fields['HEX'], obztak.utils.constants.HEX_SMCNOD)).astype(float)
-            weight[np.logical_not(cut)] = np.inf
-            weight += 360. * self.target_fields['TILING']
-            weight += slew
-            index_select = np.argmin(weight)
-        else:
-            msg = "Unrecognized mode: %s"%mode
-            raise Exception(msg)
-
-        # Search for other exposures in the same field
-        field_id = self.target_fields['HEX'][index_select]
-        tiling = self.target_fields['TILING'][index_select]
-
-        index = np.nonzero( (self.target_fields['HEX']==field_id) & \
-                                (self.target_fields['TILING']==tiling) & cut)[0]
-
-
-        timedelta = constants.FIELDTIME*np.arange(len(index))
-        if np.any(slew[index] > 5.):
-            # Apply a 30 second penalty for slews over 5 deg.
-            # This is not completely realistic, but better than nothing
-            # This is also broken when selecting two fields at once
-            timedelta += 30*ephem.second
-        field_select = self.target_fields[index]
-        #print 'CHECKPOINT 1', field_select, index, field_id, tiling # KCB
-        #print 'CHECKPOINT 2', np.any((self.target_fields['HEX']==field_id) & (self.target_fields['TILING']==tiling)), np.sum(cut), np.min(weight)
-        #print 'CHECKPOINT 3', np.nonzero( (self.target_fields['HEX']==field_id) & \
-        #                           (self.target_fields['TILING']==tiling) & cut)
-        field_select['AIRMASS'] = airmass[index]
-        field_select['DATE'] = map(datestring,date+timedelta)
-        field_select['SLEW'] = slew[index]
-        field_select['MOONANGLE'] = moon_angle[index]
-        field_select['HOURANGLE'] = hour_angle_degree[index]
-
-        msg = str(field_select)
-        logging.debug(msg)
-
-        # For diagnostic purposes
-        if False and len(self.scheduled_fields) % 10 == 0:
-            ortho.plotWeight(field_select[-1], self.target_fields, weight)
-            raw_input('WAIT')
-
-        if len(field_select) == 0:
-            msg = "No field selected... now we've got problems"
-            logging.error(msg)
-            msg  = "date=%s\n"%(datestring(date,0))
-            msg += "index_select=%s, index=%s\n"%(index_select,index)
-            msg += "nselected=%s, selection=%s\n"%(cut.sum(),cut[index_select])
-            msg += "weights=%s"%weight
-            logging.info(msg)
-            #ortho.plotWeight(self.scheduled_fields[-1], self.target_fields, weight)
-            ortho.plotField(self.scheduled_fields[-1],self.scheduled_fields,options_basemap=dict(date='2017/02/20 05:00:00'))
-            raw_input('WAIT')
-            import pdb; pdb.set_trace()
-            raise Exception()
-
-        return field_select
-
-
-    def selectField2(self, date, ra_previous=None, dec_previous=None, plot=False, mode='coverage'):
-        from obztak.tactician import CoverageTactician
-
-        if ra_previous or dec_previous:
-            previous_field = FieldArray(1)
-            previous_field['RA'] = ra_previous
-            previous_field['DEC'] = dec_previous
-        else:
-            previous_field = None
-
-        self.tactician = CoverageTactician(self.target_fields)
+        self.tactician = self.create_tactician(mode)
         self.tactician.set_date(date)
-        self.tactician.set_previous_field(previous_field)
+        self.tactician.set_target_fields(self.target_fields[sel])
+        self.tactician.set_completed_fields(self.completed_fields)
 
         field_select = self.tactician.select_fields()
 
-        msg = str(field_select)
-        logging.debug(msg)
+        logging.debug(str(field_select))
 
         # For diagnostic purposes
         if False and len(self.scheduled_fields) % 10 == 0:
-            ortho.plotWeight(field_select[-1], self.target_fields, weight)
+            weight = self.tactician.weight
+            ortho.plotWeight(field_select[-1], self.target_fields, self.tactician.weight)
             raw_input('WAIT')
 
         if len(field_select) == 0:
-            msg = "No field selected... we've got problems."
-            logging.error(msg)
-            msg  = "date=%s\n"%(datestring(date,0))
+            logging.error("No field selected... we've got problems.")
+            msg  = "date=%s\n"%(datestr(date))
             msg += "index_select=%s, index=%s\n"%(index_select,index)
             msg += "nselected=%s, selection=%s\n"%(cut.sum(),cut[index_select])
             msg += "weights=%s"%weight
             logging.info(msg)
-            #ortho.plotWeight(self.scheduled_fields[-1], self.target_fields, weight)
+            #ortho.plotWeight(self.scheduled_fields[-1], self.target_fields, self.tactician.weight)
             ortho.plotField(self.scheduled_fields[-1],self.scheduled_fields,options_basemap=dict(date='2017/02/20 05:00:00'))
             raw_input('WAIT')
             import pdb; pdb.set_trace()
@@ -496,9 +195,9 @@ class Scheduler(object):
         return field_select
 
 
-    def run(self, tstart=None, tstop=None, clip=False, plot=False, mode=None):
+    def run(self, tstart=None, tstop=None, clip=False, plot=False, mode='coverage'):
         """
-        Schedule a chunk of exposures.
+        Schedule a chunk of exposures. This is the loop where date is incremented
 
         Parameters:
         -----------
@@ -510,8 +209,6 @@ class Scheduler(object):
         --------
         fields : Scheduled fields
         """
-        if mode is None: mode='coverage'
-
         # Reset the scheduled fields
         self.scheduled_fields = self.FieldType()
 
@@ -519,10 +216,6 @@ class Scheduler(object):
         timedelta = 90*ephem.minute
         if tstart is None: tstart = ephem.now()
         if tstop is None: tstop = tstart + timedelta
-        msg  = "Run start: %s\n"%datestring(tstart)
-        msg += "Run end: %s\n"%datestring(tstop)
-        msg += "Run time: %s minutes"%(timedelta/ephem.minute)
-        logging.debug(msg)
 
         # Convert strings into dates
         if isinstance(tstart,basestring):
@@ -530,16 +223,21 @@ class Scheduler(object):
         if isinstance(tstop,basestring):
             tstop = ephem.Date(tstop)
 
+        msg  = "Run start: %s\n"%datestr(tstart,4)
+        msg += "Run end: %s\n"%datestr(tstop,4)
+        msg += "Run time: %s minutes"%(timedelta/ephem.minute)
+        logging.debug(msg)
+
         msg = "Previously completed fields: %i"%len(self.completed_fields)
         logging.info(msg)
 
-        msg = "Scheduling with tactician mode: %s"%mode
+        msg = "Scheduling with tactician: %s"%mode
         logging.info(msg)
 
         date = tstart
         latch = True
         while latch:
-            logging.debug('  '+datestring(date))
+            logging.debug(' '+datestr(date,4))
 
             # Check to see if in valid observation window
             if self.observation_windows is not None:
@@ -547,6 +245,7 @@ class Scheduler(object):
                 for window in self.observation_windows:
                     if date >= window[0] and date < window[-1]:
                         inside = True
+                        break
 
                 if not inside:
                     if clip:
@@ -555,33 +254,20 @@ class Scheduler(object):
                         msg = 'Date outside of nominal observing windows'
                         logging.warning(msg)
 
+            # Select one (or more) fields from the tactician
+            field_select = self.select_field(date, mode)
 
-            # FIXME: I think that ra_previous and dec_previous don't need to be passed
-            compute_slew = True
-            if len(self.completed_fields) == 0:
-                compute_slew = False
-            else:
-                if (date - ephem.Date(self.completed_fields['DATE'][-1])) > (30. * ephem.minute):
-                    compute_slew = False
-
-
-            if compute_slew:
-                field_select = self.selectField(date, ra_previous=self.completed_fields['RA'][-1], dec_previous=self.completed_fields['DEC'][-1], plot=plot,mode=mode)
-            else:
-                field_select = self.selectField(date, plot=plot, mode=mode)
-
-            id_select = field_select['ID']
-            # Previously, increment time by a constant
-            #date = date + len(field_select)*constants.FIELDTIME
             # Now update the time from the selected field
             date = ephem.Date(field_select[-1]['DATE']) + constants.FIELDTIME
 
             self.completed_fields = self.completed_fields + field_select
             self.scheduled_fields = self.scheduled_fields + field_select
 
-            msg = "  %(DATE).19s: id=%(ID)s, airmass=%(AIRMASS).2f, slew=%(SLEW).2f"
+            msg=" %(DATE).19s: id=%(ID)10s, airmass=%(AIRMASS).2f, slew=%(SLEW).2f"
+            msg+=", moon=%(PHASE).0f%%,%(ALT).0fdeg"
             for i,f in zip(field_select.unique_id,field_select):
                 params = dict([('ID',i)]+[(k,f[k]) for k in f.dtype.names])
+                params.update({'PHASE':self.tactician.moon.phase,"ALT":np.degrees(self.tactician.moon.alt)})
                 logging.info(msg%params)
 
             #if plot: self.plotField(date, field_select)
@@ -611,6 +297,7 @@ class Scheduler(object):
         --------
         field : The scheduled field
         """
+        # Probably cleaner to make this it's own tactician
         date = ephem.Date(date) if date else ephem.now()
 
         select  = (self.target_fields['HEX']==hex)
@@ -620,8 +307,8 @@ class Scheduler(object):
         index = np.nonzero(select)[0]
 
         field = self.target_fields[select]
-
-        field['DATE'] = map(datestring,select.sum()*[date])
+        nfields = select.sum()
+        field['DATE'] = map(datestring,nfields*[date])
         return field
 
     def schedule_chunk(self,tstart=None,chunk=60,clip=False,plot=False,mode=None):
@@ -664,35 +351,6 @@ class Scheduler(object):
         chunks : A list of the chunks generated for the scheduled nite.
         """
 
-        """
-        # Create the nite
-        nite = get_nite(date)
-        nite_tuple = nite.tuple()[:3]
-
-        # Convert chunk to MJD
-        if chunk > 1: chunk = chunk*ephem.minute
-
-        try:
-            nites = [get_nite(w[0]) for w in self.observation_windows]
-            nite_tuples = [n.tuple()[:3] for n in nites]
-            idx = nite_tuples.index(nite_tuple)
-            start,finish = self.observation_windows[idx]
-        except (TypeError, ValueError):
-            msg = "Requested nite not found in windows:\n"
-            msg += "%s/%s/%s : "%nite_tuple
-            msg += '['+', '.join(['%s/%s/%s'%t for t in nite_tuples])+']'
-            logging.warning(msg)
-
-            start = date
-            self.observatory.date = date
-            self.observatory.horizon = '-14'
-            finish = self.observatory.next_rising(ephem.Sun(), use_center=True)
-            self.observatory.horizon = '0'
-
-            logging.info("Night start time: %s"%datestring(start))
-            logging.info("Night finish time: %s"%datestring(finish))
-        """
-
         # Create the nite
         nite = get_nite(date)
 
@@ -714,8 +372,8 @@ class Scheduler(object):
             finish = self.observatory.next_rising(ephem.Sun(), use_center=True)
             self.observatory.horizon = '0'
 
-            logging.info("Night start (UTC):  %s"%datestring(start,0))
-            logging.info("Night finish (UTC): %s"%datestring(finish,0))
+            logging.info("Night start (UTC):  %s"%datestr(start))
+            logging.info("Night finish (UTC): %s"%datestr(finish))
 
         chunks = []
         i = 0
@@ -768,8 +426,7 @@ class Scheduler(object):
             nites[nite] = chunks
 
             if plot:
-                field_select = self.completed_fields[-1:]
-                ortho.plotField(field_select,self.target_fields,self.completed_fields)#,options_basemap=dict(date='2017/02/21 05:00:00'))
+                ortho.plotField(self.completed_fields[-1:],self.target_fields,self.completed_fields)#,options_basemap=dict(date='2017/02/21 05:00:00'))
 
                 if (raw_input(' ...continue ([y]/n)').lower()=='n'):
                     break
@@ -782,6 +439,8 @@ class Scheduler(object):
 
     @classmethod
     def common_parser(cls):
+        """
+        """
         from obztak.utils.parser import Parser, DatetimeAction
 
         description = __doc__
