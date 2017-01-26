@@ -195,7 +195,8 @@ class BlissSurvey(Survey):
         l, b = cel2gal(ra, dec)
         sel = ((b > 20) & (b < 30))
         sel &= ((l < 360) & (l > 240))
-        sel &= ((ra > 135) & (ra < 245))
+        #sel &= ((ra > 135) & (ra < 245))
+        sel &= ((ra > 135) & (ra < 180))
         sel &= ((dec > -30) & (dec < -10))
         return sel
 
