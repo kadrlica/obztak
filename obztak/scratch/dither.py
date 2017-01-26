@@ -22,7 +22,7 @@ params = {
     'xtick.minor.size': 1.5,    # minor tick size in points
     'xtick.major.size': 3,      # major tick size in points
     'xtick.minor.size': 1.5,    # minor tick size in points
-    'text.usetex': True,
+    #'text.usetex': True,
     #'figure.figsize': fig_size,
     'font.family':'serif',
     'font.serif':'Computer Modern Roman',
@@ -184,16 +184,17 @@ def testDither(ra_center, dec_center, infile='target_fields.csv', save=False):
         pattern = infile.split('target_fields_')[-1].split('.csv')[0]
         pylab.savefig('dither_ra_%.2f_dec_%.2f_%s.pdf'%(ra_center, dec_center, pattern))
 
-############################################################
+if __name__ == '__main__':
+    ############################################################
 
-#infile = 'target_fields_decam_dither_1.csv'
-#infile = 'target_fields_decam_dither_2.csv'
-infile = 'target_fields_smash_dither.csv'
-#infile = 'target_fields_smash_rotate.csv'
-save = True
+    #infile = 'target_fields_decam_dither_1.csv'
+    #infile = 'target_fields_decam_dither_2.csv'
+    infile = 'target_fields_smash_dither.csv'
+    #infile = 'target_fields_smash_rotate.csv'
+    save = True
 
-testDither(100., -70., infile=infile, save=save) # On edge
-testDither(125., -75., infile=infile, save=save)
-testDither(200., -88., infile=infile, save=save)
+    testDither(100., -70., infile=infile, save=save) # On edge
+    testDither(125., -75., infile=infile, save=save)
+    testDither(200., -88., infile=infile, save=save)
 
-############################################################
+    ############################################################

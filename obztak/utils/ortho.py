@@ -11,6 +11,7 @@ import logging
 import tempfile
 import subprocess
 import warnings
+from collections import OrderedDict as odict
 
 import obztak.utils.projector
 from obztak.utils.projector import gal2cel
@@ -20,6 +21,8 @@ from obztak.utils import fileio
 from obztak.field import FieldArray
 from obztak.utils.date import datestring,nite2utc,utc2nite,get_nite
 from obztak.ctio import CTIO
+from obztak.utils.constants import RA_LMC,DEC_LMC,RADIUS_LMC
+from obztak.utils.constants import RA_SMC,DEC_SMC,RADIUS_SMC
 
 plt.ion()
 
@@ -42,6 +45,17 @@ params = {
     'font.size': 12
     }
 matplotlib.rcParams.update(params)
+
+COLORS = odict([
+    ('none','black'),
+    ('u','blue'),
+    ('g','green'),
+    ('r','red'),
+    ('i','gold'),
+    ('z','magenta'),
+    ('Y','black'),
+    ('VR','gray'),
+])
 
 ############################################################
 
@@ -94,8 +108,7 @@ class DECamBasemap(Basemap):
         """ Draw a polygon footprint on this Basemap instance.
         """
         defaults=dict(color='k', lw=2)
-        for k,v in defaults.items():
-            kwargs.setdefault(k,v)
+        setdefaults(kwargs,defaults)
 
         perim = np.loadtxt(filename,dtype=[('ra',float),('dec',float)])
         self.draw_polygon_radec(perim['ra'],perim['dec'],**kwargs)
@@ -104,7 +117,7 @@ class DECamBasemap(Basemap):
         xy = self.proj(ra,dec)
         self.plot(*xy,**kwargs)
         
-    def draw_galaxy(self,width=None,**kwargs):
+    def draw_galaxy(self,width=10,**kwargs):
         defaults = dict(color='k',lw=1.5,ls='-')
         setdefaults(kwargs,defaults)
 
@@ -123,16 +136,14 @@ class DECamBasemap(Basemap):
         
     def draw_maglites(self,**kwargs):
         defaults=dict(color='blue', lw=2)
-        for k,v in defaults.items():
-            kwargs.setdefault(k,v)
+        setdefaults(kwargs,defaults)
 
         filename = os.path.join(fileio.get_datadir(),'maglites-poly.txt')
         self.draw_polygon(filename,**kwargs)
 
     def draw_bliss(self,**kwargs):
         defaults=dict(color='magenta', lw=2)
-        for k,v in defaults.items():
-            kwargs.setdefault(k,v)
+        setdefaults(kwargs,defaults)
 
         filename = os.path.join(fileio.get_datadir(),'bliss-poly1.txt')
         self.draw_polygon(filename,**kwargs)
@@ -144,16 +155,14 @@ class DECamBasemap(Basemap):
         """ Draw the DES footprint on this Basemap instance.
         """
         defaults=dict(color='red', lw=2)
-        for k,v in defaults.items():
-            kwargs.setdefault(k,v)
+        setdefaults(kwargs,defaults)
 
         filename = os.path.join(fileio.get_datadir(),'round13-poly.txt')
         self.draw_polygon(filename,**kwargs)
 
     def draw_smash(self,**kwargs):
         defaults=dict(facecolor='none',color='k')
-        for k,v in defaults.items():
-            kwargs.setdefault(k,v)
+        setdefaults(kwargs,defaults)
 
         filename = os.path.join(fileio.get_datadir(),'smash_fields_final.txt')
         smash=np.genfromtxt(filename,dtype=[('ra',float),('dec',float)],usecols=[4,5])
@@ -162,8 +171,7 @@ class DECamBasemap(Basemap):
 
     def draw_decals(self,**kwargs):
         defaults=dict(color='red', lw=2)
-        for k,v in defaults.items():
-            kwargs.setdefault(k,v)
+        setdefaults(kwargs,defaults)
 
         filename = os.path.join(fileio.get_datadir(),'decals-perimeter.txt')
         decals = np.genfromtxt(filename,names=['poly','ra','dec'])
@@ -177,8 +185,7 @@ class DECamBasemap(Basemap):
 
     def draw_airmass(self, observatory, airmass, npts=360, **kwargs):
         defaults = dict(color='green', lw=2)
-        for k,v in defaults.items():
-            kwargs.setdefault(k,v)
+        setdefaults(kwargs,defaults)
 
         altitude_radians = (0.5 * np.pi) - np.arccos(1. / airmass)
         ra_contour = np.zeros(npts)
@@ -197,8 +204,7 @@ class DECamBasemap(Basemap):
         Plot a to-scale representation of the focal plane size at the zenith.
         """
         defaults = dict(color='green',alpha=0.75,lw=1.5)
-        for k,v in defaults.items():
-            kwargs.setdefault(k,v)
+        setdefaults(kwargs,defaults)
 
         # RA and Dec of zenith
         ra_zenith, dec_zenith = np.degrees(observatory.radec_of(0, '90'))
@@ -248,6 +254,7 @@ class DECamBasemap(Basemap):
         orb = fileio.csv2rec(datadir+'P9_orbit_Cassini.csv')[::7]
         kwargs = dict(marker='o',s=40,edgecolor='none',cmap='jet_r')
         self.scatter(*self.proj(orb['ra'],orb['dec']),c=orb['cassini'],**kwargs)
+
     def draw_ligo(self,filename=None, log=True,**kwargs):
         import healpy as hp
         from astropy.io import fits as pyfits
@@ -258,15 +265,86 @@ class DECamBasemap(Basemap):
         if log: self.draw_hpxmap(np.log10(hpxmap))
         else:   self.draw_hpxmap(hpxmap)
         
-        
+    def draw_lmc(self):
+        proj = self.proj(RA_LMC,DEC_LMC)
+        self.tissot(RA_LMC,DEC_LMC,RADIUS_LMC,100,fc='0.7',ec='0.5')
+        plt.text(proj[0],proj[1], 'LMC', weight='bold',
+                 fontsize=10, ha='center', va='center', color='k')
+
+    def draw_smc(self):
+        proj = self.proj(RA_SMC,DEC_SMC)
+        self.tissot(RA_SMC,DEC_SMC,RADIUS_SMC,100,fc='0.7',ec='0.5')
+        plt.text(proj[0],proj[1], 'SMC', weight='bold',
+                 fontsize=8, ha='center', va='center', color='k')
+
     def draw_fields(self,fields,**kwargs):
         defaults = dict(edgecolor='k',facecolor='none',s=15)
         if self.projection == 'ortho': defaults.update(s=50)
         else: defaults.update(s=15)
         setdefaults(kwargs,defaults)
         self.scatter(*self.proj(fields['RA'],fields['DEC']),**kwargs)
-        
 
+    def draw_fields(self, fields=None,target_fields=None,completed_fields=None,**kwargs):
+        # ADW: Need to be careful about the size of the marker. It
+        # does not change with the size of the frame so it is
+        # really safest to scale to the size of the zenith circle
+        # (see PlotPointings). That said, s=50 is probably roughly ok.
+        if fields is None:
+            fields = completed_fields[-1]
+
+        if isinstance(fields,np.core.records.record):
+            tmp = FieldArray(1)
+            tmp[0] = fields
+            fields = tmp
+
+        for i,f in enumerate(fields):
+            self.draw_field(fields[i],target_fields,completed_fields,**kwargs)
+            if completed_fields is None: completed_fields = FieldArray()
+            completed_fields = completed_fields + fields[[i]]
+
+    def draw_field(self, field, target_fields=None, completed_fields=None,**kwargs):
+        """
+        Draw a specific target field.
+        """
+        #defaults = dict(edgecolor='none', s=50, vmin=0, vmax=4, cmap='summer_r')
+        defaults = dict(edgecolor='none', s=50, vmin=0, vmax=4, cmap='gray_r')
+        setdefaults(kwargs,defaults)
+
+        if isinstance(field,np.core.records.record):
+            tmp = FieldArray(1)
+            tmp[0] = field
+            field = tmp
+
+        msg = "%s (date=%s, "%(field['ID'][0],datestring(field['DATE'][0],0))
+        msg +="ra=%(RA)-6.2f, dec=%(DEC)-6.2f, secz=%(AIRMASS)-4.2f)"%field[0]
+        logging.info(msg)
+
+        # Plot target fields
+        if target_fields is not None:
+            proj = self.proj(target_fields['RA'], target_fields['DEC'])
+            self.scatter(*proj, c=np.zeros(len(target_fields))+0.3, **kwargs)
+
+        # Plot completed fields
+        if completed_fields is not None:
+            proj = self.proj(completed_fields['RA'],completed_fields['DEC'])
+            self.scatter(*proj, c=completed_fields['TILING'], **kwargs)
+
+        fig = plt.gcf()
+        # Try to draw the colorbar
+        try:
+            if len(fig.axes) == 2:
+                # Draw colorbar in existing axis
+                colorbar = plt.colorbar(cax=fig.axes[-1])
+            else:
+                colorbar = plt.colorbar()
+            colorbar.set_label('Tiling')
+        except TypeError:
+            pass
+
+        # Show the selected field
+        proj = self.proj(field['RA'], field['DEC'])
+        self.scatter(*proj, c=COLORS[field[0]['FILTER']],edgecolor='none',s=50)
+        plt.pause(0.001)
 
     def draw_hpxmap(self, hpxmap, xsize=800, **kwargs):
         """
@@ -283,9 +361,9 @@ class DECamBasemap(Basemap):
         setdefaults(kwargs,defaults)
 
         ax = plt.gca()
-        
-        lon = np.linspace(0, 360., xsize) 
-        lat = np.linspace(-90., 90., xsize) 
+
+        lon = np.linspace(0, 360., xsize)
+        lat = np.linspace(-90., 90., xsize)
         lon, lat = np.meshgrid(lon, lat)
 
         nside = healpy.get_nside(hpxmap.data)
@@ -314,120 +392,27 @@ class DECamOrtho(DECamBasemap):
         super(DECamOrtho,self).__init__(*args, **kwargs)
 
 ############################################################
-
-def safeProj(proj, lon, lat):
-    """ Remove points outside of projection """
-    x, y = proj(np.atleast_1d(lon),np.atleast_1d(lat))
-    x[x > 1e29] = None
-    y[y > 1e29] = None
-    #return np.ma.array(x,mask=x>1e2),np.ma.array(y,mask=y>1e2)
-    return x, y
-
-############################################################
+# Depricated module functions
 
 def drawDES(basemap, color='red'):
     msg = "drawDES is depricated; use DECamBasemap.draw_des instead."
     warnings.warn(msg)
-    infile = os.path.join(fileio.get_datadir(),'round13-poly.txt')
-    reader_poly = open(infile)
-    lines_poly = reader_poly.readlines()
-    reader_poly.close()
-
-    ra_poly = []
-    dec_poly = []
-    for line in lines_poly:
-        if '#' in line:
-            continue
-        parts = line.split()
-        if len(parts) != 2:
-            continue
-        ra_poly.append(float(parts[0]))
-        dec_poly.append(float(parts[1]))
-
-    l_poly, b_poly = obztak.utils.projector.celToGal(ra_poly, dec_poly)
-
-    proj = safeProj(basemap, ra_poly, dec_poly)
-    basemap.plot(*proj, color=color, lw=3)
-
-############################################################
+    basemap.draw_des(color=color)
 
 def drawSMASH(basemap, color='none', edgecolor='black', marker='h', s=50):
     msg = "drawSMASH is depricated; use DECamBasemap.draw_smash instead."
     warnings.warn(msg)
-    # SMASH fields
-    infile = os.path.join(fileio.get_datadir(),'smash_fields_final.txt')
-    reader = open(infile)
-    lines = reader.readlines()
-    reader.close()
-
-    ra_smash = []
-    dec_smash = []
-    for ii in range(0, len(lines)):
-        if '#' in lines[ii]:
-            continue
-        lines[ii] = lines[ii].replace('\xc2\xa0', '')
-        parts = lines[ii].split()
-        ra_smash.append(float(parts[4]))
-        dec_smash.append(float(parts[5]))
-
-    ra_smash = np.array(ra_smash)
-    dec_smash = np.array(dec_smash)
-
-    proj = safeProj(basemap, ra_smash, dec_smash)
-    basemap.scatter(*proj, edgecolor=edgecolor, color=color, marker=marker, s=s)
-
-    #basemap.scatter(ra_smash, dec_smash, latlon=True, edgecolor='black', color='none', marker='h', s=50)
-
-############################################################
+    basemap.draw_smash(color=color, edgecolor=edgecolor, marker=marker, s=s)
 
 def drawMAGLITES(basemap, color='blue'):
     msg = "drawMAGLITES is depricated; use DECamBasemap.draw_smash instead."
     warnings.warn(msg)
-    infile = os.path.join(fileio.get_datadir(),'maglites-poly.txt')
-    reader_poly = open(infile)
-    lines_poly = reader_poly.readlines()
-    reader_poly.close()
-
-    ra_poly = []
-    dec_poly = []
-    for line in lines_poly:
-        if '#' in line:
-            continue
-        parts = line.split()
-        if len(parts) != 2:
-            continue
-        ra_poly.append(float(parts[0]))
-        dec_poly.append(float(parts[1]))
-
-    l_poly, b_poly = obztak.utils.projector.celToGal(ra_poly, dec_poly)
-
-    proj = safeProj(basemap, ra_poly, dec_poly)
-    basemap.plot(*proj, color=color, lw=3)
-
-############################################################
+    basemap.draw_maglites(color=color)
 
 def drawAirmassContour(basemap, observatory, airmass, n=360, s=50):
     msg = "drawAirmassContour is depricated; use DECamBasemap.draw_airmass instead."
     warnings.warn(msg)
-    #airmass = 1. / cos(90. - altitude)
-    #90 - alt = arccos(1. / airmass)
-    altitude_radians = (0.5 * np.pi) - np.arccos(1. / airmass)
-
-    ra_contour = np.zeros(n)
-    dec_contour = np.zeros(n)
-    for ii, azimuth in enumerate(np.linspace(0., 2. * np.pi, n)):
-        ra_radians, dec_radians = observatory.radec_of(azimuth, '%.2f'%(np.degrees(altitude_radians)))
-        ra_contour[ii] = np.degrees(ra_radians)
-        dec_contour[ii] = np.degrees(dec_radians)
-    proj = safeProj(basemap, ra_contour, dec_contour)
-    basemap.plot(*proj, color='green', lw=2)
-
-    drawZenith(basemap, observatory)
-    #ra_zenith, dec_zenith = observatory.radec_of(0, '90') # RA and Dec of zenith
-    #ra_zenith = np.degrees(ra_zenith)
-    #dec_zenith = np.degrees(dec_zenith)
-    #proj = safeProj(basemap, np.array([ra_zenith]), np.array([dec_zenith]))
-    #basemap.scatter(*proj, color='green', edgecolor='none', s=s)
+    basemap.draw_airmass(observatory=observatory, airmass=airmass, n=n, s=s)
 
 def drawZenith(basemap, observatory):
     """
@@ -435,33 +420,12 @@ def drawZenith(basemap, observatory):
     """
     msg = "drawZenith is depricated; use DECamBasemap.draw_zenith instead."
     warnings.warn(msg)
-    ra_zenith, dec_zenith = observatory.radec_of(0, '90') # RA and Dec of zenith
-    ra_zenith = np.degrees(ra_zenith)
-    dec_zenith = np.degrees(dec_zenith)
-    proj = safeProj(basemap, np.array([ra_zenith]), np.array([dec_zenith]))
-
-    zen_kwargs = dict(color='green',alpha=0.75,lw=1.5,zorder=1000)
-    basemap.plot(*proj,marker='+',ms=10,mew=1.5, **zen_kwargs)
-    basemap.tissot(ra_zenith, dec_zenith, constants.DECAM, 100, fc='none',**zen_kwargs)
-
-############################################################
+    basemap.draw_zenith(observatory)
 
 def drawMoon(basemap, date):
     msg = "drawMoon is depricated; use DECamBasemap.draw_moon instead."
     warnings.warn(msg)
-    moon = ephem.Moon()
-    moon.compute(date)
-    ra_moon = np.degrees(moon.ra)
-    dec_moon = np.degrees(moon.dec)
-
-    proj = safeProj(basemap, np.array([ra_moon]), np.array([dec_moon]))
-
-    if np.isnan(proj[0]).all() or np.isnan(proj[1]).all(): return
-
-    basemap.scatter(*proj, color='%.2f'%(0.01 * moon.phase), edgecolor='black', s=500)
-    color = 'black' if moon.phase > 50. else 'white'
-    plt.text(proj[0], proj[1], '%.2f'%(0.01 * moon.phase),
-             fontsize=10, ha='center', va='center', color=color)
+    basemap.draw_moon(date)
 
 ############################################################
 
@@ -474,10 +438,6 @@ def makePlot(date=None, name=None, figsize=(10.5,8.5), dpi=80, s=50, center=None
         date = ephem.Date(date)
 
     observatory = CTIO()
-    #observatory = ephem.Observer()
-    #observatory.lon = constants.LON_CTIO
-    #observatory.lat = constants.LAT_CTIO
-    #observatory.elevation = constants.ELEVATION_CTIO
     observatory.date = date
 
     #fig, ax = plt.subplots(fig='ortho', figsize=FIGSIZE, dpi=DPI)
@@ -504,28 +464,15 @@ def makePlot(date=None, name=None, figsize=(10.5,8.5), dpi=80, s=50, center=None
     proj_kwargs.update(lon_0=lon_0, lat_0=lat_0)
     basemap = DECamBasemap(**proj_kwargs)
 
-    #parallels = np.arange(-90.,120.,30.)
-    #basemap.drawparallels(parallels)
-    #meridians = np.arange(0.,420.,60.)
-    #basemap.drawmeridians(meridians)
-
-    #if des:   drawDES(basemap)
-    #if smash: drawSMASH(basemap, s=s)
-    #if maglites: drawMAGLITES(basemap)
-    #if bliss: basemap.draw_bliss()
-    #if airmass: drawAirmassContour(basemap, observatory, 2., s=s)
-    #if moon: drawMoon(basemap, date)
-
-    if des:   basemap.draw_des()
-    if smash: basemap.draw_smash(s=s)
+    if des:      basemap.draw_des()
+    if smash:    basemap.draw_smash(s=s)
     if maglites: basemap.draw_maglites()
-    if bliss: basemap.draw_bliss()
-    if airmass: basemap.draw_airmass(observatory, 2.)
-    if moon: basemap.draw_moon(date)
+    #if bliss:    basemap.draw_bliss()
+    if airmass:  basemap.draw_airmass(observatory, 2.)
+    if moon:     basemap.draw_moon(date)
 
     plt.title('%s UTC'%(datestring(date)))
 
-    #return fig, ax, basemap
     return fig, basemap
 
 def plotField(field, target_fields=None, completed_fields=None, options_basemap={}, **kwargs):
@@ -533,8 +480,8 @@ def plotField(field, target_fields=None, completed_fields=None, options_basemap=
     Plot a specific target field.
     """
     defaults = dict(edgecolor='none', s=50, vmin=0, vmax=4, cmap='summer_r')
-    for k,v in defaults.items():
-        kwargs.setdefault(k,v)
+    #defaults = dict(edgecolor='none', s=50, vmin=0, vmax=4, cmap='gray_r')
+    setdefaults(kwargs,defaults)
 
     if isinstance(field,np.core.records.record):
         tmp = FieldArray(1)
@@ -549,23 +496,21 @@ def plotField(field, target_fields=None, completed_fields=None, options_basemap=
 
     defaults = dict(date=field['DATE'][0], name='ortho')
     options_basemap = dict(options_basemap)
-    for k,v in defaults.items():
-        options_basemap.setdefault(k,v)
-    #fig, basemap = obztak.utils.ortho.makePlot(field['DATE'][0],name='ortho',**options_basemap)
-    fig, basemap = obztak.utils.ortho.makePlot(**options_basemap)
+    setdefaults(options_basemap,defaults)
+    fig, basemap = makePlot(**options_basemap)
 
     # Plot target fields
     if target_fields is not None:
-        proj = obztak.utils.ortho.safeProj(basemap, target_fields['RA'], target_fields['DEC'])
-        basemap.scatter(*proj, c=np.zeros(len(target_fields)), **kwargs)
+        proj = basemap.proj(target_fields['RA'], target_fields['DEC'])
+        basemap.scatter(*proj, c=np.zeros(len(target_fields))+0.3, **kwargs)
 
     # Plot completed fields
     if completed_fields is not None:
-        proj = obztak.utils.ortho.safeProj(basemap,completed_fields['RA'],completed_fields['DEC'])
+        proj = basemap.proj(completed_fields['RA'],completed_fields['DEC'])
         basemap.scatter(*proj, c=completed_fields['TILING'], **kwargs)
 
     # Try to draw the colorbar
-    try: 
+    try:
         if len(fig.axes) == 2:
             # Draw colorbar in existing axis
             colorbar = plt.colorbar(cax=fig.axes[-1])
@@ -576,11 +521,11 @@ def plotField(field, target_fields=None, completed_fields=None, options_basemap=
         pass
 
     # Show the selected field
-    proj = obztak.utils.ortho.safeProj(basemap, field['RA'], field['DEC'])
-    basemap.scatter(*proj, c='magenta', edgecolor='none', s=50)
+    proj = basemap.proj(field['RA'], field['DEC'])
+    basemap.scatter(*proj, c=COLORS[field[0]['FILTER']],edgecolor='none',s=50)
 
     #plt.draw()
-    plt.pause(0.001)
+    #plt.pause(0.001)
 
 def plotFields(fields=None,target_fields=None,completed_fields=None,options_basemap={},**kwargs):
     # ADW: Need to be careful about the size of the marker. It
@@ -600,7 +545,7 @@ def plotFields(fields=None,target_fields=None,completed_fields=None,options_base
         #plt.savefig('field_%08i.png'%i)
         if completed_fields is None: completed_fields = FieldArray()
         completed_fields = completed_fields + fields[[i]]
-
+        plt.pause(0.001)
         #time.sleep(0.01)
 
 def movieFields(outfile,fields=None,target_fields=None,completed_fields=None,**kwargs):
@@ -618,12 +563,14 @@ def movieFields(outfile,fields=None,target_fields=None,completed_fields=None,**k
         tmp[0] = fields
         fields = tmp
 
+    plt.ioff()
     for i,f in enumerate(fields):
         plotField(fields[i],target_fields,completed_fields,**kwargs)
         png = os.path.join(tmpdir,'field_%08i.png'%i)
-        plt.savefig(png,bbox_inches='tight',dpi=100)
+        plt.savefig(png,bbox_inches='tight',dpi=80)
         if completed_fields is None: completed_fields = FieldArray()
         completed_fields = completed_fields + fields[[i]]
+    plt.ion()
 
     cmd = 'convert -delay 10 -loop 0 %s/*.png %s'%(tmpdir,outfile)
     logging.info(cmd)
@@ -641,7 +588,7 @@ def plotWeight(field, target_fields, weight, **kwargs):
     fig, basemap = obztak.utils.ortho.makePlot(date,name='weight')
 
     index_sort = np.argsort(weight)[::-1]
-    proj = obztak.utils.ortho.safeProj(basemap, target_fields['RA'][index_sort], target_fields['DEC'][index_sort])
+    proj = basemap.proj(target_fields['RA'][index_sort], target_fields['DEC'][index_sort])
     weight_min = np.min(weight)
     basemap.scatter(*proj, c=weight[index_sort], edgecolor='none', s=50, vmin=weight_min, vmax=weight_min + 300., cmap='Spectral')
 
@@ -668,7 +615,7 @@ def plotWeight(field, target_fields, weight, **kwargs):
     colorbar.set_label('Weight')
 
     # Show the selected field
-    proj = obztak.utils.ortho.safeProj(basemap, [field['RA']], [field['DEC']])
+    proj = basemap.proj([field['RA']], [field['DEC']])
     basemap.scatter(*proj, c='magenta', edgecolor='none', s=50)
 
     #plt.draw()
@@ -676,6 +623,56 @@ def plotWeight(field, target_fields, weight, **kwargs):
     #fig.canvas.draw()
 
 ############################################################
+
+def plot_progress(outfile=None,**kwargs):
+    defaults = dict(edgecolor='none', s=50, vmin=0, vmax=4, cmap='summer_r')
+    for k,v in defaults.items():
+        kwargs.setdefault(k,v)
+
+    fields = FieldArray.load_database()
+
+    nites = [get_nite(date) for date in fields['DATE']]
+    nite = ephem.Date(np.max(nites))
+    date = '%d/%02d/%d 00:00:00'%(nite.tuple()[:3])
+
+    fig,basemap = makePlot(date=date,moon=False,airmass=False,center=(0,-90),smash=False)
+    proj = basemap.proj(fields['RA'],fields['DEC'])
+    basemap.scatter(*proj, c=fields['TILING'],  **kwargs)
+    colorbar = plt.colorbar()
+    colorbar.set_label('Tiling')
+    plt.title('Maglites Coverage (%d/%02d/%d)'%nite.tuple()[:3])
+
+    if outfile is not None:
+        plt.savefig(outfile,bbox_inches='tight')
+
+    return fig,basemap
+
+def plot_bliss_coverage(fields,outfile=None,**kwargs):
+    BANDS = ['g','r','i','z']
+    filename = os.path.join(fileio.get_datadir(),'bliss-target-fields.csv')
+    target = FieldArray.read(filename)
+    target = target[~np.in1d(target.unique_id,fields.unique_id)]
+
+    fig,ax = plt.subplots(2,2,figsize=(16,9))
+    plt.subplots_adjust(wspace=0.01,hspace=0.02,left=0.01,right=0.99,bottom=0.01,top=0.99)
+    kwargs = dict(edgecolor='none', s=12, alpha=0.2)
+
+    for i,b in enumerate(BANDS):
+        plt.sca(ax.flat[i])
+
+        f = fields[fields['FILTER'] == b]
+        t = target[target['FILTER'] == b]
+
+        bmap = DECamMcBride()
+        bmap.draw_des()
+        bmap.draw_galaxy(10)
+
+        proj = bmap.proj(t['RA'],t['DEC'])
+        bmap.scatter(*proj, c='0.7', **kwargs)
+
+        proj = bmap.proj(f['RA'],f['DEC'])
+        bmap.scatter(*proj, c=COLORS[b], **kwargs)
+        plt.gca().set_title('BLISS %s-band'%b)
 
 if __name__ == '__main__':
     makePlot('2016/2/10 03:00')

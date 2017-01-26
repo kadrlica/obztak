@@ -34,6 +34,9 @@ TACTICIANS = odict([
     (None,'Tactician'),
     ('tactician','tactician'),
     ('coverage','CoverageTactician'),
+    ('good','ConditionTactician'),
+    ('bad','ConditionTactician'),
+    ('bliss','BlissTactician'),
 ])
 
 

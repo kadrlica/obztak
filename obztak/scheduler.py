@@ -22,7 +22,7 @@ from obztak.utils import fileio
 from obztak.ctio import CTIO
 from obztak.field import FieldArray
 from obztak.tactician import CoverageTactician
-from obztak.utils.date import get_nite, datestring, nitestring
+from obztak.utils.date import get_nite, datestr, datestring, nitestring
 from obztak.factory import tactician_factory
 
 # For debugging (can also use the verbose command line argument)
@@ -41,7 +41,7 @@ class Scheduler(object):
     ])
     FieldType = FieldArray
 
-    def __init__(self,target_fields=None,observation_windows=None,completed_fields=None,tactician=None):
+    def __init__(self,target_fields=None,observation_windows=None,completed_fields=None):
         self.load_target_fields(target_fields)
         self.load_observation_windows(observation_windows)
         self.load_observed_fields()
@@ -49,7 +49,6 @@ class Scheduler(object):
 
         self.scheduled_fields = self.FieldType()
         self.observatory = CTIO()
-        self.create_tactician(tactician)
 
     def load_target_fields(self, target_fields=None):
         if target_fields is None:
@@ -77,23 +76,22 @@ class Scheduler(object):
             self.observation_windows.append([ephem.Date(start), ephem.Date(end)])
 
         # Sanity check that observation windows are properly sorted
-        for ii in range(0, len(self.observation_windows)):
-            if self.observation_windows[ii][1] < self.observation_windows[ii][0]:
-                logging.warn('Observation windows are not properly sorted')
-                logging.info('%s -- %s'%(self.observation_windows[ii][0],self.observation_windows[ii][1]))
-            if ii > 0:
-                if self.observation_windows[ii][0] < self.observation_windows[ii - 1][1]:
-                    logging.warn('Observation windows are not properly sorted')
-                    logging.info('%s -- %s'%(self.observation_windows[ii][0],self.observation_windows[ii][1]))
+        for ii,(start,end) in enumerate(self.observation_windows):
+            msg = 'Observation windows are not properly sorted\n'
+            msg+= '%s -- %s'%(datestr(start),datestr(end))
+            if (end < start):
+                logging.warn(msg)
+            if ii > 0 and (start < self.observation_windows[ii-1][1]):
+                logging.warn(msg)
 
         logging.info('Observation Windows:')
         for start,end in self.observation_windows:
-            logging.info('  %s UTC -- %s UTC'%(datestring(start,0),datestring(end,0)))
+            logging.info(' %s UTC -- %s UTC'%(datestr(start),datestr(end)))
         logging.info(30*'-')
 
     def load_observed_fields(self):
         """
-        Load fields that were already observed from the telemetry database.
+        Load fields from the telemetry database that were already observed.
         """
         try:
             fields = self.FieldType.load_database()
@@ -103,7 +101,6 @@ class Scheduler(object):
             fields = self.FieldType()
         self.observed_fields = fields
         return self.observed_fields
-
 
     def load_completed_fields(self, completed_fields=None):
         """Load completed fields. The default behavior is to load the
@@ -150,15 +147,27 @@ class Scheduler(object):
 
     def create_tactician(self,tactician=None):
         if tactician is None: tactician = self._defaults['tactician']
-        self.tactician = tactician_factory(tactician)
-        return self.tactician
+        return tactician_factory(tactician,mode=tactician)
 
-    def selectField(self, date, previous_field=None, plot=False, mode='coverage'):
+    def select_field(self, date, mode='coverage'):
+        """
+        Select field(s) using the survey tactician.
 
+        Parameters:
+        -----------
+        date       : ephem.Date object
+        mode       : Type of tactician to use for selecting field
+
+        Returns:
+        --------
+        field      : selected field(s) from tactician
+        """
         sel = ~np.in1d(self.target_fields['ID'],self.completed_fields['ID'])
-        self.tactician = CoverageTactician(self.target_fields[sel])
+
+        self.tactician = self.create_tactician(mode)
         self.tactician.set_date(date)
-        self.tactician.set_previous_field(previous_field)
+        self.tactician.set_target_fields(self.target_fields[sel])
+        self.tactician.set_completed_fields(self.completed_fields)
 
         field_select = self.tactician.select_fields()
 
@@ -172,7 +181,7 @@ class Scheduler(object):
 
         if len(field_select) == 0:
             logging.error("No field selected... we've got problems.")
-            msg  = "date=%s\n"%(datestring(date,0))
+            msg  = "date=%s\n"%(datestr(date))
             msg += "index_select=%s, index=%s\n"%(index_select,index)
             msg += "nselected=%s, selection=%s\n"%(cut.sum(),cut[index_select])
             msg += "weights=%s"%weight
@@ -188,7 +197,7 @@ class Scheduler(object):
 
     def run(self, tstart=None, tstop=None, clip=False, plot=False, mode='coverage'):
         """
-        Schedule a chunk of exposures.
+        Schedule a chunk of exposures. This is the loop where date is incremented
 
         Parameters:
         -----------
@@ -214,22 +223,21 @@ class Scheduler(object):
         if isinstance(tstop,basestring):
             tstop = ephem.Date(tstop)
 
-        msg  = "Run start: %s\n"%datestring(tstart)
-        msg += "Run end: %s\n"%datestring(tstop)
+        msg  = "Run start: %s\n"%datestr(tstart,4)
+        msg += "Run end: %s\n"%datestr(tstop,4)
         msg += "Run time: %s minutes"%(timedelta/ephem.minute)
         logging.debug(msg)
 
         msg = "Previously completed fields: %i"%len(self.completed_fields)
         logging.info(msg)
 
-        msg = "Scheduling with tactician mode: %s"%mode
+        msg = "Scheduling with tactician: %s"%mode
         logging.info(msg)
 
         date = tstart
         latch = True
-        previous_field = None
         while latch:
-            logging.debug(' '+datestring(date))
+            logging.debug(' '+datestr(date,4))
 
             # Check to see if in valid observation window
             if self.observation_windows is not None:
@@ -246,16 +254,8 @@ class Scheduler(object):
                         msg = 'Date outside of nominal observing windows'
                         logging.warning(msg)
 
-            # Set previous field as last completed field
-            if len(self.completed_fields):
-                previous_field = self.completed_fields[-1]
-
-                # Ignore if more than 30 minutes has elapsed
-                if (date - ephem.Date(previous_field['DATE'])) > 30*ephem.minute:
-                    previous_field = None
-
             # Select one (or more) fields from the tactician
-            field_select = self.selectField(date, previous_field, mode=mode)
+            field_select = self.select_field(date, mode)
 
             # Now update the time from the selected field
             date = ephem.Date(field_select[-1]['DATE']) + constants.FIELDTIME
@@ -263,9 +263,11 @@ class Scheduler(object):
             self.completed_fields = self.completed_fields + field_select
             self.scheduled_fields = self.scheduled_fields + field_select
 
-            msg = "  %(DATE).19s: id=%(ID)s, airmass=%(AIRMASS).2f, slew=%(SLEW).2f"
+            msg=" %(DATE).19s: id=%(ID)10s, airmass=%(AIRMASS).2f, slew=%(SLEW).2f"
+            msg+=", moon=%(PHASE).0f%%,%(ALT).0fdeg"
             for i,f in zip(field_select.unique_id,field_select):
                 params = dict([('ID',i)]+[(k,f[k]) for k in f.dtype.names])
+                params.update({'PHASE':self.tactician.moon.phase,"ALT":np.degrees(self.tactician.moon.alt)})
                 logging.info(msg%params)
 
             #if plot: self.plotField(date, field_select)
@@ -295,6 +297,7 @@ class Scheduler(object):
         --------
         field : The scheduled field
         """
+        # Probably cleaner to make this it's own tactician
         date = ephem.Date(date) if date else ephem.now()
 
         select  = (self.target_fields['HEX']==hex)
@@ -304,8 +307,8 @@ class Scheduler(object):
         index = np.nonzero(select)[0]
 
         field = self.target_fields[select]
-
-        field['DATE'] = map(datestring,select.sum()*[date])
+        nfields = select.sum()
+        field['DATE'] = map(datestring,nfields*[date])
         return field
 
     def schedule_chunk(self,tstart=None,chunk=60,clip=False,plot=False,mode=None):
@@ -369,8 +372,8 @@ class Scheduler(object):
             finish = self.observatory.next_rising(ephem.Sun(), use_center=True)
             self.observatory.horizon = '0'
 
-            logging.info("Night start (UTC):  %s"%datestring(start,0))
-            logging.info("Night finish (UTC): %s"%datestring(finish,0))
+            logging.info("Night start (UTC):  %s"%datestr(start))
+            logging.info("Night finish (UTC): %s"%datestr(finish))
 
         chunks = []
         i = 0

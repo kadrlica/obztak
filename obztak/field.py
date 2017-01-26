@@ -119,6 +119,10 @@ class FieldArray(np.recarray):
         return np.char.mod('%(HEX)i-%(TILING)02d-%(FILTER)s',self)
 
     @property
+    def field_id(self):
+        return np.char.mod('%(HEX)i-%(TILING)02d',self)
+
+    @property
     def object(self):
         return np.char.mod(self.OBJECT_FMT,self.unique_id).astype('S80')
 
