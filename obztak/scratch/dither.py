@@ -22,7 +22,7 @@ params = {
     'xtick.minor.size': 1.5,    # minor tick size in points
     'xtick.major.size': 3,      # major tick size in points
     'xtick.minor.size': 1.5,    # minor tick size in points
-    'text.usetex': True,
+    #'text.usetex': True,
     #'figure.figsize': fig_size,
     'font.family':'serif',
     'font.serif':'Computer Modern Roman',
@@ -102,7 +102,7 @@ def makeDither():
     filename  = os.path.join(datadir,'smash_fields_alltiles.txt')
     data_alltiles = np.recfromtxt(filename, names=True)
 
-    filename = os.path.join(datadir,'ccd_corners_xy_fill.dat')
+    filename = os.path.join(datadir,'../scratch/ccd_corners_xy_fill.dat')
     data = eval(''.join(open(filename).readlines()))
     ccd_array = []
     for key in data.keys():
@@ -153,7 +153,7 @@ def makeDither():
 
 def testDither(ra_center, dec_center, infile='target_fields.csv', save=False):
 
-    filename = os.path.join(fileio.get_datadir(),'ccd_corners_xy_fill.dat')
+    filename = os.path.join(fileio.get_datadir(),'../scratch/ccd_corners_xy_fill.dat')
     data = eval(''.join(open(filename).readlines()))
     ccd_array = []
     for key in data.keys():
@@ -186,14 +186,16 @@ def testDither(ra_center, dec_center, infile='target_fields.csv', save=False):
 
 ############################################################
 
-#infile = 'target_fields_decam_dither_1.csv'
-#infile = 'target_fields_decam_dither_2.csv'
-infile = 'target_fields_smash_dither.csv'
-#infile = 'target_fields_smash_rotate.csv'
-save = True
-
-testDither(100., -70., infile=infile, save=save) # On edge
-testDither(125., -75., infile=infile, save=save)
-testDither(200., -88., infile=infile, save=save)
-
+if __name__ == '__main__':
+    #infile = 'target_fields_decam_dither_1.csv'
+    #infile = 'target_fields_decam_dither_2.csv'
+    infile = 'target_fields_smash_dither.csv'
+    #infile = 'target_fields_smash_rotate.csv'
+    save = True
+     
+    testDither(100., -70., infile=infile, save=save) # On edge
+    testDither(125., -75., infile=infile, save=save)
+    testDither(200., -88., infile=infile, save=save)
+     
 ############################################################
+    
