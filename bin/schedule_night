@@ -39,6 +39,7 @@ def main():
     #scheduler = Scheduler(args.fields,args.windows,args.complete)
     scheduler = scheduler_factory(args.survey,target_fields=args.fields,observation_windows=args.windows,completed_fields=args.complete)
     chunks = scheduler.schedule_nite(date,chunk=args.chunk,plot=args.plot,mode=args.mode)
+
     
     if not args.outfile:
         outdir  = nitestr

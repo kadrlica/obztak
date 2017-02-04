@@ -3,6 +3,7 @@
 Scheduling tactician.
 """
 import os
+import logging
 
 import numpy as np
 import ephem
@@ -223,6 +224,18 @@ class ConditionTactician(Tactician):
 
         return weight
 
+class SMCNODTactician(Tactician):
+
+    @property
+    def weight(self):
+        sel = self.viable_fields
+        weight = 10000. * np.logical_not(np.in1d(self.fields['HEX'], obztak.utils.constants.HEX_SMCNOD)).astype(float)
+        weight[~sel] = np.inf
+        weight += 360. * self.fields['TILING']
+        weight += slew
+        return weight
+
+
 class BlissTactician(Tactician):
     CONDITIONS = odict([
         (None,    [0.0, 1.4]),
@@ -238,16 +251,30 @@ class BlissTactician(Tactician):
     @property
     def weight(self):
         airmass = self.airmass
+        moon_angle = self.moon_angle
+
         sel = self.viable_fields
+        weight = np.zeros(len(sel))
 
-        # Don't allow (g,r) when moon is up or (i,z) when moon is down.
-        if (self.moon.phase >= 50) and (self.moon.alt > -0.1):
-            sel &= (np.char.count('gr',self.fields['FILTER']) == 0)
+        # Moon angle constraints
+        moon_limit = 35.
+        sel &= (moon_angle > moon_limit)
+        #if (self.moon.phase > 25) & (self.moon.alt > -0.1):
+        #    sel &= (moon_angle > 40)
+        #else:
+        #    sel &= (moon_angle > 20)
+
+        # Moon band constraints
+        if (self.moon.phase >= 90) and (self.moon.alt > -0.1):
+            # Moon is very bright; only do z
+            sel &= (np.char.count('z',self.fields['FILTER']) > 0)
+        elif (self.moon.phase >= 50) and (self.moon.alt > -0.1):
+            # Moon is more than half full; do i,z
+            sel &= (np.char.count('iz',self.fields['FILTER']) > 0)
         else:
-            sel &= (np.char.count('iz',self.fields['FILTER']) == 0)
-
-        # Moon angle constraint
-        sel &= (self.moon_angle > 20)
+            # Moon is faint or down; do g,r (unless none available)
+            sel &= (np.char.count('gr',self.fields['FILTER']) > 0)
+            #weight += 1e8 * (np.char.count('gr',self.fields['FILTER']) > 0)
 
         # Airmass cut
         airmass_min, airmass_max = self.CONDITIONS[self.mode]
@@ -258,223 +285,49 @@ class BlissTactician(Tactician):
         if len(self.completed_fields):
             dates = np.array(map(ephem.Date,self.completed_fields['DATE']))
             recent = self.completed_fields[(self.date - dates) < 10*ephem.hour]
-            cut = np.in1d(self.fields.field_id,recent.field_id)
-            sel &= ~cut
+            sel &= ~np.in1d(self.fields.field_id,recent.field_id)
+            #cut = np.in1d(self.fields.field_id,recent.field_id)
+            #sel &= ~cut
 
-        #sel &= (self.fields['TILING'] < 2)
 
-        #weight = 2.0 * self.hour_angle
+        # Set the weights for each field. Lower weight means more favorable.
+
+        # Higher weight for rising fields (higher hour angle)
         weight = 1.0 * self.hour_angle
-        weight[~sel] = np.inf
-        #weight += 10. * 360. * self.fields['TILING']
 
-        weight += 1000000. * 360. * self.fields['TILING']
+        # Higher weight for larger slews
+        # slew = 10 deg -> weight = 1e3
         weight += self.slew**3
 
-        #airmass_min, airmass_max = self.CONDITIONS[self.mode]
-        #airmass_cut = ((airmass < airmass_min) | (airmass > airmass_max))
-        #weight[airmass_cut] = np.inf
+        # Try hard to do the first tiling
+        weight += 1e6 * (self.fields['TILING'] - 1)
 
-        # ADW: This should probably also be in there
+        # Higher weight for higher airmass
+        # airmass = 1.4 -> weight = 6.4
         weight += 100. * (airmass - 1.)**3
+
+        # Higher weight for fields close to the moon
+        # angle = 50 -> weight = 6.4
+        weight += 100 * (20./moon_angle)**3
+
+        # Set infinite weight to all disallowed fields
+        weight[~sel] = np.inf
 
         return weight
 
     def select_index(self):
         weight = self.weight
         index = np.array([np.argmin(weight)],dtype=int)
+        if np.any(~np.isfinite(weight[index])):
+            msg = "Infinite weight selected"
+            print(msg)
+            import pdb; pdb.set_trace()
+            import obztak.utils.ortho
+            airmass_min, airmass_max = self.CONDITIONS[self.mode]
+            obztak.utils.ortho.plotFields(self.completed_fields[-1],self.fields,self.completed_fields,options_basemap=dict(airmass=airmass_max))
+            raw_input()
+            raise ValueError(msg)
         return index
-
-### class AirmassTactician(Tactician):
-###     name = 'airmass'
-###  
-###     @property
-###     def weight(self,airmass):
-###         airmass_effective = copy.copy(airmass)
-###         # Do not observe fields that are unavailable
-###         airmass_effective[np.logical_not(cut)] = np.inf 
-###         # Priorize coverage over multiple tilings
-###         airmass_effective += self.target_fields['TILING'] 
-###         index_select = np.argmin(airmass_effective)
-###         return index_select
-###  
-### class RATactician(Tactician):
-###     name = 'ra'
-###     def calculate_weight(self,ra_zenith):
-###         ra_effective = copy.copy(self.target_fields['RA']) - ra_zenith
-###         ra_effective[ra_effective > 180.] = ra_effective[ra_effective > 180.] - 360.
-###         ra_effective[np.logical_not(cut)] = np.inf
-###         ra_effective += 360. * self.target_fields['TILING']
-###         index_select = np.argmin(ra_effective)
-###         return index_select
-###  
-### class SlewTactician(Tactician):
-###     name = 'slew'
-###     def calculate_weights(self,fields,ra_zenith,slew):
-###         ra_effective = copy.copy(self.target_fields['RA']) - ra_zenith
-###         ra_effective[ra_effective > 180.] = ra_effective[ra_effective > 180.] - 360.
-###         ra_effective[np.logical_not(cut)] = np.inf
-###         ra_effective += 360. * self.target_fields['TILING']
-###         ra_effective += slew**2
-###         #ra_effective += 2. * slew
-###         index_select = np.argmin(ra_effective)
-###         return index_select
-###  
-### class BalanceTactician(Tactician):
-###     name = 'balance'
-###     def calculate_weight(self,airmass, hour_angle_degree):
-###             """
-###             ra_effective = copy.copy(self.target_fields['RA']) - ra_zenith
-###             ra_effective[ra_effective > 180.] = ra_effective[ra_effective > 180.] - 360.
-###             ra_effective[np.logical_not(cut)] = np.inf
-###             ra_effective += 360. * self.target_fields['TILING']
-###             #ra_effective += 720. * self.target_fields['TILING']
-###             ra_effective += slew**2
-###             ra_effective += 100. * (airmass - 1.)**3
-###             weight = ra_effective
-###             index_select = np.argmin(weight)
-###             weight = hour_angle_degree
-###             """
-###             weight = copy.copy(hour_angle_degree)
-###             weight[np.logical_not(cut)] = np.inf
-###             weight += 3. * 360. * self.target_fields['TILING']
-###             weight += slew**3 # slew**2
-###             weight += 100. * (airmass - 1.)**3
-###             index_select = np.argmin(weight)
-###             return index_select
-###  
-### class BalanceTactician2(Tactician):
-###     name = 'balance2'
-###     def calculate_weight(self,hour_angle_degree,slew_ra,slew_dec):
-###         weight = copy.copy(hour_angle_degree)
-###         weight[np.logical_not(cut)] = np.inf
-###         weight += 360. * self.target_fields['TILING']
-###         weight += slew_ra**2
-###         weight += slew_dec
-###         weight += 100. * (airmass - 1.)**3
-###         index_select = np.argmin(weight)
-###         return index_select
-###  
-### class BalanceTactician2(Tactician):
-###     name = 'balance3'
-###     def calculate_weight(self,hour_angle_degree,slew_ra,slew_dec):
-###         logging.debug("Slew: %s"%slew)
-###         weight = copy.copy(hour_angle_degree)
-###         weight[np.logical_not(cut)] = np.inf
-###         weight += 3. * 360. * self.target_fields['TILING']
-###         """
-###         x_slew, y_slew = zip(*[[0., 0.],
-###                                [2.5, 10.],
-###                                [5., 30.],
-###                                [10., 150.],
-###                                [20., 250.],
-###                                [50., 500.],
-###                                [180., 5000.]])
-###         """
-###         x_slew, y_slew = zip(*[[0., 0.],
-###                                [2.5, 10.],
-###                                [5., 30.],
-###                                [10., 500.], #
-###                                [20., 1000.], # 500
-###                                [50., 5000.], # 1000
-###                                [180., 5000.]])
-###         weight += np.interp(slew, x_slew, y_slew, left=np.inf, right=np.inf)
-###         weight += 100. * (airmass - 1.)**3
-###         index_select = np.argmin(weight)
-###         return index_select
-###  
-### class AirmassTactician2(Tactician):
-###     name = 'airmass2'
-###     def calculate_weight(self,hour_angle_degree,slew_ra,slew_dec):
-###         weight = 200. * (airmass - airmass_next)
-###         weight[np.logical_not(cut)] = np.inf
-###         weight += 360. * self.target_fields['TILING']
-###         weight += 100. * (airmass - 1.)**3
-###         weight += slew**2
-###         index_select = np.argmin(weight)
-###         return index_select
-###  
-### class CoverageTactician(Tactician):
-###     name = 'coverage'
-###     def calculate_weight(self,airmass,hour_angle_degree,slew):
-###         weight = copy.copy(hour_angle_degree)
-###         #weight[np.logical_not(cut)] = 9999.
-###         weight[np.logical_not(cut)] = np.inf
-###         weight += 6. * 360. * self.target_fields['TILING'] # Was 6, 60
-###         weight += slew**3 # slew**2
-###         weight += 100. * (airmass - 1.)**3
-###         index_select = np.argmin(weight)
-###         return index_select
-###  
-### class CoverageTactician2(Tactician):
-###     name = 'converage2'
-###     def calculate_weight(self,hour_angle_degree,slew_ra,slew_dec):
-###         weight = copy.copy(hour_angle_degree)
-###         weight *= 2.
-###         weight[np.logical_not(cut)] = np.inf
-###         weight += 6. * 360. * self.target_fields['TILING']
-###         weight += slew**3 # slew**2
-###         weight += 100. * (airmass - 1.)**3
-###         index_select = np.argmin(weight)
-###         return index_select
-###  
-### class CoverageTactician3(Tactician):
-###     name = 'coverage3'
-###     def calculate_weight(self,airmass,hour_angle_degree,slew):
-###         weight = copy.copy(hour_angle_degree)
-###         weight *= 0.5
-###         weight[np.logical_not(cut)] = np.inf
-###         weight += 6. * 360. * self.target_fields['TILING']
-###         weight += slew**3 # slew**2
-###         weight += 100. * (airmass - 1.)**3
-###         index_select = np.argmin(weight)
-###  
-### class LowAirmassTactician(Tactician):
-###     name = 'lowairmass'
-###     def calculate_weight(self):
-###         weight = 2.0 * copy.copy(hour_angle_degree)
-###         #if len(self.scheduled_fields) == 0:
-###         #    weight += 200. * obztak.utils.projector.angsep(self.target_fields['RA'],
-###         #                                                     self.target_fields['DEC'],
-###         #                                                     90., -70.)
-###         weight[np.logical_not(cut)] = np.inf
-###         weight += 3. * 360. * self.target_fields['TILING']
-###         weight += slew**3 # slew**2
-###         #weight += 2000. * (airmass - 1.)**3 # 200
-###         weight += 5000. * (airmass > 1.5)
-###         index_select = np.argmin(weight)
-###  
-###         """
-###         weight = copy.copy(hour_angle_degree)
-###         weight[np.logical_not(cut)] = np.inf
-###         weight += 3. * 360. * self.target_fields['TILING']
-###         weight += slew**3 # slew**2
-###         weight += 1000. * (airmass - 1.)**3
-###         index_select = np.argmin(weight)
-###         """
-###  
-### class ConditionTactician(Tactician):
-###     name = 'condition'
-###     def calculate_weight(self):
-###         weight = 2.0 * copy.copy(hour_angle_degree)
-###         weight[np.logical_not(cut)] = np.inf
-###         weight += 3. * 360. * self.target_fields['TILING']
-###         weight += slew**3
-###         airmass_min, airmass_max = CONDITIONS[mode]
-###         airmass_sel = ((airmass < airmass_min) | (airmass > airmass_max))
-###         # ADW: This should probably also be in there
-###         weight += 100. * (airmass - 1.)**3
-###         weight += 5000. * airmass_sel
-###         index_select = np.argmin(weight)
-###  
-### class SmcnodTactician(Tactician):
-###     name = 'smcnod'
-###     def calculate_weight(self):
-###         weight = 10000. * np.logical_not(np.in1d(self.target_fields['HEX'], obztak.utils.constants.HEX_SMCNOD)).astype(float)
-###         weight[np.logical_not(cut)] = np.inf
-###         weight += 360. * self.target_fields['TILING']
-###         weight += slew
-###         index_select = np.argmin(weight)
 
 if __name__ == "__main__":
     import argparse

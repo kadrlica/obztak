@@ -57,7 +57,7 @@ class BlissSurvey(Survey):
         ['2017/06/21','first'],
         ]
     
-    def prepare_fields(self, infile=None, outfile=None, mode='decam_dither', plot=True, smcnod=False):
+    def prepare_fields(self, infile=None, outfile=None, mode='decals_rotate', plot=True, smcnod=False):
         """ Create the list of fields to be targeted by this survey.
 
         Parameters:
@@ -96,8 +96,12 @@ class BlissSurvey(Survey):
                        (-1.0,1.0), (0.0,-1.0)][:TILINGS]
             dither = self.coord_rotate
         elif mode.lower() == 'decals_rotate':
-            OFFSETS = [(0,0),(0.2917, 0.0833),
-                       (0.5861, 0.1333)][:TILINGS]
+            OFFSETS = [(0,0),(-0.2917, 0.0833),
+                       (-0.5861, 0.1333)][:TILINGS]
+            dither = self.decals_rotate
+        elif mode.lower() == 'bliss_rotate':
+            OFFSETS = [(0, 0), (8/3.*CCD_X, -11/3.*CCD_Y),
+                       (8/3.*CCD_X, 8/3.*CCD_Y), (-8/3.*CCD_X, 0.)][:TILINGS]
             dither = self.decals_rotate
         else:
             msg = "Unrecognized dither mode: %s"%mode
@@ -140,9 +144,9 @@ class BlissSurvey(Survey):
         for i,offset in enumerate(OFFSETS):
             idx0 = i*nhexes*nbands
             idx1 = idx0+nhexes*nbands
-            #ra_dither,dec_dither = dither(ra,dec,offset[0],offset[1])
-            ra_dither = raw_data[raw_data['PASS'] == i+1]['RA']
-            dec_dither = raw_data[raw_data['PASS'] == i+1]['DEC']
+            ra_dither,dec_dither = dither(ra,dec,offset[0],offset[1])
+            #ra_dither = raw_data[raw_data['PASS'] == i+1]['RA']
+            #dec_dither = raw_data[raw_data['PASS'] == i+1]['DEC']
             fields['RA'][idx0:idx1] = np.repeat(ra_dither,nbands)
             fields['DEC'][idx0:idx1] = np.repeat(dec_dither,nbands)
 
@@ -174,7 +178,7 @@ class BlissSurvey(Survey):
 
             if outfile:
                 outfig = os.path.splitext(outfile)[0]+'_ortho.png'
-                fig.savefig(outfig,bbox_inches='tight')
+                plt.savefig(outfig,bbox_inches='tight')
 
             plt.figure()
             bmap = DECamMcBride()
@@ -186,7 +190,7 @@ class BlissSurvey(Survey):
                          pad=0.1,aspect=30,shrink=0.8)
             if outfile:
                 outfig = os.path.splitext(outfile)[0]+'_mcbride.png'
-                fig.savefig(outfig,bbox_inches='tight')
+                plt.savefig(outfig,bbox_inches='tight')
 
             if not sys.flags.interactive:
                 plt.show(block=True)
@@ -208,6 +212,25 @@ class BlissSurvey(Survey):
         sel |= BlissSurvey.alfredo(ra,dec)
         # 10 deg from the Galactic plane
         sel &= (np.fabs(b) > 10.)
+        return sel
+
+    @staticmethod
+    def footprint(ra,dec):
+        l, b = cel2gal(ra, dec)
+        # Starting to the north of the Galactic plane
+        sel = ((ra > 120) & (ra < 360)) | (ra < 20)
+        # Band in declination
+        sel &= (dec < -30 ) & (dec > -40)
+        # LIGO/DSPHS high probability region south of nominal stripe
+        sel |= ((ra > 140) & (ra < 270) & (dec < -30) & (dec > -60) & (b > 0))
+        # Alfredo's eRosita survey
+        sel |= BlissSurvey.alfredo(ra,dec)
+        # 10 deg from the Galactic plane
+        sel &= (np.fabs(b) > 10.)
+        # Expand width of Planet 9 region
+        sel |= ((ra > 305)|(ra < 15)) & (dec > -40) & (dec < -25)
+        # Shrink length of Planet 9 region
+        sel[(ra < 305) & (b < -10) & (dec < -30) & (dec > -40)] = 0
         return sel
 
     @staticmethod

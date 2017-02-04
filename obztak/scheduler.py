@@ -263,7 +263,7 @@ class Scheduler(object):
             self.completed_fields = self.completed_fields + field_select
             self.scheduled_fields = self.scheduled_fields + field_select
 
-            msg=" %(DATE).19s: id=%(ID)10s, airmass=%(AIRMASS).2f, slew=%(SLEW).2f"
+            msg=" %(DATE).19s: id=%(ID)10s, secz=%(AIRMASS).2f, slew=%(SLEW).2f"
             msg+=", moon=%(PHASE).0f%%,%(ALT).0fdeg"
             for i,f in zip(field_select.unique_id,field_select):
                 params = dict([('ID',i)]+[(k,f[k]) for k in f.dtype.names])
@@ -412,18 +412,25 @@ class Scheduler(object):
 
         Returns:
         --------
-        nites : A list of the nightly schedule
+        scheduled_nites : An ordered dictionary of scheduled nites
         """
 
-        nites = odict()
+        self.scheduled_nites = odict()
 
         for tstart,tend in self.observation_windows:
-            if start is not None and ephem.Date(tstart) < ephem.Date(start): continue
-            if end is not None and ephem.Date(tend) > ephem.Date(end): continue
+            if start is not None and ephem.Date(tstart) < ephem.Date(start):
+                continue
+            if end is not None and ephem.Date(tend) > ephem.Date(end):
+                continue
 
-            chunks = self.schedule_nite(tstart,chunk,clip=True,plot=False,mode=mode)
+            try:
+                chunks = self.schedule_nite(tstart,chunk,clip=True,plot=False,mode=mode)
+            except ValueError as error:
+                ortho.plotField(self.completed_fields[-1:],self.target_fields,self.completed_fields)
+                raise(error)
+
             nite = nitestring(tstart)
-            nites[nite] = chunks
+            self.scheduled_nites[nite] = chunks
 
             if plot:
                 ortho.plotField(self.completed_fields[-1:],self.target_fields,self.completed_fields)#,options_basemap=dict(date='2017/02/21 05:00:00'))
@@ -432,7 +439,7 @@ class Scheduler(object):
                     break
 
         if plot: raw_input(' ...finish... ')
-        return nites
+        return self.scheduled_nites
 
     def write(self,filename):
         self.scheduled_fields.write(filename)

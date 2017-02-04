@@ -1,11 +1,6 @@
 import os
 from os.path import expandvars
 import shutil
-from mpl_toolkits.basemap import Basemap
-import numpy as np
-import ephem
-import matplotlib.pyplot as plt
-import matplotlib
 import time
 import logging
 import tempfile
@@ -13,8 +8,14 @@ import subprocess
 import warnings
 from collections import OrderedDict as odict
 
+from mpl_toolkits.basemap import Basemap
+import matplotlib.pyplot as plt
+import matplotlib
+import numpy as np
+import ephem
+
 import obztak.utils.projector
-from obztak.utils.projector import gal2cel
+from obztak.utils.projector import gal2cel, SphericalRotator
 
 from obztak.utils import constants
 from obztak.utils import fileio
@@ -284,68 +285,6 @@ class DECamBasemap(Basemap):
         setdefaults(kwargs,defaults)
         self.scatter(*self.proj(fields['RA'],fields['DEC']),**kwargs)
 
-    def draw_fields(self, fields=None,target_fields=None,completed_fields=None,**kwargs):
-        # ADW: Need to be careful about the size of the marker. It
-        # does not change with the size of the frame so it is
-        # really safest to scale to the size of the zenith circle
-        # (see PlotPointings). That said, s=50 is probably roughly ok.
-        if fields is None:
-            fields = completed_fields[-1]
-
-        if isinstance(fields,np.core.records.record):
-            tmp = FieldArray(1)
-            tmp[0] = fields
-            fields = tmp
-
-        for i,f in enumerate(fields):
-            self.draw_field(fields[i],target_fields,completed_fields,**kwargs)
-            if completed_fields is None: completed_fields = FieldArray()
-            completed_fields = completed_fields + fields[[i]]
-
-    def draw_field(self, field, target_fields=None, completed_fields=None,**kwargs):
-        """
-        Draw a specific target field.
-        """
-        #defaults = dict(edgecolor='none', s=50, vmin=0, vmax=4, cmap='summer_r')
-        defaults = dict(edgecolor='none', s=50, vmin=0, vmax=4, cmap='gray_r')
-        setdefaults(kwargs,defaults)
-
-        if isinstance(field,np.core.records.record):
-            tmp = FieldArray(1)
-            tmp[0] = field
-            field = tmp
-
-        msg = "%s (date=%s, "%(field['ID'][0],datestring(field['DATE'][0],0))
-        msg +="ra=%(RA)-6.2f, dec=%(DEC)-6.2f, secz=%(AIRMASS)-4.2f)"%field[0]
-        logging.info(msg)
-
-        # Plot target fields
-        if target_fields is not None:
-            proj = self.proj(target_fields['RA'], target_fields['DEC'])
-            self.scatter(*proj, c=np.zeros(len(target_fields))+0.3, **kwargs)
-
-        # Plot completed fields
-        if completed_fields is not None:
-            proj = self.proj(completed_fields['RA'],completed_fields['DEC'])
-            self.scatter(*proj, c=completed_fields['TILING'], **kwargs)
-
-        fig = plt.gcf()
-        # Try to draw the colorbar
-        try:
-            if len(fig.axes) == 2:
-                # Draw colorbar in existing axis
-                colorbar = plt.colorbar(cax=fig.axes[-1])
-            else:
-                colorbar = plt.colorbar()
-            colorbar.set_label('Tiling')
-        except TypeError:
-            pass
-
-        # Show the selected field
-        proj = self.proj(field['RA'], field['DEC'])
-        self.scatter(*proj, c=COLORS[field[0]['FILTER']],edgecolor='none',s=50)
-        plt.pause(0.001)
-
     def draw_hpxmap(self, hpxmap, xsize=800, **kwargs):
         """
         Use pcolormesh to draw healpix map
@@ -367,7 +306,10 @@ class DECamBasemap(Basemap):
         lon, lat = np.meshgrid(lon, lat)
 
         nside = healpy.get_nside(hpxmap.data)
-        pix = healpy.ang2pix(nside,lon,lat,lonlat=True)
+        try:
+            pix = healpy.ang2pix(nside,lon,lat,lonlat=True)
+        except TypeError:
+            pix = healpy.ang2pix(nside,np.radians(90-lat),np.radians(lon))
 
         values = hpxmap[pix]
         #mask = ((values == healpy.UNSEEN) | (~np.isfinite(values)))
@@ -379,6 +321,22 @@ class DECamBasemap(Basemap):
 
         return im
 
+    def draw_focal_planes(self, ra, dec, **kwargs):
+        defaults = dict(alpha=0.2,color='red',edgecolors='none',lw=0)
+        setdefaults(kwargs,defaults)
+        ra,dec = np.atleast_1d(ra,dec)
+        if len(ra) != len(dec):
+            msg = "Dimensions of 'ra' and 'dec' do not match"
+            raise ValueError(msg)
+        decam = DECamFocalPlane()
+        # Should make sure axis exists....
+        ax = plt.gca()
+        for _ra,_dec in zip(ra,dec):
+            corners = decam.project(self,_ra,_dec)
+            collection = matplotlib.collections.PolyCollection(corners,**kwargs)
+            ax.add_collection(collection)
+        plt.draw()
+
 class DECamMcBride(DECamBasemap):
     def __init__(self,*args,**kwargs):
         defaults = dict(projection='mbtfpq',lon_0=0,rsphere=1.0,celestial=True)
@@ -387,9 +345,77 @@ class DECamMcBride(DECamBasemap):
 
 class DECamOrtho(DECamBasemap):
     def __init__(self,*args,**kwargs):
-        defaults = dict(projection='ortho',celestial=True,lon_0=0,lat_0=-30.17)
+        defaults = dict(projection='ortho',celestial=True,lon_0=0,lat_0=-30.17,rsphere=1.0)
         setdefaults(kwargs,defaults)
         super(DECamOrtho,self).__init__(*args, **kwargs)
+
+class DECamFocalPlane(object):
+    """Class for storing and manipulating the corners of the DECam CCDs.
+    """
+
+    filename = os.path.join(fileio.get_datadir(),'ccd_corners_xy_fill.dat')
+
+    def __init__(self):
+        # This is not safe. Use yaml instead (extra dependency)
+        self.ccd_dict = eval(''.join(open(self.filename).readlines()))
+
+        # These are x,y coordinates
+        self.corners = np.array(self.ccd_dict.values())
+
+        # Since we don't know the original projection of the DECam
+        # focal plane into x,y it is probably not worth trying to
+        # deproject it right now...
+
+        #x,y = self.ccd_array[:,:,0],self.ccd_array[:,:,1]
+        #ra,dec = Projector(0,0).image2sphere(x.flat,y.flat)
+        #self.corners[:,:,0] = ra.reshape(x.shape)
+        #self.corners[:,:,1] = dec.reshape(y.shape)
+
+    def rotate(self, ra, dec):
+        """Rotate the corners of the DECam CCDs to a given sky location.
+
+        Parameters:
+        -----------
+        ra      : The right ascension (deg) of the focal plane center
+        dec     : The declination (deg) of the focal plane center
+
+        Returns:
+        --------
+        corners : The rotated corner locations of the CCDs
+        """
+        corners = np.copy(self.corners)
+
+        R = SphericalRotator(ra,dec)
+        _ra,_dec = R.rotate(corners[:,:,0].flat,corners[:,:,1].flat,invert=True)
+
+        corners[:,:,0] = _ra.reshape(corners.shape[:2])
+        corners[:,:,1] = _dec.reshape(corners.shape[:2])
+        return corners
+
+    def project(self, basemap, ra, dec):
+        """Apply the given basemap projection to the DECam focal plane at a
+        location given by ra,dec.
+
+        Parameters:
+        -----------
+        basemap : The DECamBasemap to project to.
+        ra      : The right ascension (deg) of the focal plane center
+        dec     : The declination (deg) of the focal plane center
+
+        Returns:
+        --------
+        corners : Projected corner locations of the CCDs
+        """
+        corners = self.rotate(ra,dec)
+
+        x,y = basemap.proj(corners[:,:,0],corners[:,:,1])
+
+        # Remove CCDs that cross the map boundary
+        x[(np.ptp(x,axis=1) > np.pi)] = np.nan
+
+        corners[:,:,0] = x
+        corners[:,:,1] = y
+        return corners
 
 ############################################################
 # Depricated module functions
@@ -468,7 +494,9 @@ def makePlot(date=None, name=None, figsize=(10.5,8.5), dpi=80, s=50, center=None
     if smash:    basemap.draw_smash(s=s)
     if maglites: basemap.draw_maglites()
     #if bliss:    basemap.draw_bliss()
-    if airmass:  basemap.draw_airmass(observatory, 2.)
+    if airmass:
+        airmass = 2.0 if isinstance(airmass,bool) else airmass
+        basemap.draw_airmass(observatory, airmass)
     if moon:     basemap.draw_moon(date)
 
     plt.title('%s UTC'%(datestring(date)))
@@ -488,8 +516,10 @@ def plotField(field, target_fields=None, completed_fields=None, options_basemap=
         tmp[0] = field
         field = tmp
 
-    msg = "%s (date=%s, "%(field['ID'][0],datestring(field['DATE'][0],0))
-    msg +="ra=%(RA)-6.2f, dec=%(DEC)-6.2f, secz=%(AIRMASS)-4.2f)"%field[0]
+    msg="%s: id=%10s, "%(datestring(field['DATE'][0],0),field['ID'][0])
+    msg +="ra=%(RA)-6.2f, dec=%(DEC)-6.2f, secz=%(AIRMASS)-4.2f"%field[0]
+    #msg = "%s: date=%s, "%(field['ID'][0],datestring(field['DATE'][0],0))
+    #msg +="ra=%(RA)-6.2f, dec=%(DEC)-6.2f, secz=%(AIRMASS)-4.2f"%field[0]
     logging.info(msg)
 
     #if plt.get_fignums(): plt.cla()
@@ -502,7 +532,7 @@ def plotField(field, target_fields=None, completed_fields=None, options_basemap=
     # Plot target fields
     if target_fields is not None:
         proj = basemap.proj(target_fields['RA'], target_fields['DEC'])
-        basemap.scatter(*proj, c=np.zeros(len(target_fields))+0.3, **kwargs)
+        basemap.scatter(*proj, c='0.8', **kwargs)
 
     # Plot completed fields
     if completed_fields is not None:
@@ -519,13 +549,13 @@ def plotField(field, target_fields=None, completed_fields=None, options_basemap=
         colorbar.set_label('Tiling')
     except TypeError:
         pass
+    plt.sca(fig.axes[0])
 
     # Show the selected field
     proj = basemap.proj(field['RA'], field['DEC'])
     basemap.scatter(*proj, c=COLORS[field[0]['FILTER']],edgecolor='none',s=50)
 
-    #plt.draw()
-    #plt.pause(0.001)
+    return basemap
 
 def plotFields(fields=None,target_fields=None,completed_fields=None,options_basemap={},**kwargs):
     # ADW: Need to be careful about the size of the marker. It
@@ -541,12 +571,13 @@ def plotFields(fields=None,target_fields=None,completed_fields=None,options_base
         fields = tmp
 
     for i,f in enumerate(fields):
-        plotField(fields[i],target_fields,completed_fields,options_basemap,**kwargs)
+        basemap = plotField(fields[i],target_fields,completed_fields,options_basemap,**kwargs)
         #plt.savefig('field_%08i.png'%i)
         if completed_fields is None: completed_fields = FieldArray()
         completed_fields = completed_fields + fields[[i]]
         plt.pause(0.001)
         #time.sleep(0.01)
+    return basemap
 
 def movieFields(outfile,fields=None,target_fields=None,completed_fields=None,**kwargs):
     if os.path.splitext(outfile)[-1] not in ['.gif']:
@@ -577,6 +608,30 @@ def movieFields(outfile,fields=None,target_fields=None,completed_fields=None,**k
     subprocess.call(cmd,shell=True)
     shutil.rmtree(tmpdir)
     return outfile
+
+def plotWeights(date, target_fields, weights,options_basemap={},**kwargs):
+    defaults = dict(c=weights, edgecolor='none', s=50, vmin=np.min(weights), vmax=np.min(weights) + 300., cmap='Spectral')
+    setdefaults(kwargs,defaults)
+
+    defaults = dict(date=date, name='ortho')
+    options_basemap = dict(options_basemap)
+    setdefaults(options_basemap,defaults)
+    fig, basemap = makePlot(**options_basemap)
+
+    proj = basemap.proj(target_fields['RA'], target_fields['DEC'])
+    basemap.scatter(*proj, **kwargs)
+
+    # Try to draw the colorbar
+    try:
+        if len(fig.axes) == 2:
+            # Draw colorbar in existing axis
+            colorbar = plt.colorbar(cax=fig.axes[-1])
+        else:
+            colorbar = plt.colorbar()
+        colorbar.set_label('Tiling')
+    except TypeError:
+        pass
+    plt.sca(fig.axes[0])
 
 def plotWeight(field, target_fields, weight, **kwargs):
     if isinstance(field,FieldArray):

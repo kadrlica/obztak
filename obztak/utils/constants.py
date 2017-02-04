@@ -59,3 +59,15 @@ SOUTHERN_REACH = -89.
 
 # Formatting for floats
 FLOAT_FMT = '%.4f'
+
+# Band colors
+COLORS = odict([
+    ('none','black'),
+    ('u','blue'),
+    ('g','green'),
+    ('r','red'),
+    ('i','gold'),
+    ('z','magenta'),
+    ('Y','black'),
+    ('VR','gray'),
+])

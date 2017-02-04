@@ -360,22 +360,29 @@ class Survey(object):
 
     @staticmethod
     def decals_rotate(ra,dec,dx,dy):
-        """Rotate the celesitial coordinate system by desired offset and
-        convert back.  dx, dy specify offset in decimal degrees.
+        """Perform a Euler angle rotation of the celesitial coordinates and
+        return the rotated position of ra,dec in the original
+        coordinate system. dx,dy specify the Z and Y Euler rotation
+        angles in decimal degrees, respectively.
 
         Parameters:
         -----------
         ra : Input right ascension
         dec: Input declination
-        dx : Offset in x-dimension/ra (decimal degrees)
-        dy : Offset in y-dimension/dec (decimal degrees)
+        dx : Rotation in x-dimension/Euler Z/ra (deg)
+        dy : Rotation in y-dimension/Euler Y/dec (deg)
 
         Returns:
         --------
         ra, dec : Dithered ra,dec tuple
+
         """
-        R = obztak.utils.projector.SphericalRotator(dx,dy)
-        return R.rotate(ra,dec,invert=True)
+        from astropy.modeling.rotations import EulerAngleRotation
+        R = EulerAngleRotation(dx,dy,0,'zyx')
+        ra1,dec1 = R(ra,dec)
+        ra1 += 360 * (ra1 < 0)
+        return ra1,dec1
+
 
 def parser():
     import argparse

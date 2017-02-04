@@ -17,9 +17,13 @@ def main():
     scheduler = scheduler_factory(args.survey,target_fields=args.fields,
                                   observation_windows=args.windows,
                                   completed_fields=args.complete)
-    survey = scheduler.schedule_survey(start=args.utc_start,end=args.utc_end,
-                                       chunk=args.chunk,plot=args.plot,
-                                       mode=args.mode)
+    try:
+        survey = scheduler.schedule_survey(start=args.utc_start,end=args.utc_end,
+                                           chunk=args.chunk,plot=args.plot,
+                                           mode=args.mode)
+    except ValueError as error:
+        logging.warn(str(error))
+        survey = scheduler.scheduled_nites
 
     # Write all completed fields
     scheduler.completed_fields.write('survey_fields.csv')
