@@ -455,7 +455,7 @@ def drawMoon(basemap, date):
 
 ############################################################
 
-def makePlot(date=None, name=None, figsize=(10.5,8.5), dpi=80, s=50, center=None, airmass=True, moon=True, des=True, smash=True, maglites=True, bliss=True):
+def makePlot(date=None, name=None, figsize=(10.5,8.5), dpi=80, s=50, center=None, airmass=True, moon=True, des=True, smash=True, maglites=True, bliss=True, galaxy=True):
     """
     Create map in orthographic projection
     """
@@ -498,6 +498,7 @@ def makePlot(date=None, name=None, figsize=(10.5,8.5), dpi=80, s=50, center=None
         airmass = 2.0 if isinstance(airmass,bool) else airmass
         basemap.draw_airmass(observatory, airmass)
     if moon:     basemap.draw_moon(date)
+    if galaxy:   basemap.draw_galaxy()
 
     plt.title('%s UTC'%(datestring(date)))
 
