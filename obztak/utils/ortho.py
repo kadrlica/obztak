@@ -15,7 +15,7 @@ import numpy as np
 import ephem
 
 import obztak.utils.projector
-from obztak.utils.projector import gal2cel, SphericalRotator
+from obztak.utils.projector import cel2gal, gal2cel, SphericalRotator
 
 from obztak.utils import constants
 from obztak.utils import fileio
@@ -76,7 +76,7 @@ class DECamBasemap(Basemap):
         defaults = dict()
         if not args: defaults.update(circles=np.arange(-90,120,30))
         setdefaults(kwargs,defaults)
-        self.drawparallels(*args, **kwargs)
+        return self.drawparallels(*args, **kwargs)
 
     def draw_meridians(self,*args,**kwargs):
         defaults = dict(labels=[1,0,0,1])
@@ -84,7 +84,7 @@ class DECamBasemap(Basemap):
             defaults.update(labels=[0,0,0,0])
         if not args: defaults.update(meridians=np.arange(0,420,60))
         setdefaults(kwargs,defaults)
-        self.drawmeridians(*args,**kwargs)
+        return self.drawmeridians(*args,**kwargs)
         
     def proj(self,lon,lat):
         """ Remove points outside of projection """
@@ -134,7 +134,55 @@ class DECamBasemap(Basemap):
                 ra,dec = self.roll(*gal2cel(glon,glat+delta))
                 self.draw_polygon_radec(ra,dec,**kwargs)
             
-        
+    """
+    def draw_magellanic_stream(self,**kwargs):
+        import healpy as hp
+        import fitsio
+
+        defaults = dict(xsize=800, vmin=17., vmax=25.0, rasterized=True,
+                        cmap=plt.cm.binary)
+        setdefaults(kwargs,defaults)
+
+        dirname  = '/Users/kadrlica/bliss/observing/data'
+        filename = 'allms_coldens_gal_nside_1024.fits'
+        data = fitsio.read(os.path.join(dirname,filename))['coldens']
+        nside = hp.npix2nside(len(data))
+
+        xsize = kwargs.pop('xsize')
+        ra = np.linspace(0,360.,xsize)
+        dec = np.linspace(-90.,90.,xsize)
+        ra, dec = np.meshgrid(ra, dec)
+        glon, glat = cel2gal(ra, dec)
+
+        phi = np.radians(glon)
+        theta = np.radians(90.-glat)
+        pix = hp.ang2pix(nside, theta, phi)
+        coldens = data[pix]
+        return self.pcolor(ra, dec, coldens, latlon=True, **kwargs)
+    """
+    def draw_magellanic_stream(self,**kwargs):
+        import fitsio
+        defaults = dict(xsize=800, vmin=17., vmax=25.0, rasterized=True,
+                        cmap=plt.cm.binary)
+        setdefaults(kwargs,defaults)
+
+        dirname  = '/Users/kadrlica/bliss/observing/data'
+        filename = 'allms_coldens_gal_nside_1024.fits'
+        galhpx = fitsio.read(os.path.join(dirname,filename))['coldens']
+        celhpx = obztak.utils.projector.hpx_gal2cel(galhpx)
+        return self.draw_hpxmap(celhpx,**kwargs)
+
+    def draw_sfd(self,**kwargs):
+        import healpy as hp
+        defaults = dict(rasterized=True,cmap=plt.cm.binary)
+        setdefaults(kwargs,defaults)
+        dirname  = '/Users/kadrlica/bliss/observing/data'
+        filename = 'lambda_sfd_ebv.fits'
+
+        galhpx = hp.read_map(os.path.join(dirname,filename))
+        celhpx = obztak.utils.projector.hpx_gal2cel(galhpx)
+        return self.draw_hpxmap(np.log10(celhpx),**kwargs)
+
     def draw_maglites(self,**kwargs):
         defaults=dict(color='blue', lw=2)
         setdefaults(kwargs,defaults)
@@ -146,11 +194,11 @@ class DECamBasemap(Basemap):
         defaults=dict(color='magenta', lw=2)
         setdefaults(kwargs,defaults)
 
-        filename = os.path.join(fileio.get_datadir(),'bliss-poly1.txt')
-        self.draw_polygon(filename,**kwargs)
-
-        filename = os.path.join(fileio.get_datadir(),'bliss-poly2.txt')
-        self.draw_polygon(filename,**kwargs)
+        filename = os.path.join(fileio.get_datadir(),'bliss-poly3.txt')
+        data = np.genfromtxt(filename,names=['ra','dec','poly'])
+        for p in np.unique(data['poly']):
+            poly = data[data['poly'] == p]
+            self.draw_polygon_radec(poly['ra'],poly['dec'],**kwargs)
 
     def draw_des(self,**kwargs):
         """ Draw the DES footprint on this Basemap instance.
@@ -345,9 +393,36 @@ class DECamMcBride(DECamBasemap):
 
 class DECamOrtho(DECamBasemap):
     def __init__(self,*args,**kwargs):
-        defaults = dict(projection='ortho',celestial=True,lon_0=0,lat_0=-30.17,rsphere=1.0)
+        self.observatory = CTIO()
+        defaults = dict(projection='ortho',celestial=True,rsphere=1.0,
+                        lon_0=0,lat_0=self.observatory.lat)
         setdefaults(kwargs,defaults)
+
+        if 'date' in kwargs:
+            kwargs.update(lon_0=self.parse_date(kwargs.pop('date')))
+
         super(DECamOrtho,self).__init__(*args, **kwargs)
+
+    def draw_meridians(self,*args,**kwargs):
+        cardinal = kwargs.pop('cardinal',False)
+        meridict = super(DECamOrtho,self).draw_meridians(*args,**kwargs)
+        ax = plt.gca()
+        for mer in meridict.keys():
+            ax.annotate(r'$%i^{\circ}$'%mer,self.proj(mer,5),ha='center')
+        if cardinal:
+            ax.annotate('West',xy=(1.0,0.5),ha='left',xycoords='axes fraction')
+            ax.annotate('East',xy=(0.0,0.5),ha='right',xycoords='axes fraction')
+        return meridict
+
+
+    def parse_date(self,date):
+        date = ephem.Date(date) if date else ephem.now()
+        self.observatory.date = date
+
+        # RA and Dec of zenith
+        lon_zen, lat_zen = np.degrees(self.observatory.radec_of(0,'90'))
+        return -lon_zen
+
 
 class DECamFocalPlane(object):
     """Class for storing and manipulating the corners of the DECam CCDs.
@@ -463,14 +538,21 @@ def makePlot(date=None, name=None, figsize=(10.5,8.5), dpi=80, s=50, center=None
     if type(date) != ephem.Date:
         date = ephem.Date(date)
 
-    observatory = CTIO()
-    observatory.date = date
+    fig = plt.figure(name, figsize=figsize, dpi=dpi)
+    plt.cla()
 
+    proj_kwargs = dict()
+    if center: proj_kwargs.update(lon_0=center[0], lat_0=center[1])
+    basemap = DECamOrtho(date=date, **proj_kwargs)
+    observatory = basemap.observatory
+
+    """
     #fig, ax = plt.subplots(fig='ortho', figsize=FIGSIZE, dpi=DPI)
     #fig = plt.figure('ortho')
     #ax = plt.subplots(figure=fig, figsize=FIGSIZE, dpi=DPI)
-    fig = plt.figure(name, figsize=figsize, dpi=dpi)
-    plt.cla()
+
+    observatory = CTIO()
+    observatory.date = date
 
     ra_zenith, dec_zenith = observatory.radec_of(0, '90') # RA and Dec of zenith
     ra_zenith = np.degrees(ra_zenith)
@@ -489,11 +571,12 @@ def makePlot(date=None, name=None, figsize=(10.5,8.5), dpi=80, s=50, center=None
 
     proj_kwargs.update(lon_0=lon_0, lat_0=lat_0)
     basemap = DECamBasemap(**proj_kwargs)
+    """
 
     if des:      basemap.draw_des()
     if smash:    basemap.draw_smash(s=s)
     if maglites: basemap.draw_maglites()
-    #if bliss:    basemap.draw_bliss()
+    if bliss:    basemap.draw_bliss()
     if airmass:
         airmass = 2.0 if isinstance(airmass,bool) else airmass
         basemap.draw_airmass(observatory, airmass)

@@ -138,7 +138,9 @@ def utc2nite(utc, observer=None):
 
 
 def get_nite(utc=None, observer=None):
-    """Convert from a UTC date and time to the 'nite'.
+    """ ADW 20170205: IS THIS DEPRICATED???
+
+    Convert from a UTC date and time to the 'nite'.
 
     A 'nite' is defined by the day (UTC) at noon local time in Chile
     before observing started. This follows the usual convention of

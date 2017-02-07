@@ -17,7 +17,7 @@ from obztak.scheduler import Scheduler
 from obztak.utils.projector import cel2gal, angsep
 from obztak.utils import constants
 from obztak.utils import fileio
-from obztak.utils.constants import BANDS,SMASH_POLE,CCD_X,CCD_Y,STANDARDS
+from obztak.utils.constants import BANDS,SMASH_POLE,CCD_X,CCD_Y,STANDARDS,COLORS
 
 PROGRAM = 'bliss'
 PROPID  = '2017A-0260'
@@ -57,7 +57,7 @@ class BlissSurvey(Survey):
         ['2017/06/21','first'],
         ]
     
-    def prepare_fields(self, infile=None, outfile=None, mode='decals_rotate', plot=True, smcnod=False):
+    def prepare_fields(self, infile=None, outfile=None, mode='bliss_rotate', plot=True, smcnod=False):
         """ Create the list of fields to be targeted by this survey.
 
         Parameters:
@@ -151,7 +151,20 @@ class BlissSurvey(Survey):
             fields['DEC'][idx0:idx1] = np.repeat(dec_dither,nbands)
 
         # Apply footprint selection after tiling/dither
-        sel = self.footprint(fields['RA'],fields['DEC']) # NORMAL OPERATION
+        #sel = self.footprint(fields['RA'],fields['DEC']) # NORMAL OPERATION
+
+        # Apply footprint selection after tiling/dither
+        p9 = self.planet9(fields['RA'],fields['DEC'])
+        ligo = self.ligo_mw(fields['RA'],fields['DEC'])
+        alfredo = self.alfredo(fields['RA'],fields['DEC'])
+
+        fields['PRIORITY'][p9] = 1
+        fields['PRIORITY'][ligo] = 2
+        fields['PRIORITY'][alfredo] = 3
+
+        sel = (p9 | ligo | alfredo)
+
+        # Apply telescope constraints
         sel &= (fields['DEC'] > constants.SOUTHERN_REACH)
 
         # Apply covered fields
@@ -159,7 +172,9 @@ class BlissSurvey(Survey):
 
         fields = fields[sel]
 
+
         logging.info("Number of target fields: %d"%len(fields))
+        logging.debug("Unique priorities: ",np.unique(fields['PRIORITY']))
 
         if plot:
             import pylab as plt
@@ -168,28 +183,34 @@ class BlissSurvey(Survey):
 
             kwargs = dict(edgecolor='none',cmap='viridis_r',vmin=0,vmax=ntilings)
 
-            fig, bmap = makePlot('2017/02/08 03:00',center=(150,-30),
-                                    airmass=False,moon=False)
+            fig,ax = plt.subplots(2,2,figsize=(16,9))
+            plt.subplots_adjust(wspace=0.01,hspace=0.02,left=0.01,right=0.99,
+                                bottom=0.01,top=0.99)
+            for i,b in enumerate(BANDS):
+                plt.sca(ax.flat[i])
+                bmap = DECamMcBride()
+                bmap.draw_galaxy()
+                bmap.draw_des()
+                f = fields[fields['FILTER'] == b]
+                bmap.scatter(*bmap.proj(f['RA'],f['DEC']),c=COLORS[b],s=15,**kwargs)
 
-            bmap.scatter(*bmap.proj(fields['RA'],fields['DEC']),
-                          c=fields['TILING'],s=50,**kwargs)
-            bmap.draw_galaxy(10)
-            colorbar = plt.colorbar(label='Tiling')
+            if outfile:
+                outfig = os.path.splitext(outfile)[0]+'_mcbride.png'
+                plt.savefig(outfig,bbox_inches='tight')
+
+            fig,ax = plt.subplots(2,2,figsize=(10,10))
+            plt.subplots_adjust(wspace=0.05,hspace=0.05,left=0.05,right=0.95,
+                                bottom=0.05,top=0.95)
+            for i,b in enumerate(BANDS):
+                plt.sca(ax.flat[i])
+                bmap = DECamOrtho(date='2017/06/02 03:00')
+                bmap.draw_galaxy()
+                bmap.draw_des()
+                f = fields[fields['FILTER'] == b]
+                bmap.scatter(*bmap.proj(f['RA'],f['DEC']),c=COLORS[b],s=50,**kwargs)
 
             if outfile:
                 outfig = os.path.splitext(outfile)[0]+'_ortho.png'
-                plt.savefig(outfig,bbox_inches='tight')
-
-            plt.figure()
-            bmap = DECamMcBride()
-            bmap.draw_galaxy(10)
-            bmap.draw_des()
-            bmap.scatter(*bmap.proj(fields['RA'],fields['DEC']),
-                          c=fields['TILING'],s=15,**kwargs)
-            plt.colorbar(label='Tiling',orientation='horizontal',fraction=0.1,
-                         pad=0.1,aspect=30,shrink=0.8)
-            if outfile:
-                outfig = os.path.splitext(outfile)[0]+'_mcbride.png'
                 plt.savefig(outfig,bbox_inches='tight')
 
             if not sys.flags.interactive:
@@ -216,25 +237,38 @@ class BlissSurvey(Survey):
 
     @staticmethod
     def footprint(ra,dec):
-        l, b = cel2gal(ra, dec)
-        # Starting to the north of the Galactic plane
-        sel = ((ra > 120) & (ra < 360)) | (ra < 20)
-        # Band in declination
-        sel &= (dec < -30 ) & (dec > -40)
-        # LIGO/DSPHS high probability region south of nominal stripe
-        sel |= ((ra > 140) & (ra < 270) & (dec < -30) & (dec > -60) & (b > 0))
+        # The high-probability region for LIGO/MW dwarfs
+        sel = BlissSurvey.ligo_mw(ra,dec)
         # Alfredo's eRosita survey
         sel |= BlissSurvey.alfredo(ra,dec)
-        # 10 deg from the Galactic plane
-        sel &= (np.fabs(b) > 10.)
-        # Expand width of Planet 9 region
-        sel |= ((ra > 305)|(ra < 15)) & (dec > -40) & (dec < -25)
-        # Shrink length of Planet 9 region
-        sel[(ra < 305) & (b < -10) & (dec < -30) & (dec > -40)] = 0
+        # Planet 9 Region
+        sel |= BlissSurvey.planet9(ra,dec)
+
+        return sel
+
+    @staticmethod
+    def ligo_mw(ra,dec):
+        """The high-probability region for LIGO/MW dwarfs"""
+        l, b = cel2gal(ra, dec)
+        # Starting to the north of the Galactic plane
+        sel = (ra > 120) & (ra < 270)
+        # Upper limit in declination
+        sel &= (dec < -30 )
+        # 10 deg above the Galactic plane
+        sel &= (b > 10.)
+        return sel
+
+    @staticmethod
+    def planet9(ra,dec):
+        """The high-probability region for Planet 9"""
+        # Planet 9 region above DES footprint
+        #sel = ((ra > 305)|(ra < 15)) & (dec > -40) & (dec < -25)
+        sel = ((ra > 305)|(ra < 15)) & (dec > -35) & (dec < -25)
         return sel
 
     @staticmethod
     def alfredo(ra,dec):
+        """Alfredo's eRosita survey extension"""
         l, b = cel2gal(ra, dec)
         sel = ((b > 20) & (b < 30))
         sel &= ((l < 360) & (l > 240))
@@ -247,8 +281,10 @@ class BlissSurvey(Survey):
     def uncovered(ra,dec,band):
         import healpy as hp
         #dirname = '/home/s1/kadrlica/projects/bliss/v0/data'
-        dirname = '/Users/kadrlica/bliss/observing/v0/data'
-        basename = 'decam_coverage_90s_%s_n1024.fits.gz'
+        #basename = 'decam_coverage_90s_%s_n1024.fits.gz'
+        dirname = '/Users/kadrlica/bliss/observing/data'
+        basename1 = 'decam_max_expmap_%s_n1024.fits.gz'
+        basename2 = 'decam_sum_expmap_%s_n1024.fits.gz'
 
         sel = np.ones_like(ra,dtype=bool)
         frac = np.zeros_like(ra,dtype=float)
@@ -256,9 +292,22 @@ class BlissSurvey(Survey):
 
         for b in np.unique(band):
             idx = (band==b)
-            filename = os.path.join(dirname,basename%b)
-            logging.info("Reading %s..."%os.path.basename(filename))
-            skymap = hp.read_map(filename,verbose=True)
+            filename1 = os.path.join(dirname,basename1%b)
+            logging.info("Reading %s..."%os.path.basename(filename1))
+            skymap1 = hp.read_map(filename1,verbose=True)
+
+            filename2 = os.path.join(dirname,basename2%b)
+            logging.info("Reading %s..."%os.path.basename(filename2))
+            skymap2 = hp.read_map(filename2,verbose=True)
+
+            # Apply minimum exposure time selection
+            #skymap = (skymap > 30)
+            #skymap = (skymap > 45)
+            #skymap = (skymap > 60)
+            #skymap = (skymap > 90)
+
+            skymap = (skymap1 > 30) & (skymap2 > 45)
+
             nside = hp.get_nside(skymap)
             vec = hp.ang2vec(np.radians(90.-dec[idx]),np.radians(ra[idx]))
             f = []

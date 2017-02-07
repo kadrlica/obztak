@@ -37,7 +37,7 @@ if __name__ == "__main__":
 
     movie = True if ext in MOVIES else False
         
-    options = dict(airmass=1.3,smash=False)
+    options = dict(airmass=1.4,smash=False)
 
     if args.all:
         plotFields(fields[-1],target_fields=fields,completed_fields=fields,options_basemap=options)

@@ -22,7 +22,7 @@ from obztak.utils import fileio
 from obztak.ctio import CTIO
 from obztak.field import FieldArray
 from obztak.tactician import CoverageTactician
-from obztak.utils.date import get_nite, datestr, datestring, nitestring
+from obztak.utils.date import get_nite, datestr, datestring, nitestring, utc2nite
 from obztak.factory import tactician_factory
 
 # For debugging (can also use the verbose command line argument)
@@ -423,13 +423,16 @@ class Scheduler(object):
             if end is not None and ephem.Date(tend) > ephem.Date(end):
                 continue
 
+            #nite = nitestring(tstart)
+            nite = get_nite(tstart)
+
             try:
                 chunks = self.schedule_nite(tstart,chunk,clip=True,plot=False,mode=mode)
             except ValueError as error:
-                ortho.plotField(self.completed_fields[-1:],self.target_fields,self.completed_fields)
+                ortho.plotField(self.completed_fields[-1:],self.target_fields,
+                                self.completed_fields)
                 raise(error)
 
-            nite = nitestring(tstart)
             self.scheduled_nites[nite] = chunks
 
             if plot:

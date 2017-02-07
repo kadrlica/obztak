@@ -265,10 +265,10 @@ class BlissTactician(Tactician):
         #    sel &= (moon_angle > 20)
 
         # Moon band constraints
-        if (self.moon.phase >= 90) and (self.moon.alt > -0.1):
+        if (self.moon.phase >= 80) and (self.moon.alt > -0.1):
             # Moon is very bright; only do z
             sel &= (np.char.count('z',self.fields['FILTER']) > 0)
-        elif (self.moon.phase >= 50) and (self.moon.alt > -0.1):
+        elif (self.moon.phase >= 45) and (self.moon.alt > -0.1):
             # Moon is more than half full; do i,z
             sel &= (np.char.count('iz',self.fields['FILTER']) > 0)
         else:
@@ -289,18 +289,15 @@ class BlissTactician(Tactician):
             #cut = np.in1d(self.fields.field_id,recent.field_id)
             #sel &= ~cut
 
-
         # Set the weights for each field. Lower weight means more favorable.
 
         # Higher weight for rising fields (higher hour angle)
-        weight = 1.0 * self.hour_angle
+        # min,max = [-22,22] (for airmass 1.4)
+        weight = 0.5 * self.hour_angle
 
         # Higher weight for larger slews
-        # slew = 10 deg -> weight = 1e3
-        weight += self.slew**3
-
-        # Try hard to do the first tiling
-        weight += 1e6 * (self.fields['TILING'] - 1)
+        # slew = 10 deg -> weight = 1e2
+        weight += self.slew**2
 
         # Higher weight for higher airmass
         # airmass = 1.4 -> weight = 6.4
@@ -308,7 +305,15 @@ class BlissTactician(Tactician):
 
         # Higher weight for fields close to the moon
         # angle = 50 -> weight = 6.4
-        weight += 100 * (20./moon_angle)**3
+        weight += 100 * (35./moon_angle)**3
+
+        # Try hard to do the first tiling
+        weight += 1e6 * (self.fields['TILING'] - 1)
+
+        # Prioritize Planet 9 Region late in the survey/night
+        ra_zenith, dec_zenith = np.degrees(self.observatory.radec_of(0,'90'))
+        if ra_zenith > 260:
+            weight += 1e6 * (self.fields['PRIORITY'] - 1)
 
         # Set infinite weight to all disallowed fields
         weight[~sel] = np.inf
