@@ -41,11 +41,12 @@ def test_calculate_zenith():
 def test_calculate_airmass():
     tac = create_tactician()
 
-    #test_airmass = np.array([1.9934748, 2.61872641, 1.94604362, 591.85793345,
-    #                         999., 999., 1.85599897, 1.57189052, 999., 999.])
+    #test_airmass = np.array([2.0283324,  2.0152044,  1.2880471, 1.0038942,
+    #                         1.2583179,  6.3051279,  999.     , 999.     ,
+    #                         999.      , 999.       ])
     test_airmass = np.array([2.0283324,  2.0152044,  1.2880471, 1.0038942,
-                             1.2583179,  6.3051279,  999.     , 999.     ,
-                             999.      , 999.       ])
+                             1.2583179,  6.3051279,  np.inf   , np.inf   ,
+                             np.inf   ,  np.inf      ])
     np.testing.assert_almost_equal(tac.airmass,test_airmass,
                                    err_msg='airmass')
 
