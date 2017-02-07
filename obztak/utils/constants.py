@@ -7,6 +7,7 @@ import numpy as np
 
 # Plotting DECam
 DECAM=1.1 # DECam radius (deg)
+
 # Marker size depends on figsize and DPI
 FIGSIZE=(10.5,8.5)
 SCALE=np.sqrt((8.0*6.0)/(FIGSIZE[0]*FIGSIZE[1]))
@@ -70,4 +71,16 @@ COLORS = odict([
     ('z','magenta'),
     ('Y','black'),
     ('VR','gray'),
+])
+
+# Band colormaps
+CMAPS = odict([
+    ('none','binary'),
+    ('u','Blues'),
+    ('g','Greens'),
+    ('r','Reds'),
+    ('i','YlOrBr'),
+    ('z','RdPu'),
+    ('Y','Grays'),
+    ('VR','Grays'),
 ])

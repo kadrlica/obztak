@@ -259,16 +259,12 @@ class BlissTactician(Tactician):
         # Moon angle constraints
         moon_limit = 35.
         sel &= (moon_angle > moon_limit)
-        #if (self.moon.phase > 25) & (self.moon.alt > -0.1):
-        #    sel &= (moon_angle > 40)
-        #else:
-        #    sel &= (moon_angle > 20)
 
         # Moon band constraints
-        if (self.moon.phase >= 80) and (self.moon.alt > -0.1):
+        if (self.moon.phase >= 80) and (self.moon.alt > -0.05):
             # Moon is very bright; only do z
             sel &= (np.char.count('z',self.fields['FILTER']) > 0)
-        elif (self.moon.phase >= 45) and (self.moon.alt > -0.1):
+        elif (self.moon.phase >= 45) and (self.moon.alt > -0.05):
             # Moon is more than half full; do i,z
             sel &= (np.char.count('iz',self.fields['FILTER']) > 0)
         else:
@@ -292,8 +288,8 @@ class BlissTactician(Tactician):
         # Set the weights for each field. Lower weight means more favorable.
 
         # Higher weight for rising fields (higher hour angle)
-        # min,max = [-22,22] (for airmass 1.4)
-        weight = 0.5 * self.hour_angle
+        # HA [min,max] = [-53,54] (for airmass 1.4)
+        weight = 5.0 * self.hour_angle
 
         # Higher weight for larger slews
         # slew = 10 deg -> weight = 1e2

@@ -24,6 +24,8 @@ from obztak.utils.date import datestring,nite2utc,utc2nite,get_nite
 from obztak.ctio import CTIO
 from obztak.utils.constants import RA_LMC,DEC_LMC,RADIUS_LMC
 from obztak.utils.constants import RA_SMC,DEC_SMC,RADIUS_SMC
+from obztak.utils.constants import COLORS, CMAPS
+from obztak.utils.constants import FIGSIZE, SCALE, DPI
 
 plt.ion()
 
@@ -47,16 +49,7 @@ params = {
     }
 matplotlib.rcParams.update(params)
 
-COLORS = odict([
-    ('none','black'),
-    ('u','blue'),
-    ('g','green'),
-    ('r','red'),
-    ('i','gold'),
-    ('z','magenta'),
-    ('Y','black'),
-    ('VR','gray'),
-])
+DPI = 80
 
 ############################################################
 
@@ -268,14 +261,14 @@ class DECamBasemap(Basemap):
         ra_moon = np.degrees(moon.ra)
         dec_moon = np.degrees(moon.dec)
      
-        proj = self.proj(np.array([ra_moon]), np.array([dec_moon]))
+        x,y = self.proj(np.array([ra_moon]), np.array([dec_moon]))
+        if np.isnan(x).all() or np.isnan(y).all(): return
      
-        if np.isnan(proj[0]).all() or np.isnan(proj[1]).all(): return
-     
-        self.scatter(*proj, color='%.2f'%(0.01 * moon.phase), edgecolor='black', s=500)
+        self.scatter(x,y,color='%.2f'%(0.01*moon.phase),edgecolor='black',s=600)
         color = 'black' if moon.phase > 50. else 'white'
-        plt.text(proj[0], proj[1], '%.2f'%(0.01 * moon.phase),
-                 fontsize=10, ha='center', va='center', color=color)
+        #text = '%.2f'%(0.01 * moon.phase)
+        text = '%2.0f%%'%(moon.phase)
+        plt.text(x, y, text, fontsize=10, ha='center', va='center', color=color)
 
     def draw_jethwa(self,filename=None,log=True,**kwargs):
         import healpy as hp
@@ -590,38 +583,53 @@ def makePlot(date=None, name=None, figsize=(10.5,8.5), dpi=80, s=50, center=None
 def plotField(field, target_fields=None, completed_fields=None, options_basemap={}, **kwargs):
     """
     Plot a specific target field.
-    """
-    defaults = dict(edgecolor='none', s=50, vmin=0, vmax=4, cmap='summer_r')
-    #defaults = dict(edgecolor='none', s=50, vmin=0, vmax=4, cmap='gray_r')
-    setdefaults(kwargs,defaults)
 
+    Parameters:
+    -----------
+    field            : The specific field of interest.
+    target_fields    : The fields that will be observed
+    completed_fields : The fields that have been observed
+    options_basemap  : Keyword arguments to the basemap constructor
+    kwargs           : Keyword arguments to the matplotlib.scatter function
+
+    Returns:
+    --------
+    basemap : The basemap object
+    """
     if isinstance(field,np.core.records.record):
         tmp = FieldArray(1)
         tmp[0] = field
         field = tmp
+    band = field[0]['FILTER']
+
+    defaults = dict(marker='H',s=100,edgecolor='none',vmin=-1,vmax=4,
+                    cmap=CMAPS[band])
+    #defaults = dict(edgecolor='none', s=50, vmin=0, vmax=4, cmap='summer_r')
+    #defaults = dict(edgecolor='none', s=50, vmin=0, vmax=4, cmap='gray_r')
+    setdefaults(kwargs,defaults)
 
     msg="%s: id=%10s, "%(datestring(field['DATE'][0],0),field['ID'][0])
     msg +="ra=%(RA)-6.2f, dec=%(DEC)-6.2f, secz=%(AIRMASS)-4.2f"%field[0]
-    #msg = "%s: date=%s, "%(field['ID'][0],datestring(field['DATE'][0],0))
-    #msg +="ra=%(RA)-6.2f, dec=%(DEC)-6.2f, secz=%(AIRMASS)-4.2f"%field[0]
     logging.info(msg)
-
-    #if plt.get_fignums(): plt.cla()
 
     defaults = dict(date=field['DATE'][0], name='ortho')
     options_basemap = dict(options_basemap)
     setdefaults(options_basemap,defaults)
     fig, basemap = makePlot(**options_basemap)
+    plt.subplots_adjust(left=0.03,right=0.97,bottom=0.03,top=0.97)
 
     # Plot target fields
     if target_fields is not None:
-        proj = basemap.proj(target_fields['RA'], target_fields['DEC'])
-        basemap.scatter(*proj, c='0.8', **kwargs)
+        sel = target_fields['FILTER']==band
+        x,y = basemap.proj(target_fields['RA'], target_fields['DEC'])
+        basemap.scatter(x[sel],y[sel], c='0.8', **kwargs)
 
     # Plot completed fields
     if completed_fields is not None:
-        proj = basemap.proj(completed_fields['RA'],completed_fields['DEC'])
-        basemap.scatter(*proj, c=completed_fields['TILING'], **kwargs)
+        sel = completed_fields['FILTER']==band
+        x,y = basemap.proj(completed_fields['RA'],completed_fields['DEC'])
+        basemap.scatter(x[~sel],y[~sel],c='0.6', **kwargs)
+        basemap.scatter(x[sel],y[sel],c=completed_fields['TILING'][sel], **kwargs)
 
     # Try to draw the colorbar
     try:
@@ -630,14 +638,16 @@ def plotField(field, target_fields=None, completed_fields=None, options_basemap=
             colorbar = plt.colorbar(cax=fig.axes[-1])
         else:
             colorbar = plt.colorbar()
-        colorbar.set_label('Tiling')
+        colorbar.set_label('Tiling (%s-band)'%band)
     except TypeError:
         pass
     plt.sca(fig.axes[0])
 
     # Show the selected field
     proj = basemap.proj(field['RA'], field['DEC'])
-    basemap.scatter(*proj, c=COLORS[field[0]['FILTER']],edgecolor='none',s=50)
+    #basemap.scatter(*proj,c=COLORS[band],edgecolor='k',s=50)
+    kwargs.update(edgecolor='k')
+    basemap.scatter(*proj,c=COLORS[band],**kwargs)
 
     return basemap
 
@@ -656,11 +666,10 @@ def plotFields(fields=None,target_fields=None,completed_fields=None,options_base
 
     for i,f in enumerate(fields):
         basemap = plotField(fields[i],target_fields,completed_fields,options_basemap,**kwargs)
-        #plt.savefig('field_%08i.png'%i)
         if completed_fields is None: completed_fields = FieldArray()
         completed_fields = completed_fields + fields[[i]]
         plt.pause(0.001)
-        #time.sleep(0.01)
+
     return basemap
 
 def movieFields(outfile,fields=None,target_fields=None,completed_fields=None,**kwargs):
@@ -682,7 +691,7 @@ def movieFields(outfile,fields=None,target_fields=None,completed_fields=None,**k
     for i,f in enumerate(fields):
         plotField(fields[i],target_fields,completed_fields,**kwargs)
         png = os.path.join(tmpdir,'field_%08i.png'%i)
-        plt.savefig(png,bbox_inches='tight',dpi=80)
+        plt.savefig(png,dpi=DPI)
         if completed_fields is None: completed_fields = FieldArray()
         completed_fields = completed_fields + fields[[i]]
     plt.ion()
