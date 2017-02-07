@@ -194,7 +194,7 @@ class DECamBasemap(Basemap):
         defaults=dict(color='magenta', lw=2)
         setdefaults(kwargs,defaults)
 
-        filename = os.path.join(fileio.get_datadir(),'bliss-poly3.txt')
+        filename = os.path.join(fileio.get_datadir(),'bliss-poly.txt')
         data = np.genfromtxt(filename,names=['ra','dec','poly'])
         for p in np.unique(data['poly']):
             poly = data[data['poly'] == p]
