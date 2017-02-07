@@ -270,7 +270,7 @@ class BlissTactician(Tactician):
         else:
             # Moon is faint or down; do g,r (unless none available)
             sel &= (np.char.count('gr',self.fields['FILTER']) > 0)
-            #weight += 1e8 * (np.char.count('gr',self.fields['FILTER']) > 0)
+            #weight += 1e8 * (np.char.count('iz',self.fields['FILTER']) > 0)
 
         # Airmass cut
         airmass_min, airmass_max = self.CONDITIONS[self.mode]
@@ -290,6 +290,7 @@ class BlissTactician(Tactician):
         # Higher weight for rising fields (higher hour angle)
         # HA [min,max] = [-53,54] (for airmass 1.4)
         weight = 5.0 * self.hour_angle
+        #weight = 1.0 * self.hour_angle
 
         # Higher weight for larger slews
         # slew = 10 deg -> weight = 1e2
@@ -307,9 +308,12 @@ class BlissTactician(Tactician):
         weight += 1e6 * (self.fields['TILING'] - 1)
 
         # Prioritize Planet 9 Region late in the survey/night
+        # Allow i,z exposures at high penalty
         ra_zenith, dec_zenith = np.degrees(self.observatory.radec_of(0,'90'))
-        if ra_zenith > 260:
+        if ra_zenith > 270:
             weight += 1e6 * (self.fields['PRIORITY'] - 1)
+            #sel &= (np.char.count('iz',self.fields['FILTER']) > 0)
+            #weight += 1e8 * (np.char.count('iz',self.fields['FILTER']) > 0)
 
         # Set infinite weight to all disallowed fields
         weight[~sel] = np.inf
@@ -322,10 +326,10 @@ class BlissTactician(Tactician):
         if np.any(~np.isfinite(weight[index])):
             msg = "Infinite weight selected"
             print(msg)
-            import pdb; pdb.set_trace()
-            import obztak.utils.ortho
+            import obztak.utils.ortho, pylab as plt
             airmass_min, airmass_max = self.CONDITIONS[self.mode]
             obztak.utils.ortho.plotFields(self.completed_fields[-1],self.fields,self.completed_fields,options_basemap=dict(airmass=airmass_max))
+            import pdb; pdb.set_trace()
             raw_input()
             raise ValueError(msg)
         return index

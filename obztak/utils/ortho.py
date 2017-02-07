@@ -9,8 +9,9 @@ import warnings
 from collections import OrderedDict as odict
 
 from mpl_toolkits.basemap import Basemap
-import matplotlib.pyplot as plt
 import matplotlib
+import matplotlib.cm
+import pylab as plt
 import numpy as np
 import ephem
 
@@ -127,32 +128,6 @@ class DECamBasemap(Basemap):
                 ra,dec = self.roll(*gal2cel(glon,glat+delta))
                 self.draw_polygon_radec(ra,dec,**kwargs)
             
-    """
-    def draw_magellanic_stream(self,**kwargs):
-        import healpy as hp
-        import fitsio
-
-        defaults = dict(xsize=800, vmin=17., vmax=25.0, rasterized=True,
-                        cmap=plt.cm.binary)
-        setdefaults(kwargs,defaults)
-
-        dirname  = '/Users/kadrlica/bliss/observing/data'
-        filename = 'allms_coldens_gal_nside_1024.fits'
-        data = fitsio.read(os.path.join(dirname,filename))['coldens']
-        nside = hp.npix2nside(len(data))
-
-        xsize = kwargs.pop('xsize')
-        ra = np.linspace(0,360.,xsize)
-        dec = np.linspace(-90.,90.,xsize)
-        ra, dec = np.meshgrid(ra, dec)
-        glon, glat = cel2gal(ra, dec)
-
-        phi = np.radians(glon)
-        theta = np.radians(90.-glat)
-        pix = hp.ang2pix(nside, theta, phi)
-        coldens = data[pix]
-        return self.pcolor(ra, dec, coldens, latlon=True, **kwargs)
-    """
     def draw_magellanic_stream(self,**kwargs):
         import fitsio
         defaults = dict(xsize=800, vmin=17., vmax=25.0, rasterized=True,
@@ -523,7 +498,7 @@ def drawMoon(basemap, date):
 
 ############################################################
 
-def makePlot(date=None, name=None, figsize=(10.5,8.5), dpi=80, s=50, center=None, airmass=True, moon=True, des=True, smash=True, maglites=True, bliss=True, galaxy=True):
+def makePlot(date=None, name=None, figsize=(10.5,8.5), dpi=80, s=50, center=None, airmass=True, moon=True, des=True, smash=False, maglites=True, bliss=True, galaxy=True):
     """
     Create map in orthographic projection
     """
@@ -538,33 +513,6 @@ def makePlot(date=None, name=None, figsize=(10.5,8.5), dpi=80, s=50, center=None
     if center: proj_kwargs.update(lon_0=center[0], lat_0=center[1])
     basemap = DECamOrtho(date=date, **proj_kwargs)
     observatory = basemap.observatory
-
-    """
-    #fig, ax = plt.subplots(fig='ortho', figsize=FIGSIZE, dpi=DPI)
-    #fig = plt.figure('ortho')
-    #ax = plt.subplots(figure=fig, figsize=FIGSIZE, dpi=DPI)
-
-    observatory = CTIO()
-    observatory.date = date
-
-    ra_zenith, dec_zenith = observatory.radec_of(0, '90') # RA and Dec of zenith
-    ra_zenith = np.degrees(ra_zenith)
-    dec_zenith = np.degrees(dec_zenith)
-
-    # Zenith position
-    #lon_zen = LMC_RA; lat_zen = LMC_DEC
-    lon_zen = ra_zenith; lat_zen = dec_zenith
-
-    # Create the basemap
-    proj_kwargs = dict(projection='ortho', celestial=True)
-    if center is None:
-        lon_0, lat_0 = -lon_zen, lat_zen # Center position
-    else:
-        lon_0, lat_0 = center[0], center[1]
-
-    proj_kwargs.update(lon_0=lon_0, lat_0=lat_0)
-    basemap = DECamBasemap(**proj_kwargs)
-    """
 
     if des:      basemap.draw_des()
     if smash:    basemap.draw_smash(s=s)
@@ -601,9 +549,8 @@ def plotField(field, target_fields=None, completed_fields=None, options_basemap=
         tmp[0] = field
         field = tmp
     band = field[0]['FILTER']
-
-    defaults = dict(marker='H',s=100,edgecolor='none',vmin=-1,vmax=4,
-                    cmap=CMAPS[band])
+    cmap = matplotlib.cm.get_cmap(CMAPS[band])
+    defaults = dict(marker='H',s=100,edgecolor='',vmin=-1,vmax=4,cmap=cmap)
     #defaults = dict(edgecolor='none', s=50, vmin=0, vmax=4, cmap='summer_r')
     #defaults = dict(edgecolor='none', s=50, vmin=0, vmax=4, cmap='gray_r')
     setdefaults(kwargs,defaults)
@@ -622,14 +569,18 @@ def plotField(field, target_fields=None, completed_fields=None, options_basemap=
     if target_fields is not None:
         sel = target_fields['FILTER']==band
         x,y = basemap.proj(target_fields['RA'], target_fields['DEC'])
-        basemap.scatter(x[sel],y[sel], c='0.8', **kwargs)
+        kw = dict(kwargs,c='w',edgecolor='0.6',s=0.8*kwargs['s'])
+        basemap.scatter(x[sel], y[sel], **kw)
+        kw = dict(kwargs,c='w',edgecolor='0.8',s=0.8*kwargs['s'])
+        basemap.scatter(x[~sel], y[~sel], **kw)
 
     # Plot completed fields
     if completed_fields is not None:
         sel = completed_fields['FILTER']==band
         x,y = basemap.proj(completed_fields['RA'],completed_fields['DEC'])
-        basemap.scatter(x[~sel],y[~sel],c='0.6', **kwargs)
-        basemap.scatter(x[sel],y[sel],c=completed_fields['TILING'][sel], **kwargs)
+        kw = dict(kwargs)
+        basemap.scatter(x[~sel], y[~sel], c='0.6', **kw)
+        basemap.scatter(x[sel], y[sel], c=completed_fields['TILING'][sel], **kw)
 
     # Try to draw the colorbar
     try:
@@ -644,10 +595,9 @@ def plotField(field, target_fields=None, completed_fields=None, options_basemap=
     plt.sca(fig.axes[0])
 
     # Show the selected field
-    proj = basemap.proj(field['RA'], field['DEC'])
-    #basemap.scatter(*proj,c=COLORS[band],edgecolor='k',s=50)
-    kwargs.update(edgecolor='k')
-    basemap.scatter(*proj,c=COLORS[band],**kwargs)
+    x,y = basemap.proj(field['RA'], field['DEC'])
+    kw = dict(kwargs,edgecolor='k')
+    basemap.scatter(x,y,c=COLORS[band],**kw)
 
     return basemap
 

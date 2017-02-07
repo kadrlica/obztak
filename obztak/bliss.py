@@ -261,9 +261,12 @@ class BlissSurvey(Survey):
     @staticmethod
     def planet9(ra,dec):
         """The high-probability region for Planet 9"""
-        # Planet 9 region above DES footprint
+        # v0
+        sel = ((ra > 305)|(ra < 15)) & (dec > -40) & (dec < -28)
+        # v1
         #sel = ((ra > 305)|(ra < 15)) & (dec > -40) & (dec < -25)
-        sel = ((ra > 305)|(ra < 15)) & (dec > -35) & (dec < -25)
+        # v2
+        #sel = ((ra > 305)|(ra < 15)) & (dec > -35) & (dec < -25)
         return sel
 
     @staticmethod
