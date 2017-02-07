@@ -90,6 +90,14 @@ optional arguments:
 * git commit -m 'my comments' # git commit takes the staged snapshot and commits it to the project history
 * git push -u origin master # git push moves a local branch or series of commits to main repository
 
+### To work on a specific branch ###
+
+* Example with the maglites branch...
+* git fetch origin maglites
+* git checkout -b maglites origin/maglites # setup a new branch to track origin/maglites
+* git push origin maglites # push maglites branch (which is tracking origin/maglites) back to GitHub
+* http://stackoverflow.com/questions/1783405/how-to-check-out-a-remote-git-branch
+
 ### More git documentation ###
 
 * https://confluence.atlassian.com/display/BITBUCKET/Clone+your+Git+repository+and+add+source+files
