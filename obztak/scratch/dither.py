@@ -4,9 +4,9 @@ import pylab
 import matplotlib.path
 from matplotlib.collections import PolyCollection
 
-import maglites.utils.projector
-import maglites.utils.fileio
-import maglites.utils.constants
+import obztak.utils.projector
+import obztak.utils.fileio as fileio
+import obztak.utils.constants
 
 pylab.ion()
 
@@ -15,14 +15,14 @@ pylab.ion()
 params = {
     #'backend': 'eps',
     'axes.labelsize': 16,
-    #'text.fontsize': 12,           
+    #'text.fontsize': 12,
     'xtick.labelsize': 12,
     'ytick.labelsize': 12,
     'xtick.major.size': 3,      # major tick size in points
     'xtick.minor.size': 1.5,    # minor tick size in points
     'xtick.major.size': 3,      # major tick size in points
     'xtick.minor.size': 1.5,    # minor tick size in points
-    'text.usetex': True,
+    #'text.usetex': True,
     #'figure.figsize': fig_size,
     'font.family':'serif',
     'font.serif':'Computer Modern Roman',
@@ -34,13 +34,13 @@ matplotlib.rcParams.update(params)
 ############################################################
 
 def rotateFocalPlane(ccd_array, ra_center, dec_center, ra_field, dec_field):
-    proj_center = maglites.utils.projector.Projector(ra_center, dec_center)
-    proj_field = maglites.utils.projector.Projector(ra_field, dec_field)
-    
+    proj_center = obztak.utils.projector.Projector(ra_center, dec_center)
+    proj_field = obztak.utils.projector.Projector(ra_field, dec_field)
+
     ccd_array_new = []
     for ii in range(0, len(ccd_array)):
-        ra, dec = proj_field.imageToSphere(np.transpose(ccd_array[ii])[0], 
-                                           np.transpose(ccd_array[ii])[1]) 
+        ra, dec = proj_field.imageToSphere(np.transpose(ccd_array[ii])[0],
+                                           np.transpose(ccd_array[ii])[1])
         x, y = proj_center.sphereToImage(ra, dec)
         ccd_array_new.append(zip(x, y))
 
@@ -56,7 +56,7 @@ def plotFocalPlane(ccd_array, ra_center, dec_center, ra_field, dec_field, ax):
 ############################################################
 
 def applyDither(ra, dec, x, y):
-    proj = maglites.utils.projector.Projector(ra, dec)
+    proj = obztak.utils.projector.Projector(ra, dec)
     ra_dither, dec_dither = proj.imageToSphere(x, y)
     return ra_dither, dec_dither
 
@@ -90,18 +90,19 @@ def makeDither():
     #                [2. * X_CCD / 3., -4 * Y_CCD / 3.]]
     #dither_array = [[4 * X_CCD / 3., 4. * Y_CCD / 3.]]
     #dither_array = [[5 * X_CCD / 3., 5. * Y_CCD / 3.]]
-    #mode = 'single' 
-    mode = 'fill' 
+    #mode = 'single'
+    mode = 'fill'
     if mode == 'single':
         angsep_max = 0.
     if mode == 'fill':
         angsep_max = 3.
 
     # This should use the environment variable MAGLITESDIR to define the path
-    filename  = os.path.expandvars('$MAGLITESDIR/maglites/data/smash_fields_alltiles.txt')
+    datadir = fileio.get_datadir()
+    filename  = os.path.join(datadir,'smash_fields_alltiles.txt')
     data_alltiles = np.recfromtxt(filename, names=True)
 
-    filename = os.path.expandvars('$MAGLITESDIR/maglites/scratch/ccd_corners_xy_fill.dat')
+    filename = os.path.join(datadir,'../scratch/ccd_corners_xy_fill.dat')
     data = eval(''.join(open(filename).readlines()))
     ccd_array = []
     for key in data.keys():
@@ -130,12 +131,12 @@ def makeDither():
     #plotFocalPlane(ccd_array, ra_center, dec_center, ra_center, dec_center, ax)
     #plotFocalPlane(ccd_array, ra_center, dec_center, ra_center, dec_center + 0.1, ax)
 
-    angsep = maglites.utils.projector.angsep(ra_center, dec_center, data_alltiles['RA'], data_alltiles['DEC'])
+    angsep = obztak.utils.projector.angsep(ra_center, dec_center, data_alltiles['RA'], data_alltiles['DEC'])
     for ii in np.nonzero(angsep < (np.min(angsep) + 0.01 + angsep_max))[0]:
         plotFocalPlane(ccd_array, ra_center, dec_center, data_alltiles['RA'][ii], data_alltiles['DEC'][ii], ax)
-    
+
         for x_dither, y_dither in dither_array:
-            ra_dither, dec_dither = applyDither(data_alltiles['RA'][ii], data_alltiles['DEC'][ii], 
+            ra_dither, dec_dither = applyDither(data_alltiles['RA'][ii], data_alltiles['DEC'][ii],
                                                 x_dither, y_dither)
         plotFocalPlane(ccd_array, ra_center, dec_center, ra_dither, dec_dither, ax)
 
@@ -152,22 +153,22 @@ def makeDither():
 
 def testDither(ra_center, dec_center, infile='target_fields.csv', save=False):
 
-    filename = os.path.expandvars('$MAGLITESDIR/maglites/scratch/ccd_corners_xy_fill.dat')
+    filename = os.path.join(fileio.get_datadir(),'../scratch/ccd_corners_xy_fill.dat')
     data = eval(''.join(open(filename).readlines()))
     ccd_array = []
     for key in data.keys():
         #ccd_array.append(matplotlib.path.Path(data[key]))
         ccd_array.append(data[key])
 
-    data_targets = maglites.utils.fileio.csv2rec(infile)
+    data_targets = fileio.csv2rec(infile)
 
     fig, ax = pylab.subplots(figsize=(8, 8))
-    
-    angsep = maglites.utils.projector.angsep(ra_center, dec_center, data_targets['RA'], data_targets['DEC'])
-    cut = (angsep < 3.) & (data_targets['FILTER'] == maglites.utils.constants.BANDS[0]) & (data_targets['TILING'] <= 3)
+
+    angsep = obztak.utils.projector.angsep(ra_center, dec_center, data_targets['RA'], data_targets['DEC'])
+    cut = (angsep < 3.) & (data_targets['FILTER'] == obztak.utils.constants.BANDS[0]) & (data_targets['TILING'] <= 3)
 
     print np.sum(angsep < 3.)
-    print np.sum(data_targets['FILTER'] == maglites.utils.constants.BANDS[0])
+    print np.sum(data_targets['FILTER'] == obztak.utils.constants.BANDS[0])
     print np.sum(cut)
 
     for ii in np.nonzero(cut)[0]:
@@ -184,15 +185,15 @@ def testDither(ra_center, dec_center, infile='target_fields.csv', save=False):
         pylab.savefig('dither_ra_%.2f_dec_%.2f_%s.pdf'%(ra_center, dec_center, pattern))
 
 ############################################################
+if __name__ == '__main__':
+    #infile = 'target_fields_decam_dither_1.csv'
+    #infile = 'target_fields_decam_dither_2.csv'
+    infile = 'target_fields_smash_dither.csv'
+    #infile = 'target_fields_smash_rotate.csv'
+    save = True
 
-#infile = 'target_fields_decam_dither_1.csv'
-#infile = 'target_fields_decam_dither_2.csv'
-infile = 'target_fields_smash_dither.csv'
-#infile = 'target_fields_smash_rotate.csv'
-save = True
-
-testDither(100., -70., infile=infile, save=save) # On edge
-testDither(125., -75., infile=infile, save=save)
-testDither(200., -88., infile=infile, save=save)
-
+    testDither(100., -70., infile=infile, save=save) # On edge
+    testDither(125., -75., infile=infile, save=save)
+    testDither(200., -88., infile=infile, save=save)
+     
 ############################################################

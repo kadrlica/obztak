@@ -7,15 +7,17 @@ import os
 import time
 
 import pylab as plt
-import maglites.utils.projector
+import obztak.utils.projector
 import numpy as np
 
-from maglites.utils.projector import SphericalRotator
-from maglites.utils.projector import angsep, match, footprint
-from maglites.utils.ortho import makePlot,safeProj
-from maglites.utils.constants import SMASH_POLE
+from obztak.utils.projector import SphericalRotator
+from obztak.utils.projector import angsep, match, footprint
+from obztak.utils.ortho import makePlot,safeProj
+from obztak.utils.constants import SMASH_POLE
+import obztak.utils.fileio as fileio
 
-filename  = os.path.expandvars('$MAGLITESDIR/maglites/data/smash_fields_alltiles.txt')
+datadir = fileio.get_datadir()
+filename  = os.path.join(datadir,'smash_fields_alltiles.txt')
 data = np.recfromtxt(filename,names=True)
 d = data
 

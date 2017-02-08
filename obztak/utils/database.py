@@ -8,9 +8,10 @@ https://opensource.ncsa.illinois.edu/confluence/x/lwCsAw
 """
 
 import os
+import logging
+
 import psycopg2
 import numpy as np
-import logging
 
 class Database(object):
     
@@ -68,16 +69,19 @@ class Database(object):
     def reset(self):
         self.connection.reset()
 
-    def get_columns(self):
+    def get_columns(self,query=None):
+        if query: self.select(query)
         return [d[0] for d in self.cursor.description]
 
     def query2recarray(self,query):
         # Doesn't work for all data types
         data = self.execute(query)
         names = self.get_columns()
+        if not len(data):
+            msg = "No data returned by query"
+            raise ValueError(msg)
         return np.rec.array(data,names=names)
 
-        
 if __name__ == "__main__":
     import argparse
     description = "python script"

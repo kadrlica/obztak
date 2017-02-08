@@ -1,8 +1,16 @@
 #!/usr/bin/env python
 """
 """
+import os
 
-from maglites import survey_prepare
+from obztak.survey import parser
+from obztak.utils import fileio
+from obztak.factory import survey_factory
+
+def main():
+    args = parser().parse_args()
+    survey = survey_factory(args.survey)
+    return survey.survey_prepare(args)
 
 if __name__ == "__main__":
-    survey_prepare.main()
+    fields = main()

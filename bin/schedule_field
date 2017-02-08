@@ -2,13 +2,10 @@
 """
 Executable for simulating the survey.
 """
-import os
 import ephem
 
-from maglites.utils.ortho import datestring
-from maglites.scheduler import Scheduler
-from maglites.utils.parser import Parser
-from maglites.utils.constants import BANDS
+from obztak.scheduler import Scheduler
+from obztak.factory import scheduler_factory
 
 def main():
     parser = Scheduler.parser()
@@ -16,21 +13,23 @@ def main():
                         help='field hex id')
     parser.add_argument('--tiling',required=True,type=int,
                         help='field tiling id')
-    parser.add_argument('--band',choices=BANDS,default=None,
+    parser.add_argument('--band',choices=['u','g','r','i','z','Y'],default=None,
                         help='exposure band')
     args = parser.parse_args()
+    args.survey = 'maglites'
 
     date = ephem.Date(args.utc_start) if args.utc_start else ephem.now()
-    scheduler = Scheduler(args.fields,None,None)
+    #scheduler = Scheduler(args.fields,None,None)
+    scheduler = scheduler_factory(args.survey,target_fields=args.fields)
     field = scheduler.schedule_field(args.hex,args.tiling,band=args.band,date=date,plot=args.plot)
 
     outfile = args.outfile
     if not outfile:
         if args.band is None:
-            outfile = '%(HEX)d-%(TILING)02d'%field[0]
+            outfile = '%(HEX)d-%(TILING)02d_'%field[0]
         else:
             outfile = '%s_'%field['ID'][0]
-        outfile += '_%02d:%02d:%02d.json'%date.tuple()[-3:]
+        outfile += '%4d%02d%02d_%02d:%02d:%02d.json'%date.tuple()
 
     field.write(outfile)
 

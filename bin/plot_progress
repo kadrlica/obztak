@@ -3,7 +3,7 @@
 Plot a night summary.
 """
 
-from maglites.utils.plotting import plot_progress
+from obztak.utils.plotting import plot_progress
 
 if __name__ == "__main__":
 

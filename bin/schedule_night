@@ -6,9 +6,9 @@ import os
 import ephem
 import logging
 
-from maglites.scheduler import Scheduler
-from maglites.utils.parser import Parser, DatetimeAction
-from maglites.utils.ortho import nite2utc, utc2nite, datestring
+from obztak.scheduler import Scheduler
+from obztak.factory import scheduler_factory
+from obztak.utils.date import nite2utc, utc2nite, datestring, nitestring
 
 def main():
     parser = Scheduler.parser()
@@ -16,7 +16,7 @@ def main():
                         help='The *local* nite to schedule')
     parser.remove_argument('--utc-end')
     args = parser.parse_args()
-    
+
     if args.utc_start and args.nite:
         msg = "Can't specify '--utc-start' and '--nite'"
         raise Exception(msg)
@@ -28,21 +28,27 @@ def main():
     else:
         date = ephem.now()
 
-    nite = utc2nite(date)
+    #nite = utc2nite(date)
+    #nitestr ='%d%02d%02d'%nite.tuple()[:3]
+    nitestr = utc2nite(date)
+    datestr = datestring(date,0)
 
-    nitestr ='%d%02d%02d'%nite.tuple()[:3]
-        
     logging.info("Scheduling nite: %s"%(nitestr))
-    logging.info("Start Time (UTC): %s"%(date))
+    logging.info("Start Time (UTC): %s"%(datestr))
 
-    scheduler = Scheduler(args.fields,args.windows,args.complete)  
+    #scheduler = Scheduler(args.fields,args.windows,args.complete)
+    scheduler = scheduler_factory(args.survey,target_fields=args.fields,observation_windows=args.windows,completed_fields=args.complete)
     chunks = scheduler.schedule_nite(date,chunk=args.chunk,plot=args.plot,mode=args.mode)
+
     
     if not args.outfile:
         outdir  = nitestr
-        if not os.path.exists(outdir): os.makedirs(outdir)
         outfile = os.path.join(outdir,nitestr+'.json')
-    
+    else:
+        outdir  = os.path.dirname(args.outfile)
+        outfile = args.outfile
+
+    if not os.path.exists(outdir): os.makedirs(outdir)
     base,ext = os.path.splitext(outfile)
     for i,chunk in enumerate(chunks):
         if len(chunks) > 1:

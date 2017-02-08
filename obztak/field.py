@@ -8,10 +8,12 @@ from collections import OrderedDict as odict
 import logging
 
 import numpy as np
-from maglites import __version__
-from maglites.utils import constants
-from maglites.utils import fileio
 
+from obztak import __version__
+from obztak.utils import constants
+from obztak.utils import fileio
+
+# Default field array values
 DEFAULTS = odict([
     ('HEX',       dict(dtype=int,value=0)),
     ('RA',        dict(dtype=float,value=None)),
@@ -26,15 +28,17 @@ DEFAULTS = odict([
     ('MOONANGLE', dict(dtype=float,value=-1.0)),
     ('HOURANGLE', dict(dtype=float,value=-1.0)),
 ])
-
 DTYPES = odict([(k,v['dtype']) for k,v in DEFAULTS.items()])
 VALUES = odict([(k,v['value']) for k,v in DEFAULTS.items()])
 
-OBJECT_PREFIX = 'MAGLITES field: '
-OBJECT_FMT = OBJECT_PREFIX + '%s'
-SEQID_PREFIX = 'MAGLITES scheduled: '
-SEQID_FMT = SEQID_PREFIX + '%(DATE)s'
+SEP = ':'
+#OBJECT_FMT = 'MAGLITES field' + SEP + ' %s'
+#SEQID_FMT  = 'MAGLITES scheduled' + SEP + ' %(DATE)s'
+#PROGRAM = 'maglites'
+#PROPID  = '2016A-0366'
 
+
+# Default sispi dictionary
 SISPI_DICT = odict([
     ("object",  None),
     ("seqnum",  None), # 1-indexed
@@ -46,13 +50,16 @@ SISPI_DICT = odict([
     ("filter",  None),
     ("count",   1),
     ("expType", "object"),
-    ("program", "maglites"),
+    #("program", PROGRAM),
+    ("program", None),
     ("wait",    "False"),
-    ("propid",  "2016A-0366"),
+    #("propid",  PROPID),
+    ("propid",  None),
     ("comment", ""),
 ])
 
-SISPI_MAP = odict([ 
+# Mapping between sispi dict keys and field array columns
+SISPI_MAP = odict([
     ('expTime','EXPTIME'),
     ('RA','RA'),
     ('dec','DEC'),
@@ -60,6 +67,19 @@ SISPI_MAP = odict([
 ])
 
 class FieldArray(np.recarray):
+    """ Array for holding observation fields. """
+    PROGRAM = 'maglites'
+    PROPID  = '2016A-0366'
+
+    SISPI_DICT = copy.deepcopy(SISPI_DICT)
+    SISPI_DICT['program'] = PROGRAM
+    SISPI_DICT['propid'] = PROPID
+    #OBJECT_FMT = 'OBZTAK field'+SEP+' %s'
+    #SEQID_FMT  = 'OBZTAK scheduled'+SEP+' %(DATE)s'
+    OBJECT_FMT = 'MAGLITES field'+SEP+' %s'
+    SEQID_FMT  = 'MAGLITES scheduled'+SEP+' %(DATE)s'
+
+    BANDS = constants.BANDS
 
     def __new__(cls,shape=0):
         # Need to do it this way so that array can be resized...
@@ -69,11 +89,21 @@ class FieldArray(np.recarray):
         for k,v in values: self[k].fill(v)
         return self
     
+    #def __array_finalize__(self,obj):
+    #    print('In array_finalize:')
+    #    print('   self type is %s' % type(self))
+    #    print('   obj type is %s' % type(obj))
+
+    #def __array_wrap__(self, out_arr, context=None):
+    #    print('In __array_wrap__:')
+    #    print('   self is %s' % repr(self))
+    #    print('   arr is %s' % repr(out_arr))
+
     def __add__(self, other):
         return np.concatenate([self,other]).view(self.__class__)
 
     def __getitem__(self,key):
-        if key == 'ID':
+        if isinstance(key,basestring) and key == 'ID':
             return self.unique_id
         else:
             return super(FieldArray,self).__getitem__(key)
@@ -89,20 +119,25 @@ class FieldArray(np.recarray):
         return np.char.mod('%(HEX)i-%(TILING)02d-%(FILTER)s',self)
 
     @property
+    def field_id(self):
+        return np.char.mod('%(HEX)i-%(TILING)02d',self)
+
+    @property
     def object(self):
-        return np.char.mod(OBJECT_FMT,self.unique_id).astype('S80')
+        return np.char.mod(self.OBJECT_FMT,self.unique_id).astype('S80')
 
     @property
     def seqid(self):
-        return np.char.mod(SEQID_FMT,self).astype('S80')
+        return np.char.mod(self.SEQID_FMT,self).astype('S80')
 
     @property
     def seqnum(self):
-        return np.array([constants.BANDS.index(f)+1 for f in self['FILTER']],dtype=int)
+        return np.array([self.BANDS.index(f)+1 for f in self['FILTER']],dtype=int)
 
     @property
     def comment(self):
-        comment = 'MAGLITES v%s: '%__version__
+        #comment = 'MAGLITES v%s: '%__version__
+        comment = 'obztak v%s: '%__version__
         comment += 'PRIORITY=%(PRIORITY)i, '
 
         fmt = '%s=%%(%s).4f'
@@ -116,16 +151,18 @@ class FieldArray(np.recarray):
         self['TILING'] = tiling
 
     def from_object(self,string):
-        self.from_unique_id(string.lstrip(OBJECT_PREFIX))
+        #self.from_unique_id(string.lstrip(OBJECT_PREFIX))
+        self.from_unique_id(string.split(SEP,1)[-1].strip())
 
     def from_seqid(self, string):
-        date = string.lstrip(SEQID_PREFIX)
+        #date = string.lstrip(SEQID_PREFIX)
+        date = string.split(SEP,1)[-1].strip()
         self['DATE'] = date
 
     def from_comment(self, string):
         integers = ['PRIORITY']
         floats   = ['AIRMASS','SLEW','MOONANGLE','HOURANGLE']
-        values = dict([x.strip().split('=') for x in string.split(':')[-1].split(',')])
+        values = dict([x.strip().split('=') for x in string.split(SEP,1)[-1].split(',')])
         for key,val in values.items():
             if key in integers:
                 self[key] = int(val)
@@ -147,7 +184,7 @@ class FieldArray(np.recarray):
         seqids = self.seqid
         comments = self.comment
         for i,r in enumerate(self):
-            sispi_dict = copy.deepcopy(SISPI_DICT)
+            sispi_dict = copy.deepcopy(self.SISPI_DICT)
             for sispi_key,field_key in SISPI_MAP.items():
                 sispi_dict[sispi_key] = r[field_key]
             sispi_dict['object'] = objects[i]
@@ -173,12 +210,12 @@ class FieldArray(np.recarray):
         return fields
 
     @classmethod
-    def load_recarray(cls,recarray): 
+    def load_recarray(cls,recarray):
         fields = cls(len(recarray))
         keys = dict([(n.upper(),n) for n in recarray.dtype.names])
 
         for k in fields.dtype.names:
-            if k not in keys: 
+            if k not in keys:
                 logging.warning('Key %s not found in input array'%k)
                 continue
             fields[k] = recarray[keys[k]]
@@ -187,17 +224,33 @@ class FieldArray(np.recarray):
     @classmethod
     def load_database(cls,database='db-fnal'):
         """
-        Get the fields that have been observed from the telemetry DB.
+        Load fields from the telemetry database.
+
+        Parameters:
+        -----------
+        database : String or Database object to connect to.
+
+        Returns:
+        --------
+        fields : A FieldArray filled from the database
         """
-        from maglites.utils import Database
+        try: from obztak.utils.database import Database
+        except ImportError as e:
+            logging.warn(e)
+            return cls()
 
-        if not isinstance(database,Database):
-            database = Database(database)
-            database.connect()
+        try: database = Database(database)
+        except IOError as e:
+            logging.warn(e)
+            return cls()
 
-        defaults = dict(propid='2016A-0366', limit='')
+        database.connect()
+
+        defaults = dict(propid=cls.SISPI_DICT['propid'], limit='',
+                        object_fmt = cls.OBJECT_FMT%'')
         params = copy.deepcopy(defaults)
 
+        # Should pull this out to be accessible (self.query())?
         query ="""
         SELECT object, seqid, seqnum, telra as RA, teldec as dec, 
         expTime, filter, 
@@ -206,13 +259,17 @@ class FieldArray(np.recarray):
         COALESCE(ha, -1) as HOURANGLE, COALESCE(slewangl,-1) as SLEW 
         FROM exposure where propid = '%(propid)s' and exptime > 89 
         and discard = False and delivered = True and flavor = 'object'
-        ORDER BY utc_beg %(limit)s 
+        and object like '%(object_fmt)s%%'
+        ORDER BY utc_beg %(limit)s
         """%params
 
+        logging.debug(query)
         data = database.execute(query)
         names = map(str.upper,database.get_columns())
         objidx = names.index('OBJECT')        
-        if not len(data): return FieldArray(0)
+        if not len(data):
+            logging.warn("No fields found in database.")
+            return cls()
 
         fields = cls()
         for d in data:
@@ -225,7 +282,6 @@ class FieldArray(np.recarray):
 
         return fields
 
-        
     @classmethod
     def read(cls, filename):
         base,ext = os.path.splitext(filename)

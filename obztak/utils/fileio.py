@@ -10,10 +10,8 @@ import numpy as np
 import json
 import logging
 
-from maglites import __version__
-from maglites.utils.constants import FLOAT_FMT
-
-#from maglites.field import FieldArray
+from obztak import __version__
+from obztak.utils.constants import FLOAT_FMT
 
 def get_username():
     import os,pwd
@@ -22,6 +20,10 @@ def get_username():
 def get_hostname():
     import platform
     return platform.node()
+
+def get_datadir():
+    from os.path import abspath,dirname,join
+    return join(dirname(dirname(abspath(__file__))),'data')
 
 class FormatFloatForce(mlab.FormatFormatStr): 
     """
@@ -40,14 +42,15 @@ def csv2rec(filename, **kwargs):
     #data.dtype.names = map(str.upper,data.dtype.names)
     
     import pandas as pd
-        
+    from distutils.version import LooseVersion
     kwargs.setdefault('parse_dates',False)
     kwargs.setdefault('comment','#')
 
-    if int(pd.__version__.replace('.','')) > 90:
+    #if int(pd.__version__.replace('.','')) > 90:
+    if LooseVersion(pd.__version__) > LooseVersion('0.9.0'):
         kwargs.setdefault('skip_blank_lines',True)
-        kwargs.setdefault('as_recarray',True)
-        return pd.read_csv(filename,**kwargs)
+        #kwargs.setdefault('as_recarray',True)
+        return pd.read_csv(filename,**kwargs).to_records(index=False)
     else:
         lines = open(filename,'r').readlines()
         comments = np.char.startswith(lines,'#')
@@ -109,10 +112,11 @@ def fields2sispi(infile,outfile=None,force=False):
 
 def header():    
     import ephem
+    from obztak.utils.date import datestring
     now = ephem.now()
     header  = "# author: %s@%s\n"%(get_username(),get_hostname())
-    header += "# date: %s UTC\n"%(ephem.now())
-    header += "# version: maglites v%s\n"%(__version__)
+    header += "# date: %s UTC\n"%(datestring(ephem.now(),0))
+    header += "# version: obztak v%s\n"%(__version__)
     return header
     
 if __name__ == "__main__":

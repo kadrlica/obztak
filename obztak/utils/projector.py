@@ -1,7 +1,8 @@
 import re
 import numpy as np
+import healpy as hp
 
-import maglites.utils.constants
+import obztak.utils.constants
 ############################################################
 
 def angsep(lon1,lat1,lon2,lat2):
@@ -41,7 +42,7 @@ def airmass(lon_zenith, lat_zenith, lon, lat):
     Safety handling when angular separation to zenith is more than 90 deg
     """
     airmass = 1. / np.cos(np.radians(angsep(lon, lat, lon_zenith, lat_zenith)))
-    airmass[airmass < 1.] = 999.
+    airmass[airmass < 1.] = np.inf
     return airmass
 
 ############################################################
@@ -71,6 +72,8 @@ def galToCel(ll, bb):
     ra = (ramragp + ra_gp + (2. * np.pi)) % (2. * np.pi)
     return np.degrees(ra), np.degrees(dec)
 
+gal2cel = galToCel
+
 ############################################################
 
 def celToGal(ra, dec):
@@ -97,6 +100,8 @@ def celToGal(ra, dec):
     bb = np.arcsin(sin_b)
     ll = (lcp - lcpml + (2. * np.pi)) % (2. * np.pi)
     return np.degrees(ll), np.degrees(bb)
+
+cel2gal = celToGal
 
 ############################################################
 
@@ -345,8 +350,8 @@ def match(lon1, lat1, lon2, lat2, tol=None, nnearest=1):
 def footprint(ra,dec):
     l, b = celToGal(ra, dec)
 
-    angsep_lmc = maglites.utils.projector.angsep(maglites.utils.constants.RA_LMC, maglites.utils.constants.DEC_LMC, ra, dec)
-    angsep_smc = maglites.utils.projector.angsep(maglites.utils.constants.RA_SMC, maglites.utils.constants.DEC_SMC, ra, dec)
+    angsep_lmc = obztak.utils.projector.angsep(obztak.utils.constants.RA_LMC, obztak.utils.constants.DEC_LMC, ra, dec)
+    angsep_smc = obztak.utils.projector.angsep(obztak.utils.constants.RA_SMC, obztak.utils.constants.DEC_SMC, ra, dec)
     cut = (np.fabs(b) > 10.) \
           & ((angsep_lmc < 30.) | (angsep_smc < 30.)) \
           & (dec < -55.) & (ra > 100.) & (ra < 300.)
@@ -355,30 +360,13 @@ def footprint(ra,dec):
     cut = cut | (dec < -80.)
 
     return cut
-
-"""
-KB: This looks like a repeated function?
-def footprint(ra,dec):
-    l, b = celToGal(ra, dec)
-
-    angsep_lmc = maglites.utils.projector.angsep(maglites.utils.constants.RA_LMC, maglites.utils.constants.DEC_LMC, ra, dec)
-    angsep_smc = maglites.utils.projector.angsep(maglites.utils.constants.RA_SMC, maglites.utils.constants.DEC_SMC, ra, dec)
-    cut = (np.fabs(b) > 10.) \
-          & ((angsep_lmc < 30.) | (angsep_smc < 30.)) \
-          & (dec < -55.) & (ra > 100.) & (ra < 300.)
-    #cut = cut | ((dec < -65.) & (angsep_lmc > 5.) & (angsep_smc > 5.))
-    cut = cut | ((dec < -65.) & (ra > 300.) & (ra < 360.)) # SMC
-    cut = cut | (dec < -80.)
-
-    return cut
-"""
 
 def footprintSMCNOD(fields):
     """
     Special selection for pointings near the SMC Northern Overdensity (SMCNOD)
     """
-    cut = np.in1d(fields['HEX'], maglites.utils.constants.HEX_SMCNOD) \
-          & np.in1d(fields['TILING'], maglites.utils.constants.TILING_SMCNOD)
+    cut = np.in1d(fields['HEX'], obztak.utils.constants.HEX_SMCNOD) \
+          & np.in1d(fields['TILING'], obztak.utils.constants.TILING_SMCNOD)
     return cut
 
 def footprintBridge(ra, dec):
@@ -389,5 +377,41 @@ def footprintBridge(ra, dec):
     return cut
 
 
+def phi2lon(phi): return np.degrees(phi)
+def lon2phi(lon): return np.radians(lon)
 
+def theta2lat(theta): return 90. - np.degrees(theta)
+def lat2theta(lat): return np.radians(90. - lat)
 
+def pix2ang(nside, pix):
+    """
+    Return (lon, lat) in degrees instead of (theta, phi) in radians
+    """
+    theta, phi =  hp.pix2ang(nside, pix)
+    lon = phi2lon(phi)
+    lat = theta2lat(theta)
+    return lon, lat
+
+def ang2pix(nside, lon, lat, coord='GAL'):
+    """
+    Input (lon, lat) in degrees instead of (theta, phi) in radians
+    """
+    theta = np.radians(90. - lat)
+    phi = np.radians(lon)
+    return hp.ang2pix(nside, theta, phi)
+
+def ang2vec(lon, lat):
+    theta = lat2theta(lat)
+    phi = lon2phi(lon)
+    vec = hp.ang2vec(theta, phi)
+    return vec
+
+def hpx_gal2cel(galhpx):
+    npix = len(galhpx)
+    nside = hp.npix2nside(npix)
+    pix = np.arange(npix)
+
+    ra,dec = pix2ang(nside,pix)
+    glon,glat = cel2gal(ra,dec)
+
+    return galhpx[ang2pix(nside,glon,glat)]

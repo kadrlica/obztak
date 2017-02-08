@@ -2,10 +2,10 @@
 """
 Executable for simulating the survey.
 """
-from maglites.scheduler import Scheduler
-from maglites.field import FieldArray
-from maglites.utils.parser import DatetimeAction
-import maglites.utils.ortho as ortho
+from obztak.scheduler import Scheduler
+from obztak.field import FieldArray
+from obztak.utils.parser import DatetimeAction
+from obztak.utils import ortho
 
 ############################################################
 

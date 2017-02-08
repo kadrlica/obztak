@@ -4,32 +4,35 @@ Executable for simulating the survey.
 """
 import os
 import logging
-import itertools
 
 import ephem
-import numpy as np
 
-from maglites.scheduler import Scheduler
-from maglites.utils.parser import Parser, DatetimeAction
-from maglites.field import FieldArray
+from obztak.scheduler import Scheduler
+from obztak.factory import scheduler_factory
 
 def main():
     parser = Scheduler.parser()
     args = parser.parse_args()
 
-    scheduler = Scheduler(args.fields,args.windows,args.complete)
-    survey = scheduler.schedule_survey(start=args.utc_start,end=args.utc_end,
-                                       chunk=args.chunk,plot=args.plot)
+    scheduler = scheduler_factory(args.survey,target_fields=args.fields,
+                                  observation_windows=args.windows,
+                                  completed_fields=args.complete)
+    try:
+        survey = scheduler.schedule_survey(start=args.utc_start,end=args.utc_end,
+                                           chunk=args.chunk,plot=args.plot,
+                                           mode=args.mode)
+    except ValueError as error:
+        logging.warn(str(error))
+        survey = scheduler.scheduled_nites
 
     # Write all completed fields
     scheduler.completed_fields.write('survey_fields.csv')
 
     basedir = args.outfile if args.outfile else 'survey'
-    if not os.path.exists(basedir):
-        os.makedirs(basedir)
+    if not os.path.exists(basedir): os.makedirs(basedir)
+    print(basedir)
 
     for nite,chunks in survey.items():
-
         outdir = os.path.join(basedir,nite)
         if not os.path.exists(outdir): os.makedirs(outdir)
         outfile = os.path.join(outdir,nite+'.json')
@@ -40,7 +43,7 @@ def main():
                 outfile = base+'_%02d'%(i+1)+ext
             logging.debug("Writing %s..."%outfile)
             chunk.write(outfile)
-        
+
     return survey
 
 if __name__ == "__main__":

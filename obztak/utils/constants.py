@@ -7,6 +7,7 @@ import numpy as np
 
 # Plotting DECam
 DECAM=1.1 # DECam radius (deg)
+
 # Marker size depends on figsize and DPI
 FIGSIZE=(10.5,8.5)
 SCALE=np.sqrt((8.0*6.0)/(FIGSIZE[0]*FIGSIZE[1]))
@@ -57,39 +58,29 @@ CCD_Y = NPIX_Y * PIXEL_SCALE # degree
 # Blanco characteritics
 SOUTHERN_REACH = -89.
 
-# SISPI json template formatting
-PROPID = '2016A-0366'
-OBJECT_FMT = "MAGLITES field - %(ID)d.%(TILING)d.%(PRIORITY)d"
-SEQID_FMT = "MAGLITES scheduled - %(DATE)s"
+# Formatting for floats
 FLOAT_FMT = '%.4f'
-SISPI_DICT = odict([
-    ("object",  None),
-    ("seqnum",  None), # 1-indexed
-    ("seqtot",  2),
-    ("seqid",   None),
-    ("expTime", 90),
-    ("RA",      None),
-    ("dec",     None),
-    ("filter",  None),
-    ("count",   1),
-    ("expType", "object"),
-    ("program", "maglites"),
-    ("wait",    "False"),
-    ("propid",  PROPID),
-    ("comment", ""),
+
+# Band colors
+COLORS = odict([
+    ('none','black'),
+    ('u','blue'),
+    ('g','green'),
+    ('r','red'),
+    ('i','gold'),
+    ('z','magenta'),
+    ('Y','black'),
+    ('VR','gray'),
 ])
 
-def FIELD2OBJECT(field):
-    return OBJECT_FMT%(field)
-
-def OBJECT2FIELD(object_str):
-    ID,TILING,PRIORITY = map(int,object_str.split(' - ')[-1].split('.'))
-    return dict(ID=ID,TILING=TILING,PRIORITY=PRIORITY)
-
-def FIELD2SEQID(field):
-    return SEQID_FMT%(field)
-
-def SEQID2FIELD(seqid_str):
-    DATE = str(seqid_str.split(' - ')[-1].strip())
-    return dict(DATE=DATE)
-
+# Band colormaps
+CMAPS = odict([
+    ('none','binary'),
+    ('u','Blues'),
+    ('g','Greens'),
+    ('r','Reds'),
+    ('i','YlOrBr'),
+    ('z','RdPu'),
+    ('Y','Grays'),
+    ('VR','Grays'),
+])
