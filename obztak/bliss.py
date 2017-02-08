@@ -327,6 +327,9 @@ class BlissSurvey(Survey):
 
 class BlissFieldArray(FieldArray):
     """ Array of BLISS fields """
+    PROGRAM = 'bliss'
+    PROPID  = '2017A-0260'
+
     SISPI_DICT = copy.deepcopy(SISPI_DICT)
     SISPI_DICT["program"] = PROGRAM
     SISPI_DICT["propid"] = PROPID

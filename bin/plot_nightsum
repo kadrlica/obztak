@@ -8,11 +8,13 @@ import pylab as plt
 import ephem
 import numpy as np
 
+from obztak.factory import field_factory
 from obztak.field import FieldArray
-from obztak.utils.ortho import makePlot, safeProj
-from obztak.utils.date import get_nite, nite2utc, utc2nite
+from obztak.utils.ortho import makePlot
+from obztak.utils.date import get_nite, nite2utc, utc2nite, datestr
 from obztak.utils.parser import Parser, DatetimeAction
-from obztak.utils import Database
+from obztak.utils.database import Database
+from obztak.utils.ortho import plot_bliss_coverage
 
 if __name__ == "__main__":
     parser = Parser(description=__doc__)
@@ -20,6 +22,9 @@ if __name__ == "__main__":
                         help='The *local* nite to plot')
     parser.add_argument('-i',dest='inspect',action='store_true',
                         help='interactive plot window')
+    parser.add_argument('--survey',choices=['obztak','maglites','bliss'],
+                        default = None, help='choose survey to schedule.')
+
     args = parser.parse_args()
 
     if args.nite:
@@ -27,8 +32,7 @@ if __name__ == "__main__":
     else:
         # Yesterday...
         date = ephem.Date(ephem.now() - 8*ephem.hour)
-    nite = utc2nite(date)
-    nitestr ='%d%02d%02d'%nite.tuple()[:3]
+    nitestr = utc2nite(date)
 
     print "Plotting nightsum for: %s"%nitestr
 
@@ -38,21 +42,29 @@ if __name__ == "__main__":
     #date = "%d/%02d/%02d"%now.tuple()[:3]
     #time = "%d/%02d/%02d"%date.tuple()[:3] + ' 00:00:00'
 
-    fields = FieldArray.load_database()
-    #new = np.char.startswith(fields['DATE'],date)
-    new = (np.array(map(utc2nite,fields['DATE'])) == nite)
+    fields = field_factory(args.survey).load_database()
+    if args.survey == 'maglites':
+        plot_maglites_nightsum(fields,nitestr)
+    elif args.survey == 'bliss':
+        pass
+
+    plot_bliss_coverage(fields)
+    plt.savefig('nightsum_coverage_%s.png'%nitestr)
+
+    new = (np.array(map(utc2nite,fields['DATE'])) == nitestr)
     new_fields = fields[new]
     old_fields = fields[~new]
 
+    """
     kwargs = dict(edgecolor='none', s=50, vmin=0, vmax=4)
     fig,basemap = makePlot(date=nitestr,name='nightsum',moon=False,airmass=False,center=(0,-90))
     plt.title('Coverage (%s)'%nitestr)
     kwargs['cmap'] = 'gray_r'
-    proj = safeProj(basemap, old_fields['RA'], old_fields['DEC'])
+    proj = basemap.proj(old_fields['RA'], old_fields['DEC'])
     basemap.scatter(*proj, c=old_fields['TILING'],**kwargs)
 
     kwargs['cmap'] = 'summer_r'
-    proj = safeProj(basemap, new_fields['RA'], new_fields['DEC'])
+    proj = basemap.proj(new_fields['RA'], new_fields['DEC'])
     basemap.scatter(*proj, c=new_fields['TILING'],  **kwargs)
     colorbar = plt.colorbar()
     colorbar.set_label('Tiling')
@@ -61,19 +73,24 @@ if __name__ == "__main__":
     plt.plot(np.nan, np.nan,'o',color='0.7',mec='0.7',label='Observed previously')
     plt.legend(fontsize=10,loc='lower left',scatterpoints=1)
     plt.savefig('nightsum_coverage_%s.png'%nitestr,bbox_inches='tight')
+    """
 
     db = Database()
     db.connect()
 
-    query = """
-select id, qc_fwhm as psf, qc_teff as teff from exposure 
-where exptime = 90 and delivered = True and propid = '2016A-0366' 
+    query = """select id, qc_fwhm as psf, qc_teff as teff from exposure
+where exptime = 90 and delivered = True and propid = '%s'
 and qc_teff is not NULL and qc_fwhm is not NULL
 and to_timestamp(utc_beg) %s '%s'
 """
 
-    new = db.query2recarray(query%('>',date))
-    old = db.query2recarray(query%('<',date))
+    new = db.query2recarray(query%(fields.PROPID,'>',datestr(date)))
+    try:
+        old = db.query2recarray(query%(fields.PROPID,'<',date))
+    except ValueError as e:
+        print(e)
+        old = np.recarray(0,dtype=new.dtype)
+
 
     nbins = 35
     kwargs = dict(normed=True)

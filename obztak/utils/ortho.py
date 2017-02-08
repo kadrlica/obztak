@@ -753,7 +753,8 @@ def plot_bliss_coverage(fields,outfile=None,**kwargs):
 
     fig,ax = plt.subplots(2,2,figsize=(16,9))
     plt.subplots_adjust(wspace=0.01,hspace=0.02,left=0.01,right=0.99,bottom=0.01,top=0.99)
-    kwargs = dict(edgecolor='none', s=12, alpha=0.2)
+    defaults = dict(edgecolor='none', s=12, alpha=0.2, vmin=-1, vmax=2)
+    setdefaults(kwargs,defaults)
 
     for i,b in enumerate(BANDS):
         plt.sca(ax.flat[i])
@@ -769,8 +770,139 @@ def plot_bliss_coverage(fields,outfile=None,**kwargs):
         bmap.scatter(*proj, c='0.7', **kwargs)
 
         proj = bmap.proj(f['RA'],f['DEC'])
-        bmap.scatter(*proj, c=COLORS[b], **kwargs)
+        bmap.scatter(*proj, c=f['TILING'], cmap=CMAPS[b], **kwargs)
         plt.gca().set_title('BLISS %s-band'%b)
+
+
+def plot_maglites_nightsum(fields,nitestr):
+    #fields = FieldArray.load_database()
+    #new = np.char.startswith(fields['DATE'],date)
+    new = (np.array(map(utc2nite,fields['DATE'])) == nitestr)
+    new_fields = fields[new]
+    old_fields = fields[~new]
+
+    kwargs = dict(edgecolor='none', s=50, vmin=0, vmax=4)
+    fig,basemap = makePlot(date=nitestr,name='nightsum',moon=False,airmass=False,center=(0,-90))
+    plt.title('Coverage (%s)'%nitestr)
+    kwargs['cmap'] = 'gray_r'
+    proj = basemap.proj(old_fields['RA'], old_fields['DEC'])
+    basemap.scatter(*proj, c=old_fields['TILING'],**kwargs)
+
+    kwargs['cmap'] = 'summer_r'
+    proj = basemap.proj(new_fields['RA'], new_fields['DEC'])
+    basemap.scatter(*proj, c=new_fields['TILING'],  **kwargs)
+    colorbar = plt.colorbar()
+    colorbar.set_label('Tiling')
+
+    plt.plot(np.nan, np.nan,'o',color='green',mec='green',label='Observed tonight')
+    plt.plot(np.nan, np.nan,'o',color='0.7',mec='0.7',label='Observed previously')
+    plt.legend(fontsize=10,loc='lower left',scatterpoints=1)
+    plt.savefig('nightsum_coverage_%s.png'%nitestr,bbox_inches='tight')
+
+    db = Database()
+    db.connect()
+
+    query = """
+select id, qc_fwhm as psf, qc_teff as teff from exposure
+where exptime = 90 and delivered = True and propid = '2016A-0366'
+and qc_teff is not NULL and qc_fwhm is not NULL
+and to_timestamp(utc_beg) %s '%s'
+"""
+
+    new = db.query2recarray(query%('>',date))
+    old = db.query2recarray(query%('<',date))
+
+    nbins = 35
+    kwargs = dict(normed=True)
+    step_kwargs = dict(kwargs,histtype='step',lw=3.5)
+    fill_kwargs = dict(kwargs,histtype='stepfilled',lw=1.0,alpha=0.7)
+
+    plt.figure()
+    step_kwargs['bins'] = np.linspace(0.5,2.5,nbins)
+    fill_kwargs['bins'] = np.linspace(0.5,2.5,nbins)
+    plt.hist(new['psf'],color='green',zorder=10, label='Observed tonight', **fill_kwargs)
+    plt.hist(new['psf'],color='green',zorder=10, **step_kwargs)
+    plt.hist(old['psf'],color='0.5', label='Observed previously', **fill_kwargs)
+    plt.hist(old['psf'],color='0.5', **step_kwargs)
+    plt.axvline(1.20,ls='--',lw=2,color='gray')
+    plt.legend()
+    plt.title('Seeing (%s)'%nitestr)
+    plt.xlabel('FWHM (arcsec)')
+    plt.ylabel('Normalized Number of Exposures')
+    plt.savefig('nightsum_psf_%s.png'%nitestr,bbox_inches='tight')
+
+    plt.figure()
+    step_kwargs['bins'] = np.linspace(0,1.5,nbins)
+    fill_kwargs['bins'] = np.linspace(0,1.5,nbins)
+    plt.hist(new['teff'],color='green',zorder=10,label='Observed tonight', **fill_kwargs)
+    plt.hist(new['teff'],color='green',zorder=10, **step_kwargs)
+    plt.hist(old['teff'],color='0.5',label='Observed previously', **fill_kwargs)
+    plt.hist(old['teff'],color='0.5', **step_kwargs)
+    plt.axvline(0.25,ls='--',lw=2,color='gray')
+    plt.legend()
+    plt.title('Effective Depth (%s)'%nitestr)
+    plt.xlabel('Teff')
+    plt.ylabel('Normalized Number of Exposures')
+    plt.savefig('nightsum_teff_%s.png'%nitestr,bbox_inches='tight')
+
+
+def plot_bliss_nightsum(fields,nitestr):
+    plot_bliss_coverage(fields)
+    plt.savefig('nightsum_coverage_%s.png'%nitestr)
+
+    new = (np.array(map(utc2nite,fields['DATE'])) == nitestr)
+    new_fields = fields[new]
+    old_fields = fields[~new]
+
+    db = Database()
+    db.connect()
+
+    query = """select id, qc_fwhm as psf, qc_teff as teff from exposure
+where exptime = 90 and delivered = True and propid = '%s'
+and qc_teff is not NULL and qc_fwhm is not NULL
+and to_timestamp(utc_beg) %s '%s'
+"""
+
+    new = db.query2recarray(query%(fields.PROPID,'>',datestr(date)))
+    try:
+        old = db.query2recarray(query%(fields.PROPID,'<',date))
+    except ValueError as e:
+        print(e)
+        old = np.recarray(0,dtype=new.dtype)
+
+    nbins = 35
+    kwargs = dict(normed=True)
+    step_kwargs = dict(kwargs,histtype='step',lw=3.5)
+    fill_kwargs = dict(kwargs,histtype='stepfilled',lw=1.0,alpha=0.7)
+
+    plt.figure()
+    step_kwargs['bins'] = np.linspace(0.5,2.5,nbins)
+    fill_kwargs['bins'] = np.linspace(0.5,2.5,nbins)
+    plt.hist(new['psf'],color='green',zorder=10, label='Observed tonight', **fill_kwargs)
+    plt.hist(new['psf'],color='green',zorder=10, **step_kwargs)
+    plt.hist(old['psf'],color='0.5', label='Observed previously', **fill_kwargs)
+    plt.hist(old['psf'],color='0.5', **step_kwargs)
+    plt.axvline(1.20,ls='--',lw=2,color='gray')
+    plt.legend()
+    plt.title('Seeing (%s)'%nitestr)
+    plt.xlabel('FWHM (arcsec)')
+    plt.ylabel('Normalized Number of Exposures')
+    plt.savefig('nightsum_psf_%s.png'%nitestr,bbox_inches='tight')
+
+    plt.figure()
+    step_kwargs['bins'] = np.linspace(0,1.5,nbins)
+    fill_kwargs['bins'] = np.linspace(0,1.5,nbins)
+    plt.hist(new['teff'],color='green',zorder=10,label='Observed tonight', **fill_kwargs)
+    plt.hist(new['teff'],color='green',zorder=10, **step_kwargs)
+    plt.hist(old['teff'],color='0.5',label='Observed previously', **fill_kwargs)
+    plt.hist(old['teff'],color='0.5', **step_kwargs)
+    plt.axvline(0.25,ls='--',lw=2,color='gray')
+    plt.legend()
+    plt.title('Effective Depth (%s)'%nitestr)
+    plt.xlabel('Teff')
+    plt.ylabel('Normalized Number of Exposures')
+    plt.savefig('nightsum_teff_%s.png'%nitestr,bbox_inches='tight')
+
 
 if __name__ == '__main__':
     makePlot('2016/2/10 03:00')

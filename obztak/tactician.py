@@ -43,6 +43,7 @@ class Tactician(object):
         if not observatory: observatory = CTIO()
         self.observatory = observatory
         self.moon = ephem.Moon()
+        self.sun = ephem.Sun()
 
         self.set_target_fields(fields)
         self.set_completed_fields(None)
@@ -52,6 +53,7 @@ class Tactician(object):
         if date is not None:
             self.observatory.date = ephem.Date(date)
             self.moon.compute(self.observatory)
+            self.sun.compute(self.observatory)
 
     def set_target_fields(self,fields):
         if fields is not None:
@@ -261,16 +263,19 @@ class BlissTactician(Tactician):
         sel &= (moon_angle > moon_limit)
 
         # Moon band constraints
-        if (self.moon.phase >= 80) and (self.moon.alt > -0.05):
+        if (self.moon.phase >= 80) and (self.moon.alt > -0.04):
             # Moon is very bright; only do z
             sel &= (np.char.count('z',self.fields['FILTER']) > 0)
-        elif (self.moon.phase >= 45) and (self.moon.alt > -0.05):
+        elif (self.moon.phase >= 45) and (self.moon.alt > -0.04):
             # Moon is more than half full; do i,z
             sel &= (np.char.count('iz',self.fields['FILTER']) > 0)
         else:
             # Moon is faint or down; do g,r (unless none available)
             sel &= (np.char.count('gr',self.fields['FILTER']) > 0)
             #weight += 1e8 * (np.char.count('iz',self.fields['FILTER']) > 0)
+        if (self.sun.alt > -0.28):
+            # No g-band if Sun altitude > -16 deg
+            sel &= ~(np.char.count('g',self.fields['FILTER']) > 0)
 
         # Airmass cut
         airmass_min, airmass_max = self.CONDITIONS[self.mode]
