@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 """
-Executable for simulating the survey.
+Executable for scheduling a chunk of time.
 """
 import ephem
 
+from obztak import get_survey
 from obztak.scheduler import Scheduler
 from obztak.factory import scheduler_factory
 
@@ -11,8 +12,12 @@ def main():
     parser = Scheduler.parser()
     args = parser.parse_args()
 
+    logging.info("Scheduling chunk for survey: '%s'"%get_survey())
+
     start = ephem.Date(args.utc_start) if args.utc_start else ephem.now()
-    scheduler = scheduler_factory(args.survey,target_fields=args.fields,observation_windows=args.windows,completed_fields=args.complete)
+    scheduler = scheduler_factory(target_fields=args.fields,
+                                  observation_windows=args.windows,
+                                  completed_fields=args.complete)
     scheduler.schedule_chunk(start,args.chunk,plot=args.plot,mode=args.mode)
 
     outfile = args.outfile

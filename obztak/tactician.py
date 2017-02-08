@@ -17,12 +17,13 @@ from obztak.utils import constants
 from obztak.utils.date import datestring
 
 CONDITIONS = odict([
-    ('great', [1.4, 2.0]),
-    ('good',  [0.0, 2.0]),
-    ('fine',  [0.0, 1.9]),
-    ('ok',    [0.0, 1.6]),
-    ('poor',  [0.0, 1.5]),
-    ('bad',   [0.0, 1.4]),
+    ('great',   [1.4, 2.0]),
+    ('good',    [0.0, 2.0]),
+    ('maglites',[0.0, 2.0]),
+    ('fine',    [0.0, 1.9]),
+    ('ok',      [0.0, 1.6]),
+    ('poor',    [0.0, 1.5]),
+    ('bad',     [0.0, 1.4]),
 ])
 
 class Tactician(object):

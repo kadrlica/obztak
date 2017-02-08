@@ -54,6 +54,7 @@ SISPI_DICT = odict([
     ("program", None),
     ("wait",    "False"),
     #("propid",  PROPID),
+    #("proposer",'Bechtol'),
     ("propid",  None),
     ("comment", ""),
 ])

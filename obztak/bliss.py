@@ -19,8 +19,10 @@ from obztak.utils import constants
 from obztak.utils import fileio
 from obztak.utils.constants import BANDS,SMASH_POLE,CCD_X,CCD_Y,STANDARDS,COLORS
 
-PROGRAM = 'bliss'
+NAME    = 'BLISS'
+PROGRAM = NAME.lower()
 PROPID  = '2017A-0260'
+PROPOSER = 'Soares-Santos'
 BANDS = ['g','r','i','z']
 TILINGS = 2
 
@@ -327,12 +329,14 @@ class BlissSurvey(Survey):
 
 class BlissFieldArray(FieldArray):
     """ Array of BLISS fields """
-    PROGRAM = 'bliss'
-    PROPID  = '2017A-0260'
+    PROGRAM  = PROGRAM
+    PROPID   = PROPID
+    PROPOSER = PROPOSER
 
     SISPI_DICT = copy.deepcopy(SISPI_DICT)
     SISPI_DICT["program"] = PROGRAM
     SISPI_DICT["propid"] = PROPID
+    SISPI_DICT["proposer"] = PROPOSER
 
     OBJECT_FMT = 'BLISS field' + SEP + ' %s'
     SEQID_FMT = 'BLISS scheduled' + SEP + ' %(DATE)s'

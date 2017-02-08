@@ -22,6 +22,7 @@ from obztak.utils import fileio
 NAME = 'MagLiteS'
 PROGRAM = NAME.lower()
 PROPID  = '2016A-0366'
+PROPOSER = 'Bechtol'
 BANDS = ['g','r']
 
 class MaglitesSurvey(Survey):
@@ -42,12 +43,12 @@ class MaglitesSurvey(Survey):
 
     # 2017A ACTUAL
     nights_2017A = [
-        ['2017/2/21', 'full'],
-        ['2017/2/22', 'full'],
-        ['2017/2/23', 'full'],
-        ['2017/6/18', 'full'],
-        ['2017/6/19', 'full'],
-        ['2017/6/20', 'full']
+        ['2017/02/21', 'full'],
+        ['2017/02/22', 'full'],
+        ['2017/02/23', 'full'],
+        ['2017/06/18', 'full'],
+        ['2017/06/19', 'full'],
+        ['2017/06/20', 'full']
         ]
 
     nights = nights_2016A + nights_2017A
@@ -193,13 +194,17 @@ class MaglitesSurvey(Survey):
         return sel
 
 class MaglitesFieldArray(FieldArray):
+    PROGRAM  = PROGRAM
+    PROPID   = PROPID
+    PROPOSER = PROPOSER
+
     SISPI_DICT = copy.deepcopy(SISPI_DICT)
     SISPI_DICT["program"] = PROGRAM
     SISPI_DICT["propid"] = PROPID
+    SISPI_DICT["proposer"] = PROPOSER
 
     OBJECT_FMT = NAME.upper() + ' field'+SEP+' %s'
     SEQID_FMT  = NAME.upper() + ' scheduled'+SEP+' %(DATE)s'
-
     BANDS = BANDS
 
 class MaglitesScheduler(Scheduler):
