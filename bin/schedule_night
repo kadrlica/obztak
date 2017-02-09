@@ -38,7 +38,7 @@ def main():
     logging.info("Start Time (UTC): %s"%(datestr))
 
     scheduler = scheduler_factory(target_fields=args.fields,
-                                  observation_windows=args.windows,
+                                  windows=args.windows,
                                   completed_fields=args.complete)
     chunks = scheduler.schedule_nite(date,chunk=args.chunk,plot=args.plot,mode=args.mode)
 

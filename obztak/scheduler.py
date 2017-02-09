@@ -41,9 +41,9 @@ class Scheduler(object):
     ])
     FieldType = FieldArray
 
-    def __init__(self,target_fields=None,observation_windows=None,completed_fields=None):
+    def __init__(self,target_fields=None,windows=None,completed_fields=None):
         self.load_target_fields(target_fields)
-        self.load_observation_windows(observation_windows)
+        self.load_windows(windows)
         self.load_observed_fields()
         self.load_completed_fields(completed_fields)
 
@@ -60,32 +60,32 @@ class Scheduler(object):
             self.target_fields = self.FieldType(target_fields)
         return self.target_fields
 
-    def load_observation_windows(self, observation_windows=None):
+    def load_windows(self, windows=None):
         """
         Load the set of start and stop times for the observation windows.
         """
-        if observation_windows is None:
-            observation_windows = self._defaults['windows']
-            logging.info("Setting default observing windows: %s"%observation_windows)
+        if windows is None:
+            windows = self._defaults['windows']
+            logging.info("Setting default observing windows:\n %s"%windows)
 
-        if isinstance(observation_windows,basestring):
-            observation_windows = fileio.csv2rec(observation_windows)
+        if isinstance(windows,basestring):
+            windows = fileio.csv2rec(windows)
 
-        self.observation_windows = []
-        for start,end in observation_windows:
-            self.observation_windows.append([ephem.Date(start), ephem.Date(end)])
+        self.windows = []
+        for start,end in windows:
+            self.windows.append([ephem.Date(start), ephem.Date(end)])
 
         # Sanity check that observation windows are properly sorted
-        for ii,(start,end) in enumerate(self.observation_windows):
+        for ii,(start,end) in enumerate(self.windows):
             msg = 'Observation windows are not properly sorted\n'
             msg+= '%s -- %s'%(datestr(start),datestr(end))
             if (end < start):
                 logging.warn(msg)
-            if ii > 0 and (start < self.observation_windows[ii-1][1]):
+            if ii > 0 and (start < self.windows[ii-1][1]):
                 logging.warn(msg)
 
         logging.info('Observation Windows:')
-        for start,end in self.observation_windows:
+        for start,end in self.windows:
             logging.info(' %s UTC -- %s UTC'%(datestr(start),datestr(end)))
         logging.info(30*'-')
 
@@ -240,9 +240,9 @@ class Scheduler(object):
             logging.debug(' '+datestr(date,4))
 
             # Check to see if in valid observation window
-            if self.observation_windows is not None:
+            if self.windows is not None:
                 inside = False
-                for window in self.observation_windows:
+                for window in self.windows:
                     if date >= window[0] and date < window[-1]:
                         inside = True
                         break
@@ -358,9 +358,9 @@ class Scheduler(object):
         if chunk > 1: chunk = chunk*ephem.minute
 
         try:
-            nites = [get_nite(w[0]) for w in self.observation_windows]
+            nites = [get_nite(w[0]) for w in self.windows]
             idx = nites.index(nite)
-            start,finish = self.observation_windows[idx]
+            start,finish = self.windows[idx]
         except (TypeError, ValueError):
             msg = "Requested nite (%s) not found in windows:\n"%nite
             msg += '['+', '.join([n for n in nites])+']'
@@ -417,7 +417,7 @@ class Scheduler(object):
 
         self.scheduled_nites = odict()
 
-        for tstart,tend in self.observation_windows:
+        for tstart,tend in self.windows:
             if start is not None and ephem.Date(tstart) < ephem.Date(start):
                 continue
             if end is not None and ephem.Date(tend) > ephem.Date(end):

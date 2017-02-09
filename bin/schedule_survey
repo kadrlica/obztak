@@ -17,7 +17,7 @@ def main():
 
     logging.info("Scheduling survey: '%s'"%get_survey())
     scheduler = scheduler_factory(target_fields=args.fields,
-                                  observation_windows=args.windows,
+                                  windows=args.windows,
                                   completed_fields=args.complete)
     try:
         survey = scheduler.schedule_survey(start=args.utc_start,end=args.utc_end,

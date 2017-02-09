@@ -3,6 +3,7 @@
 Executable for scheduling a single field.
 """
 import ephem
+import logging
 
 from obztak import get_survey
 from obztak.scheduler import Scheduler
