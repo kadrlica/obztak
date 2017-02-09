@@ -11,6 +11,11 @@ import logging
 import obztak.utils.constants as constants
 from obztak.ctio import CTIO
 
+def setdefaults(kwargs,defaults):
+    for k,v in defaults.items():
+        kwargs.setdefault(k,v)
+    return kwargs
+
 def datestring(date,precision=4):
     """
     Convert an ephem.Date object to a string with increased precision

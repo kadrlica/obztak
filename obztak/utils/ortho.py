@@ -21,7 +21,7 @@ from obztak.utils.projector import cel2gal, gal2cel, SphericalRotator
 from obztak.utils import constants
 from obztak.utils import fileio
 from obztak.field import FieldArray
-from obztak.utils.date import datestring,nite2utc,utc2nite,get_nite
+from obztak.utils.date import datestring,nite2utc,utc2nite,get_nite,setdefaults
 from obztak.ctio import CTIO
 from obztak.utils.constants import RA_LMC,DEC_LMC,RADIUS_LMC
 from obztak.utils.constants import RA_SMC,DEC_SMC,RADIUS_SMC
@@ -53,11 +53,6 @@ matplotlib.rcParams.update(params)
 DPI = 80
 
 ############################################################
-
-def setdefaults(kwargs,defaults):
-    for k,v in defaults.items():
-        kwargs.setdefault(k,v)
-    return kwargs
 
 class DECamBasemap(Basemap):
 

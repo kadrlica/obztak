@@ -16,7 +16,7 @@ from obztak.scheduler import Scheduler
 from obztak.utils import constants
 from obztak.utils.constants import SMASH_POLE,CCD_X,CCD_Y,STANDARDS
 from obztak.utils.projector import cel2gal, angsep
-from obztak.utils.date import datestring
+from obztak.utils.date import datestring, setdefaults
 from obztak.utils import fileio
 
 NAME = 'MagLiteS'
@@ -206,6 +206,39 @@ class MaglitesFieldArray(FieldArray):
     OBJECT_FMT = NAME.upper() + ' field'+SEP+' %s'
     SEQID_FMT  = NAME.upper() + ' scheduled'+SEP+' %(DATE)s'
     BANDS = BANDS
+
+    @classmethod
+    def query(cls, **kwargs):
+        """ Generate the database query.
+
+        Parameters:
+        -----------
+        kwargs : Keyword arguments to fill the query.
+
+        Returns:
+        --------
+        query  : The query string.
+        """
+        defaults = dict(propid=cls.SISPI_DICT['propid'], limit='',
+                        object_fmt = cls.OBJECT_FMT%'')
+        kwargs = setdefaults(kwargs,copy.deepcopy(defaults))
+
+        # Should pull this out to be accessible (self.query())?
+        query ="""
+        SELECT object, seqid, seqnum, telra as RA, teldec as dec,
+        expTime, filter,
+        to_char(to_timestamp(utc_beg), 'YYYY/MM/DD HH24:MI:SS.MS') AS DATE,
+        COALESCE(airmass,-1) as AIRMASS, COALESCE(moonangl,-1) as MOONANGLE,
+        COALESCE(ha, -1) as HOURANGLE, COALESCE(slewangl,-1) as SLEW
+        FROM exposure where propid = '%(propid)s' and exptime > 89
+        and discard = False and delivered = True and flavor = 'object'
+        and object like '%(object_fmt)s%%'
+        -- Discard exposures from Y1 with teff < 0.1
+        and not (qc_teff < 0.1 and date < '2017/01/01')
+        ORDER BY utc_beg %(limit)s
+        """%kwargs
+        return query
+
 
 class MaglitesScheduler(Scheduler):
     _defaults = odict(Scheduler._defaults.items() + [

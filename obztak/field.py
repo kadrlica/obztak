@@ -12,6 +12,7 @@ import numpy as np
 from obztak import __version__
 from obztak.utils import constants
 from obztak.utils import fileio
+from obztak.utils.date import setdefaults
 
 # Default field array values
 DEFAULTS = odict([
@@ -31,12 +32,8 @@ DEFAULTS = odict([
 DTYPES = odict([(k,v['dtype']) for k,v in DEFAULTS.items()])
 VALUES = odict([(k,v['value']) for k,v in DEFAULTS.items()])
 
+# Separator for comments and sequences
 SEP = ':'
-#OBJECT_FMT = 'MAGLITES field' + SEP + ' %s'
-#SEQID_FMT  = 'MAGLITES scheduled' + SEP + ' %(DATE)s'
-#PROGRAM = 'maglites'
-#PROPID  = '2016A-0366'
-
 
 # Default sispi dictionary
 SISPI_DICT = odict([
@@ -75,8 +72,7 @@ class FieldArray(np.recarray):
     SISPI_DICT = copy.deepcopy(SISPI_DICT)
     SISPI_DICT['program'] = PROGRAM
     SISPI_DICT['propid'] = PROPID
-    #OBJECT_FMT = 'OBZTAK field'+SEP+' %s'
-    #SEQID_FMT  = 'OBZTAK scheduled'+SEP+' %(DATE)s'
+
     OBJECT_FMT = 'MAGLITES field'+SEP+' %s'
     SEQID_FMT  = 'MAGLITES scheduled'+SEP+' %(DATE)s'
 
@@ -223,6 +219,36 @@ class FieldArray(np.recarray):
         return fields
 
     @classmethod
+    def query(cls, **kwargs):
+        """ Generate the database query.
+
+        Parameters:
+        -----------
+        kwargs : Keyword arguments to fill the query.
+
+        Returns:
+        --------
+        query  : The query string.
+        """
+        defaults = dict(propid=cls.SISPI_DICT['propid'], limit='',
+                        object_fmt = cls.OBJECT_FMT%'')
+        kwargs = setdefaults(kwargs,copy.deepcopy(defaults))
+
+        # Should pull this out to be accessible (self.query())?
+        query ="""
+        SELECT object, seqid, seqnum, telra as RA, teldec as dec,
+        expTime, filter,
+        to_char(to_timestamp(utc_beg), 'YYYY/MM/DD HH24:MI:SS.MS') AS DATE,
+        COALESCE(airmass,-1) as AIRMASS, COALESCE(moonangl,-1) as MOONANGLE,
+        COALESCE(ha, -1) as HOURANGLE, COALESCE(slewangl,-1) as SLEW
+        FROM exposure where propid = '%(propid)s' and exptime > 89
+        and discard = False and delivered = True and flavor = 'object'
+        and object like '%(object_fmt)s%%'
+        ORDER BY utc_beg %(limit)s
+        """%kwargs
+        return query
+
+    @classmethod
     def load_database(cls,database='db-fnal'):
         """
         Load fields from the telemetry database.
@@ -246,23 +272,7 @@ class FieldArray(np.recarray):
             return cls()
 
         database.connect()
-
-        defaults = dict(propid=cls.SISPI_DICT['propid'], limit='',
-                        object_fmt = cls.OBJECT_FMT%'')
-        params = copy.deepcopy(defaults)
-
-        # Should pull this out to be accessible (self.query())?
-        query ="""
-        SELECT object, seqid, seqnum, telra as RA, teldec as dec, 
-        expTime, filter, 
-        to_char(to_timestamp(utc_beg), 'YYYY/MM/DD HH24:MI:SS.MS') AS DATE, 
-        COALESCE(airmass,-1) as AIRMASS, COALESCE(moonangl,-1) as MOONANGLE, 
-        COALESCE(ha, -1) as HOURANGLE, COALESCE(slewangl,-1) as SLEW 
-        FROM exposure where propid = '%(propid)s' and exptime > 89 
-        and discard = False and delivered = True and flavor = 'object'
-        and object like '%(object_fmt)s%%'
-        ORDER BY utc_beg %(limit)s
-        """%params
+        query = cls.query()
 
         logging.debug(query)
         data = database.execute(query)
