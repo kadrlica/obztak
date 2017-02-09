@@ -10,9 +10,12 @@ import json
 
 import numpy as np
 
+from obztak import set_survey,get_survey
 from obztak.maglites import MaglitesSurvey, MaglitesScheduler, MaglitesFieldArray
 from obztak.utils.testing import call, make_options
 from obztak.utils import fileio
+
+set_survey('maglites')
 
 def test_maglites_prepare_fields():
     survey = MaglitesSurvey()

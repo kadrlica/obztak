@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 """
-Executable for simulating the survey.
+Executable for scheduling a single field.
 """
 import ephem
+import logging
 
+from obztak import get_survey
 from obztak.scheduler import Scheduler
 from obztak.factory import scheduler_factory
 
@@ -16,11 +18,11 @@ def main():
     parser.add_argument('--band',choices=['u','g','r','i','z','Y'],default=None,
                         help='exposure band')
     args = parser.parse_args()
-    args.survey = 'maglites'
 
+    logging.info("Scheduling field for survey: '%s'"%get_survey())
     date = ephem.Date(args.utc_start) if args.utc_start else ephem.now()
     #scheduler = Scheduler(args.fields,None,None)
-    scheduler = scheduler_factory(args.survey,target_fields=args.fields)
+    scheduler = scheduler_factory(target_fields=args.fields)
     field = scheduler.schedule_field(args.hex,args.tiling,band=args.band,date=date,plot=args.plot)
 
     outfile = args.outfile

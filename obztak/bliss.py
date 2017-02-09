@@ -19,8 +19,10 @@ from obztak.utils import constants
 from obztak.utils import fileio
 from obztak.utils.constants import BANDS,SMASH_POLE,CCD_X,CCD_Y,STANDARDS,COLORS
 
-PROGRAM = 'bliss'
+NAME    = 'BLISS'
+PROGRAM = NAME.lower()
 PROPID  = '2017A-0260'
+PROPOSER = 'Soares-Santos'
 BANDS = ['g','r','i','z']
 TILINGS = 2
 
@@ -261,12 +263,10 @@ class BlissSurvey(Survey):
     @staticmethod
     def planet9(ra,dec):
         """The high-probability region for Planet 9"""
-        # v0
-        sel = ((ra > 305)|(ra < 15)) & (dec > -40) & (dec < -28)
-        # v1
-        #sel = ((ra > 305)|(ra < 15)) & (dec > -40) & (dec < -25)
-        # v2
-        #sel = ((ra > 305)|(ra < 15)) & (dec > -35) & (dec < -25)
+        sel = ((ra > 305)|(ra < 15)) & (dec > -40) & (dec < -30) # v0
+        #sel = ((ra > 305)|(ra < 15)) & (dec > -40) & (dec < -25) # v1
+        #sel = ((ra > 305)|(ra < 15)) & (dec > -35) & (dec < -25) # v2
+        #sel = ((ra > 305)|(ra < 15)) & (dec > -40) & (dec < -28) # v3
         return sel
 
     @staticmethod
@@ -327,9 +327,14 @@ class BlissSurvey(Survey):
 
 class BlissFieldArray(FieldArray):
     """ Array of BLISS fields """
+    PROGRAM  = PROGRAM
+    PROPID   = PROPID
+    PROPOSER = PROPOSER
+
     SISPI_DICT = copy.deepcopy(SISPI_DICT)
     SISPI_DICT["program"] = PROGRAM
     SISPI_DICT["propid"] = PROPID
+    SISPI_DICT["proposer"] = PROPOSER
 
     OBJECT_FMT = 'BLISS field' + SEP + ' %s'
     SEQID_FMT = 'BLISS scheduled' + SEP + ' %(DATE)s'

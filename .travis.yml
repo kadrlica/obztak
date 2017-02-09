@@ -21,6 +21,7 @@ install:
   - conda create -q -n travis-env python=$TRAVIS_PYTHON_VERSION numpy scipy pandas matplotlib basemap ephem astropy=1.3 fitsio=0.9.8 healpy=1.9.1 nose -c astropy -c kadrlica
   - source activate travis-env
   - python setup.py install
+  - export OBZTAK_SURVEY='obztak'
 
 # command to run tests
 script: 
