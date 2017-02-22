@@ -16,6 +16,7 @@ from obztak.utils.date import get_nite, nite2utc, utc2nite, datestr
 from obztak.utils.parser import Parser, DatetimeAction
 from obztak.utils.database import Database
 from obztak.utils.ortho import plot_bliss_coverage, DECamOrtho
+from obztak.utils.ortho import plot_maglites_nightsum
 from obztak.utils.constants import COLORS
 
 if __name__ == "__main__":
