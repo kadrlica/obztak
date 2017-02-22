@@ -772,12 +772,15 @@ def plot_bliss_coverage(fields,outfile=None,**kwargs):
 def plot_maglites_nightsum(fields,nitestr):
     #fields = FieldArray.load_database()
     #new = np.char.startswith(fields['DATE'],date)
+    from obztak.utils.database import Database
+
+    date = nite2utc(nitestr)
     new = (np.array(map(utc2nite,fields['DATE'])) == nitestr)
     new_fields = fields[new]
     old_fields = fields[~new]
 
     kwargs = dict(edgecolor='none', s=50, vmin=0, vmax=4)
-    fig,basemap = makePlot(date=nitestr,name='nightsum',moon=False,airmass=False,center=(0,-90))
+    fig,basemap = makePlot(date=nitestr,name='nightsum',moon=False,airmass=False,center=(0,-90),bliss=False)
     plt.title('Coverage (%s)'%nitestr)
     kwargs['cmap'] = 'gray_r'
     proj = basemap.proj(old_fields['RA'], old_fields['DEC'])
