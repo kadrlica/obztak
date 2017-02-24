@@ -15,6 +15,7 @@ import pylab as plt
 import numpy as np
 import ephem
 
+from obztak import get_survey
 import obztak.utils.projector
 from obztak.utils.projector import cel2gal, gal2cel, SphericalRotator
 
@@ -493,13 +494,23 @@ def drawMoon(basemap, date):
 
 ############################################################
 
-def makePlot(date=None, name=None, figsize=(10.5,8.5), dpi=80, s=50, center=None, airmass=True, moon=True, des=True, smash=False, maglites=True, bliss=True, galaxy=True):
+def makePlot(date=None, name=None, figsize=(10.5,8.5), dpi=80, s=50, center=None, airmass=True, moon=True, des=True, smash=False, maglites=None, bliss=None, galaxy=True):
     """
     Create map in orthographic projection
     """
     if date is None: date = ephem.now()
     if type(date) != ephem.Date:
         date = ephem.Date(date)
+
+    survey = get_survey()
+    if survey == 'maglites':
+        if maglites is None: maglites = True
+        if airmass is True: airmass = 2.0
+    if survey == 'bliss':
+        if bliss is None: bliss = True
+        if airmass is True: airmass = 1.4
+    if des:
+        if airmass is True: airmass = 1.4
 
     fig = plt.figure(name, figsize=figsize, dpi=dpi)
     plt.cla()
@@ -561,7 +572,7 @@ def plotField(field, target_fields=None, completed_fields=None, options_basemap=
     plt.subplots_adjust(left=0.03,right=0.97,bottom=0.03,top=0.97)
 
     # Plot target fields
-    if target_fields is not None:
+    if target_fields is not None and len(target_fields):
         sel = target_fields['FILTER']==band
         x,y = basemap.proj(target_fields['RA'], target_fields['DEC'])
         kw = dict(kwargs,c='w',edgecolor='0.6',s=0.8*kwargs['s'])
@@ -570,7 +581,7 @@ def plotField(field, target_fields=None, completed_fields=None, options_basemap=
         basemap.scatter(x[~sel], y[~sel], **kw)
 
     # Plot completed fields
-    if completed_fields is not None:
+    if completed_fields is not None and len(completed_fields):
         sel = completed_fields['FILTER']==band
         x,y = basemap.proj(completed_fields['RA'],completed_fields['DEC'])
         kw = dict(kwargs)
