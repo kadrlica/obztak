@@ -249,7 +249,7 @@ class FieldArray(np.recarray):
         return query
 
     @classmethod
-    def load_database(cls,database='db-fnal'):
+    def load_database(cls,database=None):
         """
         Load fields from the telemetry database.
 
@@ -266,7 +266,8 @@ class FieldArray(np.recarray):
             logging.warn(e)
             return cls()
 
-        try: database = Database(database)
+        try:
+            database = Database(database)
         except IOError as e:
             logging.warn(e)
             return cls()
@@ -332,7 +333,7 @@ def fields2sispi(infile,outfile=None,force=False):
     fields.write(outfile)
     return outfile
 
-            
+
 if __name__ == "__main__":
     import argparse
     description = __doc__
