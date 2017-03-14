@@ -11,6 +11,7 @@ import pylab as plt
 
 from obztak.utils.database import Database
 from obztak.utils.ortho import DECamBasemap, DECamMcBride
+from obztak.utils.constants import COLORS
 
 db = Database()
 db.connect()
@@ -122,7 +123,8 @@ for band,sky in sum_skymaps.items():
     plt.clf()
 
     outfile = outbase%(band,NSIDE)+'_hist.png'
-    plt.hist(sky,bins=np.linspace(1,1e3,50),color=COLORS['band'])
+    print "Writing %s..."%outfile
+    plt.hist(sky,bins=np.linspace(1,1e3,50),color=COLORS[band])
     plt.title('%s-band'%band); plt.xlabel('sum(TEFF * EXPTIME)')
     plt.savefig(outfile,bbox_inches='tight')
     plt.clf()
@@ -151,7 +153,8 @@ for band,sky in max_skymaps.items():
     plt.clf()
 
     outfile = outbase%(band,NSIDE)+'_hist.png'
-    plt.hist(sky,bins=np.linspace(1,1e3,50),color=COLORS['band'])
+    print "Writing %s..."%outfile
+    plt.hist(sky,bins=np.linspace(1,5e2,50),color=COLORS[band])
     plt.title('%s-band'%band); plt.xlabel('max(TEFF * EXPTIME)')
     plt.savefig(outfile,bbox_inches='tight')
     plt.clf()
