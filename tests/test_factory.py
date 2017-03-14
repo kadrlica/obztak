@@ -33,8 +33,9 @@ def test_scheduler_factory():
         ('MaglitesScheduler',obztak.maglites.MaglitesScheduler),
         ('maglitesscheduler',obztak.maglites.MaglitesScheduler),
         ('maglites',obztak.maglites.MaglitesScheduler),
-        ('BlissScheduler',obztak.bliss.BlissScheduler),
-        ('bliss',obztak.bliss.BlissScheduler),
+        # UNCOMMENT ONCE BLISS FIELDS COMMITTED
+        #('BlissScheduler',obztak.bliss.BlissScheduler),
+        #('bliss',obztak.bliss.BlissScheduler),
     ]
     for string,cls in TEST:
         obj = obztak.factory.scheduler_factory(string)

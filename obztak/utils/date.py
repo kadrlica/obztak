@@ -11,6 +11,11 @@ import logging
 import obztak.utils.constants as constants
 from obztak.ctio import CTIO
 
+def setdefaults(kwargs,defaults):
+    for k,v in defaults.items():
+        kwargs.setdefault(k,v)
+    return kwargs
+
 def datestring(date,precision=4):
     """
     Convert an ephem.Date object to a string with increased precision
@@ -138,7 +143,7 @@ def utc2nite(utc, observer=None):
 
 
 def get_nite(utc=None, observer=None):
-    """Convert from a UTC date and time to the 'nite'.
+    """ The high-level interface to convert from a UTC to the 'nite'.
 
     A 'nite' is defined by the day (UTC) at noon local time in Chile
     before observing started. This follows the usual convention of

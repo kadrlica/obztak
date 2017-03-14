@@ -50,3 +50,7 @@ if __name__ == "__main__":
     plt.xlabel('MOONANGLE (deg)')
     plt.legend()
     plt.savefig(filename.replace('.csv','_moonangle.png'))
+
+    # plot bliss
+    obztak.utils.ortho.plot_bliss_coverage(fields)
+    plt.savefig(filename.replace('.csv','_skyplot.png'))

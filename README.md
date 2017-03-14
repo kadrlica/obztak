@@ -73,24 +73,32 @@ optional arguments:
   --tstop TSTOP         Stop time for observation.
 ```
 
-## Installation
+## Development
 
-### To clone repository ###
-
-* Go to the directory where you want to work
-* git clone https://username@bitbucket.org/bechtol/maglites.git # Substitute your own username
-
-### Keeping your local copy up to date ###
-
-* git pull --all # git pull moves changes from the remote repository to your local copy
-
-### To commit an update ###
-
-* git add example.txt # git add command moves changes from the working directory to the staging area
-* git commit -m 'my comments' # git commit takes the staged snapshot and commits it to the project history
-* git push -u origin master # git push moves a local branch or series of commits to main repository
-
-### More git documentation ###
-
-* https://confluence.atlassian.com/display/BITBUCKET/Clone+your+Git+repository+and+add+source+files
-* https://confluence.atlassian.com/display/BITBUCKET/Create+a+file+and+pull+changes+from+Bitbucket
+To clone repository go to the directory where you want to work
+```
+git clone https://github.com/kadrlica/obztak.git
+```
+To keep your local copy up to date, pull changes from the remote repository to your local copy
+```
+git pull --all 
+```
+To commit an update
+```
+# git add command moves changes from the working directory to the staging area
+git add example.txt 
+# git commit takes the staged snapshot and commits it to the project history
+git commit -m 'my comments' 
+# git push moves a local branch or series of commits to main repository
+git push -u origin master 
+```
+To work on a specific branch
+```
+# Example with the maglites branch...
+git fetch origin maglites
+# setup a new branch to track origin/maglites
+git checkout -b maglites origin/maglites 
+# push maglites branch (which is tracking origin/maglites) back to GitHub
+git push origin maglites 
+```
+For more details on branches, see [here](http://stackoverflow.com/q/1783405/4075339).

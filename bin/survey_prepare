@@ -2,14 +2,17 @@
 """
 """
 import os
+import logging
 
+from obztak import get_survey
 from obztak.survey import parser
-from obztak.utils import fileio
 from obztak.factory import survey_factory
 
 def main():
     args = parser().parse_args()
-    survey = survey_factory(args.survey)
+
+    logging.info("Preparing survey: '%s'"%get_survey())
+    survey = survey_factory()
     return survey.survey_prepare(args)
 
 if __name__ == "__main__":

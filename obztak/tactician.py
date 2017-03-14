@@ -17,12 +17,13 @@ from obztak.utils import constants
 from obztak.utils.date import datestring
 
 CONDITIONS = odict([
-    ('great', [1.4, 2.0]),
-    ('good',  [0.0, 2.0]),
-    ('fine',  [0.0, 1.9]),
-    ('ok',    [0.0, 1.6]),
-    ('poor',  [0.0, 1.5]),
-    ('bad',   [0.0, 1.4]),
+    ('great',   [1.6, 2.0]),
+    ('good',    [0.0, 2.0]),
+    ('maglites',[0.0, 2.0]),
+    ('fine',    [0.0, 1.9]),
+    ('ok',      [0.0, 1.6]),
+    ('poor',    [0.0, 1.5]),
+    ('bad',     [0.0, 1.4]),
 ])
 
 class Tactician(object):
@@ -43,6 +44,7 @@ class Tactician(object):
         if not observatory: observatory = CTIO()
         self.observatory = observatory
         self.moon = ephem.Moon()
+        self.sun = ephem.Sun()
 
         self.set_target_fields(fields)
         self.set_completed_fields(None)
@@ -52,6 +54,7 @@ class Tactician(object):
         if date is not None:
             self.observatory.date = ephem.Date(date)
             self.moon.compute(self.observatory)
+            self.sun.compute(self.observatory)
 
     def set_target_fields(self,fields):
         if fields is not None:
@@ -222,6 +225,9 @@ class ConditionTactician(Tactician):
         weight += 100. * (airmass - 1.)**3
         weight += 5000. * airmass_cut
 
+        if self.mode == 'great':
+            weight += 5000. * (self.fields['DEC'] > -80)
+
         return weight
 
 class SMCNODTactician(Tactician):
@@ -259,22 +265,21 @@ class BlissTactician(Tactician):
         # Moon angle constraints
         moon_limit = 35.
         sel &= (moon_angle > moon_limit)
-        #if (self.moon.phase > 25) & (self.moon.alt > -0.1):
-        #    sel &= (moon_angle > 40)
-        #else:
-        #    sel &= (moon_angle > 20)
 
         # Moon band constraints
-        if (self.moon.phase >= 90) and (self.moon.alt > -0.1):
+        if (self.moon.phase >= 80) and (self.moon.alt > -0.04):
             # Moon is very bright; only do z
             sel &= (np.char.count('z',self.fields['FILTER']) > 0)
-        elif (self.moon.phase >= 50) and (self.moon.alt > -0.1):
+        elif (self.moon.phase >= 45) and (self.moon.alt > -0.04):
             # Moon is more than half full; do i,z
             sel &= (np.char.count('iz',self.fields['FILTER']) > 0)
         else:
             # Moon is faint or down; do g,r (unless none available)
             sel &= (np.char.count('gr',self.fields['FILTER']) > 0)
-            #weight += 1e8 * (np.char.count('gr',self.fields['FILTER']) > 0)
+            #weight += 1e8 * (np.char.count('iz',self.fields['FILTER']) > 0)
+        if (self.sun.alt > -0.28):
+            # No g-band if Sun altitude > -16 deg
+            sel &= ~(np.char.count('g',self.fields['FILTER']) > 0)
 
         # Airmass cut
         airmass_min, airmass_max = self.CONDITIONS[self.mode]
@@ -289,18 +294,16 @@ class BlissTactician(Tactician):
             #cut = np.in1d(self.fields.field_id,recent.field_id)
             #sel &= ~cut
 
-
         # Set the weights for each field. Lower weight means more favorable.
 
         # Higher weight for rising fields (higher hour angle)
-        weight = 1.0 * self.hour_angle
+        # HA [min,max] = [-53,54] (for airmass 1.4)
+        weight = 5.0 * self.hour_angle
+        #weight = 1.0 * self.hour_angle
 
         # Higher weight for larger slews
-        # slew = 10 deg -> weight = 1e3
-        weight += self.slew**3
-
-        # Try hard to do the first tiling
-        weight += 1e6 * (self.fields['TILING'] - 1)
+        # slew = 10 deg -> weight = 1e2
+        weight += self.slew**2
 
         # Higher weight for higher airmass
         # airmass = 1.4 -> weight = 6.4
@@ -308,7 +311,18 @@ class BlissTactician(Tactician):
 
         # Higher weight for fields close to the moon
         # angle = 50 -> weight = 6.4
-        weight += 100 * (20./moon_angle)**3
+        weight += 100 * (35./moon_angle)**3
+
+        # Try hard to do the first tiling
+        weight += 1e6 * (self.fields['TILING'] - 1)
+
+        # Prioritize Planet 9 Region late in the survey/night
+        # Allow i,z exposures at high penalty
+        ra_zenith, dec_zenith = np.degrees(self.observatory.radec_of(0,'90'))
+        if ra_zenith > 270:
+            weight += 1e6 * (self.fields['PRIORITY'] - 1)
+            #sel &= (np.char.count('iz',self.fields['FILTER']) > 0)
+            #weight += 1e8 * (np.char.count('iz',self.fields['FILTER']) > 0)
 
         # Set infinite weight to all disallowed fields
         weight[~sel] = np.inf
@@ -321,10 +335,10 @@ class BlissTactician(Tactician):
         if np.any(~np.isfinite(weight[index])):
             msg = "Infinite weight selected"
             print(msg)
-            import pdb; pdb.set_trace()
-            import obztak.utils.ortho
+            import obztak.utils.ortho, pylab as plt
             airmass_min, airmass_max = self.CONDITIONS[self.mode]
             obztak.utils.ortho.plotFields(self.completed_fields[-1],self.fields,self.completed_fields,options_basemap=dict(airmass=airmass_max))
+            import pdb; pdb.set_trace()
             raw_input()
             raise ValueError(msg)
         return index
