@@ -143,9 +143,14 @@ class FieldArray(np.recarray):
         return np.char.mod(comment,self)
 
     def from_unique_id(self,string):
-        hex,tiling = map(int,string.split('-')[:2])
-        self['HEX'] = hex
-        self['TILING'] = tiling
+        try:
+            hex,tiling = map(int,string.split('-')[:2])
+            self['HEX'] = hex
+            self['TILING'] = tiling
+        except ValueError:
+            logging.warn("Unparsed unique ID: '%s'"%string)
+            self['HEX'] = -1
+            self['TILING'] = -1
 
     def from_object(self,string):
         #self.from_unique_id(string.lstrip(OBJECT_PREFIX))
@@ -278,7 +283,7 @@ class FieldArray(np.recarray):
         logging.debug(query)
         data = database.execute(query)
         names = map(str.upper,database.get_columns())
-        objidx = names.index('OBJECT')        
+        objidx = names.index('OBJECT')
         if not len(data):
             logging.warn("No fields found in database.")
             return cls()
@@ -321,6 +326,52 @@ class FieldArray(np.recarray):
         else:
             msg = "Unrecognized file extension: %s"%ext
             raise IOError(msg)
+
+
+class AllFieldArray(FieldArray):
+    """ Array of all fields except DES and engineering. """
+    PROGRAM  = 'all'
+    PROPID   = 'none'
+    PROPOSER = 'none'
+
+    SISPI_DICT = copy.deepcopy(SISPI_DICT)
+    SISPI_DICT["program"] = PROGRAM
+    SISPI_DICT["propid"] = PROPID
+    SISPI_DICT["proposer"] = PROPOSER
+
+    OBJECT_FMT = '%s'
+    SEQID_FMT = '%(DATE)s'
+
+    BANDS = constants.BANDS
+
+    @classmethod
+    def query(cls, **kwargs):
+        """ Generate the database query.
+
+        Parameters:
+        -----------
+        kwargs : Keyword arguments to fill the query.
+
+        Returns:
+        --------
+        query  : The query string.
+        """
+        from obztak.utils.date import setdefaults
+        defaults = dict(propid=cls.SISPI_DICT['propid'], limit='')
+        kwargs = setdefaults(kwargs,copy.deepcopy(defaults))
+
+        query ="""
+        SELECT object, seqid, seqnum, telra as RA, teldec as dec,
+        expTime, filter,
+        to_char(to_timestamp(utc_beg), 'YYYY/MM/DD HH24:MI:SS.MS') AS DATE,
+        COALESCE(airmass,-1) as AIRMASS, COALESCE(moonangl,-1) as MOONANGLE,
+        COALESCE(ha, -1) as HOURANGLE, COALESCE(slewangl,-1) as SLEW
+        FROM exposure where exptime > 59 and qc_teff > 0.1
+        and propid != '2012B-0001' and propid not like '%%-9999'
+        and discard = False and delivered = True and flavor = 'object'
+        ORDER BY utc_beg %(limit)s
+        """%kwargs
+        return query
 
 
 def fields2sispi(infile,outfile=None,force=False):
