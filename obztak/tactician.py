@@ -339,7 +339,6 @@ class BlissTactician(Tactician):
             airmass_min, airmass_max = self.CONDITIONS[self.mode]
             obztak.utils.ortho.plotFields(self.completed_fields[-1],self.fields,self.completed_fields,options_basemap=dict(airmass=airmass_max))
             import pdb; pdb.set_trace()
-            raw_input()
             raise ValueError(msg)
         return index
 
