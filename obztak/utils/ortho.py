@@ -15,6 +15,7 @@ import pylab as plt
 import numpy as np
 import ephem
 
+from obztak import get_survey
 import obztak.utils.projector
 from obztak.utils.projector import cel2gal, gal2cel, SphericalRotator
 
@@ -129,9 +130,8 @@ class DECamBasemap(Basemap):
                         cmap=plt.cm.binary)
         setdefaults(kwargs,defaults)
 
-        dirname  = '/Users/kadrlica/bliss/observing/data'
-        filename = 'allms_coldens_gal_nside_1024.fits'
-        galhpx = fitsio.read(os.path.join(dirname,filename))['coldens']
+        filename = get_datafile('allms_coldens_gal_nside_1024.fits')
+        galhpx = fitsio.read(filename)['coldens']
         celhpx = obztak.utils.projector.hpx_gal2cel(galhpx)
         return self.draw_hpxmap(celhpx,**kwargs)
 
@@ -139,10 +139,10 @@ class DECamBasemap(Basemap):
         import healpy as hp
         defaults = dict(rasterized=True,cmap=plt.cm.binary)
         setdefaults(kwargs,defaults)
-        dirname  = '/Users/kadrlica/bliss/observing/data'
-        filename = 'lambda_sfd_ebv.fits'
 
-        galhpx = hp.read_map(os.path.join(dirname,filename))
+        filename = fileio.get_datafile('lambda_sfd_ebv.fits')
+
+        galhpx = hp.read_map(filename)
         celhpx = obztak.utils.projector.hpx_gal2cel(galhpx)
         return self.draw_hpxmap(np.log10(celhpx),**kwargs)
 
@@ -150,14 +150,14 @@ class DECamBasemap(Basemap):
         defaults=dict(color='blue', lw=2)
         setdefaults(kwargs,defaults)
 
-        filename = os.path.join(fileio.get_datadir(),'maglites-poly.txt')
+        filename = fileio.get_datafile('maglites-poly.txt')
         self.draw_polygon(filename,**kwargs)
 
     def draw_bliss(self,**kwargs):
         defaults=dict(color='magenta', lw=2)
         setdefaults(kwargs,defaults)
 
-        filename = os.path.join(fileio.get_datadir(),'bliss-poly.txt')
+        filename = fileio.get_datafile('bliss-poly.txt')
         data = np.genfromtxt(filename,names=['ra','dec','poly'])
         for p in np.unique(data['poly']):
             poly = data[data['poly'] == p]
@@ -169,14 +169,14 @@ class DECamBasemap(Basemap):
         defaults=dict(color='red', lw=2)
         setdefaults(kwargs,defaults)
 
-        filename = os.path.join(fileio.get_datadir(),'round13-poly.txt')
+        filename = fileio.get_datafile('round13-poly.txt')
         self.draw_polygon(filename,**kwargs)
 
     def draw_smash(self,**kwargs):
         defaults=dict(facecolor='none',color='k')
         setdefaults(kwargs,defaults)
 
-        filename = os.path.join(fileio.get_datadir(),'smash_fields_final.txt')
+        filename = fileio.get_datafile('smash_fields_final.txt')
         smash=np.genfromtxt(filename,dtype=[('ra',float),('dec',float)],usecols=[4,5])
         xy = self.proj(smash['ra'],smash['dec'])
         self.scatter(*xy,**kwargs)
@@ -185,7 +185,7 @@ class DECamBasemap(Basemap):
         defaults=dict(color='red', lw=2)
         setdefaults(kwargs,defaults)
 
-        filename = os.path.join(fileio.get_datadir(),'decals-perimeter.txt')
+        filename = fileio.get_datafile('decals-perimeter.txt')
         decals = np.genfromtxt(filename,names=['poly','ra','dec'])
         poly1 = decals[decals['poly'] == 1]
         poly2 = decals[decals['poly'] == 2]
@@ -243,8 +243,7 @@ class DECamBasemap(Basemap):
     def draw_jethwa(self,filename=None,log=True,**kwargs):
         import healpy as hp
         if not filename: 
-            datadir = '/home/s1/kadrlica/projects/bliss/v0/data/'
-            filename = os.path.join(datadir,'jethwa_satellites_n256.fits.gz')
+            filename = fileio.get_datafile('jethwa_satellites_n256.fits.gz')
         hpxmap = hp.read_map(filename)
         if log:
             return self.draw_hpxmap(np.log10(hpxmap),**kwargs)
@@ -253,17 +252,32 @@ class DECamBasemap(Basemap):
 
     def draw_planet9(self,**kwargs):
         from scipy.interpolate import interp1d
+        from scipy.interpolate import UnivariateSpline
         defaults=dict(color='b',lw=3)
         setdefaults(kwargs,defaults)
-        datadir = '/home/s1/kadrlica/projects/bliss/v0/data/'
-        ra_lo,dec_lo=np.genfromtxt(datadir+'p9_lo.txt',usecols=(0,1)).T
+        ra_lo,dec_lo=np.genfromtxt(fileio.get_datafile('p9_lo.txt'),usecols=(0,1)).T
         ra_lo,dec_lo = self.roll(ra_lo,dec_lo)
-        ra_hi,dec_hi=np.genfromtxt(datadir+'p9_hi.txt',usecols=(0,1)).T
+        ra_lo += -360*(ra_lo > 180)
+        ra_lo,dec_lo = ra_lo[::-1],dec_lo[::-1]
+        ra_hi,dec_hi=np.genfromtxt(fileio.get_datafile('p9_hi.txt'),usecols=(0,1)).T
         ra_hi,dec_hi = self.roll(ra_hi,dec_hi)
-        self.plot(ra_lo,dec_lo,latlon=True,**kwargs)
-        self.plot(ra_hi,dec_hi,latlon=True,**kwargs)
+        ra_hi += -360*(ra_hi > 180)
+        ra_hi,dec_hi = ra_hi[::-1],dec_hi[::-1]
 
-        orb = fileio.csv2rec(datadir+'P9_orbit_Cassini.csv')[::7]
+        spl_lo = UnivariateSpline(ra_lo,dec_lo)
+        ra_lo_smooth = np.linspace(ra_lo[0],ra_lo[-1],360)
+        dec_lo_smooth = spl_lo(ra_lo_smooth)
+
+        spl_hi = UnivariateSpline(ra_hi,dec_hi)
+        ra_hi_smooth = np.linspace(ra_hi[0],ra_hi[-1],360)
+        dec_hi_smooth = spl_hi(ra_hi_smooth)
+
+        #self.plot(ra_lo,dec_lo,latlon=True,**kwargs)
+        #self.plot(ra_hi,dec_hi,latlon=True,**kwargs)
+        self.plot(ra_lo_smooth,dec_lo_smooth,latlon=True,**kwargs)
+        self.plot(ra_hi_smooth,dec_hi_smooth,latlon=True,**kwargs)
+
+        orb = fileio.csv2rec(fileio.get_datafile('P9_orbit_Cassini.csv'))[::7]
         kwargs = dict(marker='o',s=40,edgecolor='none',cmap='jet_r')
         self.scatter(*self.proj(orb['ra'],orb['dec']),c=orb['cassini'],**kwargs)
 
@@ -271,8 +285,7 @@ class DECamBasemap(Basemap):
         import healpy as hp
         from astropy.io import fits as pyfits
         if not filename:
-            datadir = '/home/s1/kadrlica/projects/bliss/v0/data/'
-            filename = datadir + 'obsbias_heatmap_semesterA.fits'
+            filename = fileio.get_datafile('obsbias_heatmap_semesterA.fits')
         hpxmap = pyfits.open(filename)[0].data
         if log: self.draw_hpxmap(np.log10(hpxmap))
         else:   self.draw_hpxmap(hpxmap)
@@ -290,9 +303,10 @@ class DECamBasemap(Basemap):
                  fontsize=8, ha='center', va='center', color='k')
 
     def draw_fields(self,fields,**kwargs):
-        defaults = dict(edgecolor='k',facecolor='none',s=15)
+        defaults = dict(edgecolor='none',s=15)
         if self.projection == 'ortho': defaults.update(s=50)
-        else: defaults.update(s=15)
+        colors = [COLORS[b] for b in fields['FILTER']]
+        defaults.update(c=colors)
         setdefaults(kwargs,defaults)
         self.scatter(*self.proj(fields['RA'],fields['DEC']),**kwargs)
 
@@ -391,7 +405,7 @@ class DECamFocalPlane(object):
     """Class for storing and manipulating the corners of the DECam CCDs.
     """
 
-    filename = os.path.join(fileio.get_datadir(),'ccd_corners_xy_fill.dat')
+    filename = fileio.get_datafile('ccd_corners_xy_fill.dat')
 
     def __init__(self):
         # This is not safe. Use yaml instead (extra dependency)
@@ -493,13 +507,23 @@ def drawMoon(basemap, date):
 
 ############################################################
 
-def makePlot(date=None, name=None, figsize=(10.5,8.5), dpi=80, s=50, center=None, airmass=True, moon=True, des=True, smash=False, maglites=True, bliss=True, galaxy=True):
+def makePlot(date=None, name=None, figsize=(10.5,8.5), dpi=80, s=50, center=None, airmass=True, moon=True, des=True, smash=False, maglites=None, bliss=None, galaxy=True):
     """
     Create map in orthographic projection
     """
     if date is None: date = ephem.now()
     if type(date) != ephem.Date:
         date = ephem.Date(date)
+
+    survey = get_survey()
+    if survey == 'maglites':
+        if maglites is None: maglites = True
+        if airmass is True: airmass = 2.0
+    if survey == 'bliss':
+        if bliss is None: bliss = True
+        if airmass is True: airmass = 1.4
+    if des:
+        if airmass is True: airmass = 1.4
 
     fig = plt.figure(name, figsize=figsize, dpi=dpi)
     plt.cla()
@@ -561,7 +585,7 @@ def plotField(field, target_fields=None, completed_fields=None, options_basemap=
     plt.subplots_adjust(left=0.03,right=0.97,bottom=0.03,top=0.97)
 
     # Plot target fields
-    if target_fields is not None:
+    if target_fields is not None and len(target_fields):
         sel = target_fields['FILTER']==band
         x,y = basemap.proj(target_fields['RA'], target_fields['DEC'])
         kw = dict(kwargs,c='w',edgecolor='0.6',s=0.8*kwargs['s'])
@@ -570,7 +594,7 @@ def plotField(field, target_fields=None, completed_fields=None, options_basemap=
         basemap.scatter(x[~sel], y[~sel], **kw)
 
     # Plot completed fields
-    if completed_fields is not None:
+    if completed_fields is not None and len(completed_fields):
         sel = completed_fields['FILTER']==band
         x,y = basemap.proj(completed_fields['RA'],completed_fields['DEC'])
         kw = dict(kwargs)
@@ -742,7 +766,7 @@ def plot_progress(outfile=None,**kwargs):
 
 def plot_bliss_coverage(fields,outfile=None,**kwargs):
     BANDS = ['g','r','i','z']
-    filename = os.path.join(fileio.get_datadir(),'bliss-target-fields.csv')
+    filename = fileio.get_datafile('bliss-target-fields.csv')
     target = FieldArray.read(filename)
     target = target[~np.in1d(target.unique_id,fields.unique_id)]
 
@@ -772,12 +796,15 @@ def plot_bliss_coverage(fields,outfile=None,**kwargs):
 def plot_maglites_nightsum(fields,nitestr):
     #fields = FieldArray.load_database()
     #new = np.char.startswith(fields['DATE'],date)
+    from obztak.utils.database import Database
+
+    date = nite2utc(nitestr)
     new = (np.array(map(utc2nite,fields['DATE'])) == nitestr)
     new_fields = fields[new]
     old_fields = fields[~new]
 
     kwargs = dict(edgecolor='none', s=50, vmin=0, vmax=4)
-    fig,basemap = makePlot(date=nitestr,name='nightsum',moon=False,airmass=False,center=(0,-90))
+    fig,basemap = makePlot(date=nitestr,name='nightsum',moon=False,airmass=False,center=(0,-90),bliss=False)
     plt.title('Coverage (%s)'%nitestr)
     kwargs['cmap'] = 'gray_r'
     proj = basemap.proj(old_fields['RA'], old_fields['DEC'])

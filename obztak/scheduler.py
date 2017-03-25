@@ -25,7 +25,7 @@ from obztak.tactician import CoverageTactician
 from obztak.utils.date import get_nite, datestr, datestring, nitestring, utc2nite
 from obztak.factory import tactician_factory
 
-# For debugging (can also use the verbose command line argument)
+# For debugging (use the verbose command line argument)
 #logging.basicConfig(level=20) # KCB
 
 ############################################################
@@ -78,7 +78,7 @@ class Scheduler(object):
         # Sanity check that observation windows are properly sorted
         for ii,(start,end) in enumerate(self.windows):
             msg = 'Observation windows are not properly sorted\n'
-            msg+= '%s -- %s'%(datestr(start),datestr(end))
+            msg+= '%s: %s -- %s'%(get_nite(start),datestr(start),datestr(end))
             if (end < start):
                 logging.warn(msg)
             if ii > 0 and (start < self.windows[ii-1][1]):
@@ -86,7 +86,7 @@ class Scheduler(object):
 
         logging.info('Observation Windows:')
         for start,end in self.windows:
-            logging.info(' %s UTC -- %s UTC'%(datestr(start),datestr(end)))
+            logging.info('  %s: %s UTC -- %s UTC'%(get_nite(start),datestr(start),datestr(end)))
         logging.info(30*'-')
 
     def load_observed_fields(self):

@@ -8,13 +8,16 @@ import pylab as plt
 import ephem
 import numpy as np
 
+from obztak import get_survey
 from obztak.factory import field_factory
 from obztak.field import FieldArray
 from obztak.utils.ortho import makePlot
 from obztak.utils.date import get_nite, nite2utc, utc2nite, datestr
 from obztak.utils.parser import Parser, DatetimeAction
 from obztak.utils.database import Database
-from obztak.utils.ortho import plot_bliss_coverage
+from obztak.utils.ortho import plot_bliss_coverage, DECamOrtho
+from obztak.utils.ortho import plot_maglites_nightsum
+from obztak.utils.constants import COLORS
 
 if __name__ == "__main__":
     parser = Parser(description=__doc__)
@@ -22,11 +25,9 @@ if __name__ == "__main__":
                         help='The *local* nite to plot')
     parser.add_argument('-i',dest='inspect',action='store_true',
                         help='interactive plot window')
-    parser.add_argument('--survey',choices=['obztak','maglites','bliss'],
-                        default = None, help='choose survey to schedule.')
-
     args = parser.parse_args()
 
+    survey = get_survey()
     if args.nite:
         date = nite2utc(args.nite)
     else:
@@ -42,88 +43,82 @@ if __name__ == "__main__":
     #date = "%d/%02d/%02d"%now.tuple()[:3]
     #time = "%d/%02d/%02d"%date.tuple()[:3] + ' 00:00:00'
 
-    fields = field_factory(args.survey).load_database()
-    if args.survey == 'maglites':
+    fields = field_factory(survey).load_database()
+    if survey == 'maglites':
         plot_maglites_nightsum(fields,nitestr)
-    elif args.survey == 'bliss':
-        pass
+    elif survey == 'bliss':
 
-    plot_bliss_coverage(fields)
-    plt.savefig('nightsum_coverage_%s.png'%nitestr)
+        plot_bliss_coverage(fields)
+        plt.savefig('nightsum_coverage_%s.png'%nitestr)
 
-    new = (np.array(map(utc2nite,fields['DATE'])) == nitestr)
-    new_fields = fields[new]
-    old_fields = fields[~new]
+        plt.figure()
+        bmap = DECamOrtho(date='2017/02/08 06:00:00')
+        for b in np.unique(fields['FILTER']):
+            f = fields[fields['FILTER']==b]
+            bmap.draw_focal_planes(f['RA'],f['DEC'],color=COLORS[b],alpha=0.3)
+        bmap.draw_bliss()
+        bmap.draw_galaxy()
+        bmap.draw_des()
+        plt.savefig('nightsum_summary_%s.png'%nitestr)
 
-    """
-    kwargs = dict(edgecolor='none', s=50, vmin=0, vmax=4)
-    fig,basemap = makePlot(date=nitestr,name='nightsum',moon=False,airmass=False,center=(0,-90))
-    plt.title('Coverage (%s)'%nitestr)
-    kwargs['cmap'] = 'gray_r'
-    proj = basemap.proj(old_fields['RA'], old_fields['DEC'])
-    basemap.scatter(*proj, c=old_fields['TILING'],**kwargs)
+        new = (np.array(map(utc2nite,fields['DATE'])) == nitestr)
+        new_fields = fields[new]
+        old_fields = fields[~new]
 
-    kwargs['cmap'] = 'summer_r'
-    proj = basemap.proj(new_fields['RA'], new_fields['DEC'])
-    basemap.scatter(*proj, c=new_fields['TILING'],  **kwargs)
-    colorbar = plt.colorbar()
-    colorbar.set_label('Tiling')
+        db = Database()
+        db.connect()
 
-    plt.plot(np.nan, np.nan,'o',color='green',mec='green',label='Observed tonight')
-    plt.plot(np.nan, np.nan,'o',color='0.7',mec='0.7',label='Observed previously')
-    plt.legend(fontsize=10,loc='lower left',scatterpoints=1)
-    plt.savefig('nightsum_coverage_%s.png'%nitestr,bbox_inches='tight')
-    """
+        query = """select id, qc_fwhm as psf, qc_teff as teff, filter from exposure
+        where exptime = 90 and delivered = True and propid = '%s'
+        and qc_teff is not NULL and qc_fwhm is not NULL
+        and to_timestamp(utc_beg) %s '%s'
+        """
 
-    db = Database()
-    db.connect()
-
-    query = """select id, qc_fwhm as psf, qc_teff as teff from exposure
-where exptime = 90 and delivered = True and propid = '%s'
-and qc_teff is not NULL and qc_fwhm is not NULL
-and to_timestamp(utc_beg) %s '%s'
-"""
-
-    new = db.query2recarray(query%(fields.PROPID,'>',datestr(date)))
-    try:
-        old = db.query2recarray(query%(fields.PROPID,'<',date))
-    except ValueError as e:
-        print(e)
-        old = np.recarray(0,dtype=new.dtype)
+        new = db.query2recarray(query%(fields.PROPID,'>',datestr(date)))
+        try:
+            old = db.query2recarray(query%(fields.PROPID,'<',date))
+        except ValueError as e:
+            print(e)
+            old = np.recarray(0,dtype=new.dtype)
 
 
-    nbins = 35
-    kwargs = dict(normed=True)
-    step_kwargs = dict(kwargs,histtype='step',lw=3.5)
-    fill_kwargs = dict(kwargs,histtype='stepfilled',lw=1.0,alpha=0.7)
+        nbins = 35
+        kwargs = dict(normed=True)
+        step_kwargs = dict(kwargs,histtype='step',lw=3.5)
+        fill_kwargs = dict(kwargs,histtype='stepfilled',lw=1.0,alpha=0.7)
 
-    plt.figure()
-    step_kwargs['bins'] = np.linspace(0.5,2.5,nbins)
-    fill_kwargs['bins'] = np.linspace(0.5,2.5,nbins)
-    plt.hist(new['psf'],color='green',zorder=10, label='Observed tonight', **fill_kwargs)
-    plt.hist(new['psf'],color='green',zorder=10, **step_kwargs)
-    plt.hist(old['psf'],color='0.5', label='Observed previously', **fill_kwargs)
-    plt.hist(old['psf'],color='0.5', **step_kwargs)
-    plt.axvline(1.20,ls='--',lw=2,color='gray')
-    plt.legend()
-    plt.title('Seeing (%s)'%nitestr)
-    plt.xlabel('FWHM (arcsec)')
-    plt.ylabel('Normalized Number of Exposures')
-    plt.savefig('nightsum_psf_%s.png'%nitestr,bbox_inches='tight')
+        plt.figure()
+        step_kwargs['bins'] = np.linspace(0.5,2.5,nbins)
+        fill_kwargs['bins'] = np.linspace(0.5,2.5,nbins)
+        plt.hist(new['psf'],color='green',zorder=10, label='Observed tonight', **fill_kwargs)
+        plt.hist(new['psf'],color='green',zorder=10, **step_kwargs)
+        plt.hist(old['psf'],color='0.5', label='Observed previously', **fill_kwargs)
+        plt.hist(old['psf'],color='0.5', **step_kwargs)
+        plt.axvline(1.20,ls='--',lw=2,color='gray')
+        plt.legend()
+        plt.title('Seeing (%s)'%nitestr)
+        plt.xlabel('FWHM (arcsec)')
+        plt.ylabel('Normalized Number of Exposures')
+        plt.savefig('nightsum_psf_%s.png'%nitestr,bbox_inches='tight')
 
-    plt.figure()
-    step_kwargs['bins'] = np.linspace(0,1.5,nbins)
-    fill_kwargs['bins'] = np.linspace(0,1.5,nbins)
-    plt.hist(new['teff'],color='green',zorder=10,label='Observed tonight', **fill_kwargs)
-    plt.hist(new['teff'],color='green',zorder=10, **step_kwargs)
-    plt.hist(old['teff'],color='0.5',label='Observed previously', **fill_kwargs)
-    plt.hist(old['teff'],color='0.5', **step_kwargs)
-    plt.axvline(0.25,ls='--',lw=2,color='gray')
-    plt.legend()
-    plt.title('Effective Depth (%s)'%nitestr)
-    plt.xlabel('Teff')
-    plt.ylabel('Normalized Number of Exposures')
-    plt.savefig('nightsum_teff_%s.png'%nitestr,bbox_inches='tight')
+        plt.figure()
+        step_kwargs['bins'] = np.linspace(0,1.5,nbins)
+        fill_kwargs['bins'] = np.linspace(0,1.5,nbins)
+        plt.hist(new['teff'],color='green',zorder=10,label='Observed tonight', **fill_kwargs)
+        plt.hist(new['teff'],color='green',zorder=10, **step_kwargs)
+        plt.hist(old['teff'],color='0.5',label='Observed previously', **fill_kwargs)
+        plt.hist(old['teff'],color='0.5', **step_kwargs)
+        plt.axvline(0.25,ls='--',lw=2,color='gray')
+        plt.legend()
+        plt.title('Effective Depth (%s)'%nitestr)
+        plt.xlabel('Teff')
+        plt.ylabel('Normalized Number of Exposures')
+        plt.savefig('nightsum_teff_%s.png'%nitestr,bbox_inches='tight')
+
+        for b in ['g','r','i','z']:
+            f = new[new['filter'] == b]
+            print ' %s-band:'%b, len(f)
+
 
     if args.inspect:
         raw_input(' ...finish...')

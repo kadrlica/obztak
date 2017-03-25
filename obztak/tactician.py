@@ -17,7 +17,7 @@ from obztak.utils import constants
 from obztak.utils.date import datestring
 
 CONDITIONS = odict([
-    ('great',   [1.4, 2.0]),
+    ('great',   [1.6, 2.0]),
     ('good',    [0.0, 2.0]),
     ('maglites',[0.0, 2.0]),
     ('fine',    [0.0, 1.9]),
@@ -225,6 +225,9 @@ class ConditionTactician(Tactician):
         weight += 100. * (airmass - 1.)**3
         weight += 5000. * airmass_cut
 
+        if self.mode == 'great':
+            weight += 5000. * (self.fields['DEC'] > -80)
+
         return weight
 
 class SMCNODTactician(Tactician):
@@ -336,7 +339,6 @@ class BlissTactician(Tactician):
             airmass_min, airmass_max = self.CONDITIONS[self.mode]
             obztak.utils.ortho.plotFields(self.completed_fields[-1],self.fields,self.completed_fields,options_basemap=dict(airmass=airmass_max))
             import pdb; pdb.set_trace()
-            raw_input()
             raise ValueError(msg)
         return index
 

@@ -7,9 +7,11 @@ import pylab as plt
 import os
 import numpy as np
 
+from obztak import get_survey
 from obztak.field import FieldArray
 from obztak.utils.ortho import plotFields, movieFields
 from obztak.utils.parser import Parser
+from obztak.factory import field_factory
 
 MOVIES = ['.gif']
 
@@ -23,6 +25,8 @@ if __name__ == "__main__":
                         help='plot chunks of exposures file-by-file.')
     parser.add_argument('-a','--all',action='store_true',
                         help='plot all exposures at once.')
+    parser.add_argument('-c','--complete',const=None,nargs='?',action='append',
+                        help="fields that have been completed.")
     parser.add_argument('-o','--outfile',
                         help='output file to save')
     args = parser.parse_args()
@@ -35,20 +39,28 @@ if __name__ == "__main__":
         fields = fields + FieldArray.read(filename)
         if args.chunk: idx.append(len(fields)-1)
 
+    completed_fields = field_factory(get_survey())
+    if args.complete is not None:
+        for f in args.complete:
+            if f is None:
+                completed_fields=completed_fields+completed_fields.load_database()
+            else:
+                completed_fields=completed_fields+completed_fields.read(f)
+
     movie = True if ext in MOVIES else False
         
     options = dict(airmass=1.4,smash=False)
 
     if args.all:
-        plotFields(fields[-1],target_fields=fields,completed_fields=fields,options_basemap=options)
+        plotFields(fields[-1],target_fields=fields,completed_fields=completed_fields+fields,options_basemap=options)
     elif args.chunk:
         for i in idx:
-            plotFields(fields[i],target_fields=fields,completed_fields=fields[:i],options_basemap=options)
+            plotFields(fields[i],target_fields=fields,completed_fields=completed_fields+fields[:i],options_basemap=options)
     else:
         if movie:
-            movieFields(args.outfile,fields,target_fields=fields,options_basemap=options)
+            movieFields(args.outfile,fields,target_fields=fields,completed_fields=completed_fields,options_basemap=options)
         else:
-            plotFields(fields,target_fields=fields,options_basemap=options)
+            plotFields(fields,target_fields=fields,completed_fields=completed_fields,options_basemap=options)
 
     if args.outfile and ext not in ['.gif']:
         plt.savefig(args.outfile,bbox_inches='tight')    

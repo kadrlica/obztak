@@ -45,7 +45,7 @@ class Parser(argparse.ArgumentParser):
         super(Parser,self).__init__(*args,**kwargs)
         self.add_argument('-v','--verbose',action=VerboseAction,
                           help='output verbosity')
-        self.add_argument('--version', action='version',
+        self.add_argument('-V','--version', action='version',
                           version='obztak v'+__version__,
                           help="print version number and exit")
 
