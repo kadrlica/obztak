@@ -367,6 +367,7 @@ class BlissFieldArray(FieldArray):
         FROM exposure where propid = '%(propid)s' and exptime > 89
         and discard = False and delivered = True and flavor = 'object'
         and object like '%(object_fmt)s%%'
+        and not (date between '2017/04/14 00:00:00' and '2017/04/14 12:00:00' and qc_teff < 0.1)
         ORDER BY utc_beg %(limit)s
         """%kwargs
         return query
