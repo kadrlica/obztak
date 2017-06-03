@@ -3,8 +3,8 @@
 Plot json files.
 """
 import argparse
-import pylab as plt
 import os
+import pylab as plt
 import numpy as np
 
 from obztak import get_survey
@@ -30,6 +30,9 @@ if __name__ == "__main__":
     parser.add_argument('-o','--outfile',
                         help='output file to save')
     args = parser.parse_args()
+
+    # Set the backend for output (doesn't really work here...)
+    #if args.outfile is not None: matplotlib.use('Agg')
 
     ext = os.path.splitext(args.outfile)[-1] if args.outfile else None
 
