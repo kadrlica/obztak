@@ -81,6 +81,6 @@ CMAPS = odict([
     ('r','Reds'),
     ('i','YlOrBr'),
     ('z','RdPu'),
-    ('Y','Grays'),
-    ('VR','Grays'),
+    ('Y','Greys'),
+    ('VR','Greys'),
 ])

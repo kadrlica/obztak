@@ -8,16 +8,19 @@ import subprocess
 import warnings
 from collections import OrderedDict as odict
 
+from matplotlib.path import Path
 from mpl_toolkits.basemap import Basemap
 import matplotlib
 import matplotlib.cm
 import pylab as plt
 import numpy as np
+import healpy as hp
 import ephem
 
 from obztak import get_survey
 import obztak.utils.projector
 from obztak.utils.projector import cel2gal, gal2cel, SphericalRotator
+from obztak.utils.projector import pix2ang
 
 from obztak.utils import constants
 from obztak.utils import fileio
@@ -66,7 +69,8 @@ class DECamBasemap(Basemap):
         defaults = dict()
         if not args: defaults.update(circles=np.arange(-90,120,30))
         setdefaults(kwargs,defaults)
-        return self.drawparallels(*args, **kwargs)
+        self.pardict = self.drawparallels(*args, **kwargs)
+        return self.pardict
 
     def draw_meridians(self,*args,**kwargs):
         defaults = dict(labels=[1,0,0,1])
@@ -74,7 +78,8 @@ class DECamBasemap(Basemap):
             defaults.update(labels=[0,0,0,0])
         if not args: defaults.update(meridians=np.arange(0,420,60))
         setdefaults(kwargs,defaults)
-        return self.drawmeridians(*args,**kwargs)
+        self.merdict = self.drawmeridians(*args,**kwargs)
+        return self.merdict
         
     def proj(self,lon,lat):
         """ Remove points outside of projection """
@@ -94,6 +99,35 @@ class DECamBasemap(Basemap):
     @staticmethod
     def split(ra,angle=180):
         pass
+
+    def path_select(self,filename,nside=512):
+        npix = hp.nside2npix(nside)
+        sel = np.zeros(npix,dtype=bool)
+        pix = np.arange(npix)
+        radec = np.array(pix2ang(nside,pix)).T
+
+        data = np.genfromtxt(filename,names=['ra','dec','poly'])
+        for p in np.unique(data['poly']):
+            poly = data[data['poly'] == p]
+            path = Path(zip(poly['ra'],poly['dec']))
+            sel |= path.contains_points(radec)
+
+        return sel
+
+    def path_area(self,filename,nside=512):
+        sel = self.path_select(filename,nside)
+        return sel.sum() * hp.nside2pixarea(nside,degrees=True)
+
+    def draw_polygons(self,filename,**kwargs):
+        """ Draw a polygon footprint on this Basemap instance.
+        """
+        defaults=dict(color='k', lw=2)
+        setdefaults(kwargs,defaults)
+
+        data = np.genfromtxt(filename,names=['ra','dec','poly'])
+        for p in np.unique(data['poly']):
+            poly = data[data['poly'] == p]
+            self.draw_polygon_radec(poly['ra'],poly['dec'],**kwargs)
 
     def draw_polygon(self,filename,**kwargs):
         """ Draw a polygon footprint on this Basemap instance.
@@ -116,6 +150,7 @@ class DECamBasemap(Basemap):
         glat = np.zeros_like(glon)
         ra,dec = self.roll(*gal2cel(glon,glat))
 
+        #self.plot(*gal2cel(0,0),marker='o',ms=25,color=kwargs['color'],latlon=True)
         self.draw_polygon_radec(ra,dec,**kwargs)
         
         if width:
@@ -162,6 +197,13 @@ class DECamBasemap(Basemap):
         for p in np.unique(data['poly']):
             poly = data[data['poly'] == p]
             self.draw_polygon_radec(poly['ra'],poly['dec'],**kwargs)
+
+    def draw_blissII(self,**kwargs):
+        defaults=dict(color='darkorange', lw=2)
+        setdefaults(kwargs,defaults)
+
+        filename = fileio.get_datafile('blissII-poly.txt')
+        self.draw_polygons(filename,**kwargs)
 
     def draw_des(self,**kwargs):
         """ Draw the DES footprint on this Basemap instance.
@@ -253,8 +295,9 @@ class DECamBasemap(Basemap):
     def draw_planet9(self,**kwargs):
         from scipy.interpolate import interp1d
         from scipy.interpolate import UnivariateSpline
-        defaults=dict(color='b',lw=3)
+        defaults=dict(color='b',lw=2)
         setdefaults(kwargs,defaults)
+
         ra_lo,dec_lo=np.genfromtxt(fileio.get_datafile('p9_lo.txt'),usecols=(0,1)).T
         ra_lo,dec_lo = self.roll(ra_lo,dec_lo)
         ra_lo += -360*(ra_lo > 180)
@@ -272,14 +315,15 @@ class DECamBasemap(Basemap):
         ra_hi_smooth = np.linspace(ra_hi[0],ra_hi[-1],360)
         dec_hi_smooth = spl_hi(ra_hi_smooth)
 
-        #self.plot(ra_lo,dec_lo,latlon=True,**kwargs)
-        #self.plot(ra_hi,dec_hi,latlon=True,**kwargs)
-        self.plot(ra_lo_smooth,dec_lo_smooth,latlon=True,**kwargs)
-        self.plot(ra_hi_smooth,dec_hi_smooth,latlon=True,**kwargs)
+        #self.plot(ra_lo_smooth,dec_lo_smooth,latlon=True,**kwargs)
+        #self.plot(ra_hi_smooth,dec_hi_smooth,latlon=True,**kwargs)
 
         orb = fileio.csv2rec(fileio.get_datafile('P9_orbit_Cassini.csv'))[::7]
-        kwargs = dict(marker='o',s=40,edgecolor='none',cmap='jet_r')
-        self.scatter(*self.proj(orb['ra'],orb['dec']),c=orb['cassini'],**kwargs)
+        #kwargs = dict(marker='o',s=40,edgecolor='none',cmap='jet_r')
+        #self.scatter(*self.proj(orb['ra'],orb['dec']),c=orb['cassini'],**kwargs)
+
+        ra,dec = self.roll(orb['ra'],orb['dec'])
+        self.plot(ra,dec,latlon=True,**kwargs)
 
     def draw_ligo(self,filename=None, log=True,**kwargs):
         import healpy as hp
