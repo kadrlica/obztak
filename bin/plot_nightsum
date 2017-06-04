@@ -31,7 +31,7 @@ if __name__ == "__main__":
     if args.nite:
         date = nite2utc(args.nite)
     else:
-        # Yesterday...
+        # Yesterday...? Would 12*ephem.hour be better?
         date = ephem.Date(ephem.now() - 8*ephem.hour)
     nitestr = utc2nite(date)
 
@@ -49,16 +49,28 @@ if __name__ == "__main__":
     elif survey == 'bliss':
 
         plot_bliss_coverage(fields)
+        plt.suptitle('Coverage (%s)'%nitestr,fontsize=18)
         plt.savefig('nightsum_coverage_%s.png'%nitestr)
 
-        plt.figure()
-        bmap = DECamOrtho(date='2017/02/08 06:00:00')
+        fig,axes = plt.subplots(1,2,figsize=(12,5))
+        plt.sca(axes[0])
+        bmap = DECamOrtho(date='2017/02/08 07:00:00')
         for b in np.unique(fields['FILTER']):
             f = fields[fields['FILTER']==b]
             bmap.draw_focal_planes(f['RA'],f['DEC'],color=COLORS[b],alpha=0.3)
         bmap.draw_bliss()
         bmap.draw_galaxy()
         bmap.draw_des()
+
+        plt.sca(axes[1])
+        bmap = DECamOrtho(date='2017/02/08 19:00:00')
+        for b in np.unique(fields['FILTER']):
+            f = fields[fields['FILTER']==b]
+            bmap.draw_focal_planes(f['RA'],f['DEC'],color=COLORS[b],alpha=0.3)
+        bmap.draw_bliss()
+        bmap.draw_galaxy()
+        bmap.draw_des()
+        plt.suptitle('Coverage (%s)'%nitestr,fontsize=16)
         plt.savefig('nightsum_summary_%s.png'%nitestr)
 
         new = (np.array(map(utc2nite,fields['DATE'])) == nitestr)
