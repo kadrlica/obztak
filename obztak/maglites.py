@@ -223,7 +223,6 @@ class MaglitesFieldArray(FieldArray):
                         object_fmt = cls.OBJECT_FMT%'')
         kwargs = setdefaults(kwargs,copy.deepcopy(defaults))
 
-        # Should pull this out to be accessible (self.query())?
         query ="""
         SELECT object, seqid, seqnum, telra as RA, teldec as dec,
         expTime, filter,
