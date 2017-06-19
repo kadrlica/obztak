@@ -233,7 +233,7 @@ class MaglitesFieldArray(FieldArray):
         and discard = False and delivered = True and flavor = 'object'
         and object like '%(object_fmt)s%%'
         -- Discard exposures from Y1 with teff < 0.1
-        and not (qc_teff < 0.1 and date < '2017/01/01')
+        and not (qc_teff < 0.1 and date < '2017/06/19')
         ORDER BY utc_beg %(limit)s
         """%kwargs
         return query
