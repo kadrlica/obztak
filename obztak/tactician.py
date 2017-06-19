@@ -19,6 +19,7 @@ from obztak.utils.date import datestring
 CONDITIONS = odict([
     ('great',   [1.6, 2.0]),
     ('good',    [0.0, 2.0]),
+    ('complete',[0.0, 2.0]),
     ('maglites',[0.0, 2.0]),
     ('fine',    [0.0, 1.9]),
     ('ok',      [0.0, 1.6]),
@@ -217,6 +218,9 @@ class ConditionTactician(Tactician):
         weight = 2.0 * self.hour_angle
         weight[~sel] = np.inf
         weight += 3. * 360. * self.fields['TILING']
+        if self.mode == 'complete':
+            weight += 100. * 360. * self.fields['TILING']
+
         weight += self.slew**3
         airmass_min, airmass_max = CONDITIONS[self.mode]
         airmass_cut = ((airmass < airmass_min) | (airmass > airmass_max))
