@@ -112,6 +112,7 @@ class Tactician(object):
 
     @property
     def slew(self):
+        """Angular separation to previous field."""
         # Set previous field as last completed field
         previous_field = None
         if (self.completed_fields is not None) and len(self.completed_fields):
@@ -126,6 +127,26 @@ class Tactician(object):
                           self.fields['RA'], self.fields['DEC'])
         else:
             return np.zeros(len(self.fields))
+
+    @property
+    def slew_time(self):
+        """Estimate of the slew time (Alt/Az telescope)."""
+        # Set previous field as last completed field
+        previous_field = None
+        if (self.completed_fields is not None) and len(self.completed_fields):
+            previous_field = self.completed_fields[-1]
+
+            # Ignore if more than 30 minutes has elapsed
+            if (self.date-ephem.Date(previous_field['DATE'])) > 30*ephem.minute:
+                previous_field = None
+
+        if previous_field:
+            return np.sqrt((previous_field['RA']-self.fields['RA'])**2 +
+                           (previous_field['DEC']-self.fields['DEC'])**2)
+
+        else:
+            return np.zeros(len(self.fields))
+
 
     @property
     def hour_angle(self):
