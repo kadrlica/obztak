@@ -33,7 +33,7 @@ FIELDS = odict([
 
 TACTICIANS = odict([
     (None,'Tactician'),
-    ('tactician','tactician'),
+    ('tactician','Tactician'),
     ('coverage','CoverageTactician'),
     ('great','ConditionTactician'),
     ('good','ConditionTactician'),
