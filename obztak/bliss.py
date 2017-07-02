@@ -61,13 +61,21 @@ class BlissSurvey(Survey):
         ]
     
     def prepare_fields(self, infile=None, outfile=None, mode='bliss_rotate', plot=True, smcnod=False):
-        """ Create the list of fields to be targeted by this survey.
+        """Create the list of fields to be targeted by the BLISS survey.
+
+        Selection starts with 3 regions:
+        - P9 - Planet 9 region above DES footprint (priority 1)
+        - LIGO - Region targeted based on LIGO sensitivity maps (and good for MW)
+        - Alfredo - Overlap with Alfredo's eRosita companion survey.
+
+        Fields that have been previously covered by DECam are removed
+        from the LIGO and Alfredo fooptrint regions.
 
         Parameters:
         -----------
         infile : File containing all possible field locations.
         outfile: Output file of selected fields
-        mode   : Mode for dithering: 'smash_dither', 'smash_rotate', 'decam_dither', 'none'
+        mode   : Mode for dithering. default: 'bliss_rotate'
         plot   : Create an output plot of selected fields.
 
         Returns:
@@ -171,10 +179,12 @@ class BlissSurvey(Survey):
         sel &= (fields['DEC'] > constants.SOUTHERN_REACH)
 
         # Apply covered fields
-        sel &= self.uncovered(fields['RA'],fields['DEC'],fields['FILTER'])[0]
+        #sel &= self.uncovered(fields['RA'],fields['DEC'],fields['FILTER'])[0]
+        # Apply covered fields (but take everything in P9 region)
+        uncovered = self.uncovered(fields['RA'],fields['DEC'],fields['FILTER'])[0]
+        sel &= ((p9 & (fields['RA'] > 180)) | uncovered)
 
         fields = fields[sel]
-
 
         logging.info("Number of target fields: %d"%len(fields))
         logging.debug("Unique priorities: ",np.unique(fields['PRIORITY']))
@@ -264,7 +274,7 @@ class BlissSurvey(Survey):
     @staticmethod
     def planet9(ra,dec):
         """The high-probability region for Planet 9"""
-        sel = ((ra > 305)|(ra < 15)) & (dec > -40) & (dec < -30) # v0
+        sel = ((ra > 305)|(ra < 15)) & (dec > -40) & (dec < -30) # v0, v4
         #sel = ((ra > 305)|(ra < 15)) & (dec > -40) & (dec < -25) # v1
         #sel = ((ra > 305)|(ra < 15)) & (dec > -35) & (dec < -25) # v2
         #sel = ((ra > 305)|(ra < 15)) & (dec > -40) & (dec < -28) # v3
@@ -283,6 +293,19 @@ class BlissSurvey(Survey):
 
     @staticmethod
     def uncovered(ra,dec,band):
+        """
+        Determine which fields haven't been previously covered by DECam
+
+        Parameters:
+        -----------
+        ra  : right ascension of field
+        dec : declination of field
+        band: observing band
+
+        Returns:
+        --------
+        sel, frac : selection of fields and coverage fraction
+        """
         import healpy as hp
         #dirname = '/home/s1/kadrlica/projects/bliss/v0/data'
         #basename = 'decam_coverage_90s_%s_n1024.fits.gz'
@@ -298,11 +321,11 @@ class BlissSurvey(Survey):
             idx = (band==b)
             filename1 = os.path.join(dirname,basename1%b)
             logging.info("Reading %s..."%os.path.basename(filename1))
-            skymap1 = hp.read_map(filename1,verbose=True)
+            skymap1 = hp.read_map(filename1,verbose=False)
 
             filename2 = os.path.join(dirname,basename2%b)
             logging.info("Reading %s..."%os.path.basename(filename2))
-            skymap2 = hp.read_map(filename2,verbose=True)
+            skymap2 = hp.read_map(filename2,verbose=False)
 
             # Apply minimum exposure time selection
             #skymap = (skymap > 30)
