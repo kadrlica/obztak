@@ -256,7 +256,14 @@ class Scheduler(object):
                         logging.warning(msg)
 
             # Select one (or more) fields from the tactician
-            field_select = self.select_field(date, mode)
+            try:
+                field_select = self.select_field(date, mode)
+            except Exception as e:
+                if not inside:
+                    logging.warning(str(e))
+                    break
+                else:
+                    raise(e)
 
             # Now update the time from the selected field
             date = ephem.Date(field_select[-1]['DATE']) + constants.FIELDTIME

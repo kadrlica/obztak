@@ -30,7 +30,7 @@ TILINGS = 2
 class BlissSurvey(Survey):
     """ Survey sublcass for BLISS. """
 
-    # 2017A ACTUAL
+    # 2017A SCHEDULED (bliss-windows.csv is actually used)
     nights = [
         ['2017/02/07', 'second'], # phase=90%, set=07:40 (1.5h dark)
         ['2017/02/08', 'second'], # phase=95%, set=08:40 (0.5h dark)
