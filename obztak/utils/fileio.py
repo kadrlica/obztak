@@ -25,6 +25,16 @@ def get_datadir():
     from os.path import abspath,dirname,join
     return join(dirname(dirname(abspath(__file__))),'data')
 
+def get_datafile(filename):
+    dirname = get_datadir()
+    filepath = os.path.join(dirname,filename)
+
+    if not os.path.exists(filepath):
+        msg = "File does not exists: %s"%filepath
+        raise IOError(msg)
+    else:
+        return filepath
+
 class FormatFloatForce(mlab.FormatFormatStr): 
     """
     mlab not doing well...

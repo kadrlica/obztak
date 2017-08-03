@@ -9,6 +9,7 @@ import numpy as np
 import ephem
 from collections import OrderedDict as odict
 
+from obztak import get_survey
 from obztak.utils.projector import angsep
 
 from obztak.utils import projector as proj
@@ -19,6 +20,7 @@ from obztak.utils.date import datestring
 CONDITIONS = odict([
     ('great',   [1.6, 2.0]),
     ('good',    [0.0, 2.0]),
+    ('complete',[0.0, 2.0]),
     ('maglites',[0.0, 2.0]),
     ('fine',    [0.0, 1.9]),
     ('ok',      [0.0, 1.6]),
@@ -111,6 +113,7 @@ class Tactician(object):
 
     @property
     def slew(self):
+        """Angular separation to previous field."""
         # Set previous field as last completed field
         previous_field = None
         if (self.completed_fields is not None) and len(self.completed_fields):
@@ -125,6 +128,26 @@ class Tactician(object):
                           self.fields['RA'], self.fields['DEC'])
         else:
             return np.zeros(len(self.fields))
+
+    @property
+    def slew_time(self):
+        """Estimate of the slew time (Alt/Az telescope)."""
+        # Set previous field as last completed field
+        previous_field = None
+        if (self.completed_fields is not None) and len(self.completed_fields):
+            previous_field = self.completed_fields[-1]
+
+            # Ignore if more than 30 minutes has elapsed
+            if (self.date-ephem.Date(previous_field['DATE'])) > 30*ephem.minute:
+                previous_field = None
+
+        if previous_field:
+            return np.sqrt((previous_field['RA']-self.fields['RA'])**2 +
+                           (previous_field['DEC']-self.fields['DEC'])**2)
+
+        else:
+            return np.zeros(len(self.fields))
+
 
     @property
     def hour_angle(self):
@@ -217,6 +240,9 @@ class ConditionTactician(Tactician):
         weight = 2.0 * self.hour_angle
         weight[~sel] = np.inf
         weight += 3. * 360. * self.fields['TILING']
+        if self.mode == 'complete':
+            weight += 100. * 360. * self.fields['TILING']
+
         weight += self.slew**3
         airmass_min, airmass_max = CONDITIONS[self.mode]
         airmass_cut = ((airmass < airmass_min) | (airmass > airmass_max))
@@ -244,10 +270,10 @@ class SMCNODTactician(Tactician):
 
 class BlissTactician(Tactician):
     CONDITIONS = odict([
-        (None,    [0.0, 1.4]),
-        ('bliss', [0.0, 1.4]),
-        ('good',  [0.0, 1.4]),
-        ('poor',  [0.0, 1.2]),
+        (None,    [1.0, 1.4]),
+        ('bliss', [1.0, 1.4]),
+        #('good',  [1.0, 1.4]),
+        #('poor',  [1.0, 1.2]),
     ])
 
     def __init__(self, *args, **kwargs):
@@ -286,11 +312,13 @@ class BlissTactician(Tactician):
         sel &= ((airmass > airmass_min) & (airmass < airmass_max))
 
         # Don't allow the same field to be scheduled in different bands
-        # less than 8 hours apart
+        # less than 10 hours apart
         if len(self.completed_fields):
             dates = np.array(map(ephem.Date,self.completed_fields['DATE']))
             recent = self.completed_fields[(self.date - dates) < 10*ephem.hour]
             sel &= ~np.in1d(self.fields.field_id,recent.field_id)
+            # Higher weight for duplicate HEXs
+            weight += 500.0 * np.in1d(self.fields['HEX'],recent['HEX'])
             #cut = np.in1d(self.fields.field_id,recent.field_id)
             #sel &= ~cut
 
@@ -298,29 +326,32 @@ class BlissTactician(Tactician):
 
         # Higher weight for rising fields (higher hour angle)
         # HA [min,max] = [-53,54] (for airmass 1.4)
-        weight = 5.0 * self.hour_angle
-        #weight = 1.0 * self.hour_angle
+        #weight += 5.0 * self.hour_angle
+        #weight += 1.0 * self.hour_angle
+        weight += 0.1 * self.hour_angle
 
         # Higher weight for larger slews
         # slew = 10 deg -> weight = 1e2
-        weight += self.slew**2
+        #weight += self.slew**2
+        weight += self.slew
 
         # Higher weight for higher airmass
         # airmass = 1.4 -> weight = 6.4
         weight += 100. * (airmass - 1.)**3
 
-        # Higher weight for fields close to the moon
+        # Higher weight for fields close to the moon (when up)
         # angle = 50 -> weight = 6.4
-        weight += 100 * (35./moon_angle)**3
+        if (self.moon.alt > -0.04):
+            weight += 100 * (35./moon_angle)**3
 
         # Try hard to do the first tiling
         weight += 1e6 * (self.fields['TILING'] - 1)
 
         # Prioritize Planet 9 Region late in the survey/night
-        # Allow i,z exposures at high penalty
         ra_zenith, dec_zenith = np.degrees(self.observatory.radec_of(0,'90'))
         if ra_zenith > 270:
             weight += 1e6 * (self.fields['PRIORITY'] - 1)
+            # Allow i,z exposures at high penalty
             #sel &= (np.char.count('iz',self.fields['FILTER']) > 0)
             #weight += 1e8 * (np.char.count('iz',self.fields['FILTER']) > 0)
 
@@ -339,7 +370,6 @@ class BlissTactician(Tactician):
             airmass_min, airmass_max = self.CONDITIONS[self.mode]
             obztak.utils.ortho.plotFields(self.completed_fields[-1],self.fields,self.completed_fields,options_basemap=dict(airmass=airmass_max))
             import pdb; pdb.set_trace()
-            raw_input()
             raise ValueError(msg)
         return index
 

@@ -18,6 +18,7 @@ from obztak.utils.projector import cel2gal, angsep
 from obztak.utils import constants
 from obztak.utils import fileio
 from obztak.utils.constants import BANDS,SMASH_POLE,CCD_X,CCD_Y,STANDARDS,COLORS
+from obztak.utils.date import setdefaults
 
 NAME    = 'BLISS'
 PROGRAM = NAME.lower()
@@ -29,7 +30,7 @@ TILINGS = 2
 class BlissSurvey(Survey):
     """ Survey sublcass for BLISS. """
 
-    # 2017A ACTUAL
+    # 2017A SCHEDULED (bliss-windows.csv is actually used)
     nights = [
         ['2017/02/07', 'second'], # phase=90%, set=07:40 (1.5h dark)
         ['2017/02/08', 'second'], # phase=95%, set=08:40 (0.5h dark)
@@ -60,13 +61,21 @@ class BlissSurvey(Survey):
         ]
     
     def prepare_fields(self, infile=None, outfile=None, mode='bliss_rotate', plot=True, smcnod=False):
-        """ Create the list of fields to be targeted by this survey.
+        """Create the list of fields to be targeted by the BLISS survey.
+
+        Selection starts with 3 regions:
+        - P9 - Planet 9 region above DES footprint (priority 1)
+        - LIGO - Region targeted based on LIGO sensitivity maps (and good for MW)
+        - Alfredo - Overlap with Alfredo's eRosita companion survey.
+
+        Fields that have been previously covered by DECam are removed
+        from the LIGO and Alfredo fooptrint regions.
 
         Parameters:
         -----------
         infile : File containing all possible field locations.
         outfile: Output file of selected fields
-        mode   : Mode for dithering: 'smash_dither', 'smash_rotate', 'decam_dither', 'none'
+        mode   : Mode for dithering. default: 'bliss_rotate'
         plot   : Create an output plot of selected fields.
 
         Returns:
@@ -170,10 +179,12 @@ class BlissSurvey(Survey):
         sel &= (fields['DEC'] > constants.SOUTHERN_REACH)
 
         # Apply covered fields
-        sel &= self.uncovered(fields['RA'],fields['DEC'],fields['FILTER'])[0]
+        #sel &= self.uncovered(fields['RA'],fields['DEC'],fields['FILTER'])[0]
+        # Apply covered fields (but take everything in P9 region)
+        uncovered = self.uncovered(fields['RA'],fields['DEC'],fields['FILTER'])[0]
+        sel &= ((p9 & (fields['RA'] > 180)) | uncovered)
 
         fields = fields[sel]
-
 
         logging.info("Number of target fields: %d"%len(fields))
         logging.debug("Unique priorities: ",np.unique(fields['PRIORITY']))
@@ -263,7 +274,7 @@ class BlissSurvey(Survey):
     @staticmethod
     def planet9(ra,dec):
         """The high-probability region for Planet 9"""
-        sel = ((ra > 305)|(ra < 15)) & (dec > -40) & (dec < -30) # v0
+        sel = ((ra > 305)|(ra < 15)) & (dec > -40) & (dec < -30) # v0, v4
         #sel = ((ra > 305)|(ra < 15)) & (dec > -40) & (dec < -25) # v1
         #sel = ((ra > 305)|(ra < 15)) & (dec > -35) & (dec < -25) # v2
         #sel = ((ra > 305)|(ra < 15)) & (dec > -40) & (dec < -28) # v3
@@ -282,6 +293,19 @@ class BlissSurvey(Survey):
 
     @staticmethod
     def uncovered(ra,dec,band):
+        """
+        Determine which fields haven't been previously covered by DECam
+
+        Parameters:
+        -----------
+        ra  : right ascension of field
+        dec : declination of field
+        band: observing band
+
+        Returns:
+        --------
+        sel, frac : selection of fields and coverage fraction
+        """
         import healpy as hp
         #dirname = '/home/s1/kadrlica/projects/bliss/v0/data'
         #basename = 'decam_coverage_90s_%s_n1024.fits.gz'
@@ -297,11 +321,11 @@ class BlissSurvey(Survey):
             idx = (band==b)
             filename1 = os.path.join(dirname,basename1%b)
             logging.info("Reading %s..."%os.path.basename(filename1))
-            skymap1 = hp.read_map(filename1,verbose=True)
+            skymap1 = hp.read_map(filename1,verbose=False)
 
             filename2 = os.path.join(dirname,basename2%b)
             logging.info("Reading %s..."%os.path.basename(filename2))
-            skymap2 = hp.read_map(filename2,verbose=True)
+            skymap2 = hp.read_map(filename2,verbose=False)
 
             # Apply minimum exposure time selection
             #skymap = (skymap > 30)
@@ -339,6 +363,85 @@ class BlissFieldArray(FieldArray):
     OBJECT_FMT = 'BLISS field' + SEP + ' %s'
     SEQID_FMT = 'BLISS scheduled' + SEP + ' %(DATE)s'
     BANDS = BANDS
+
+    @classmethod
+    def query(cls, **kwargs):
+        """ Generate the database query.
+
+        Parameters:
+        -----------
+        kwargs : Keyword arguments to fill the query.
+
+        Returns:
+        --------
+        query  : The query string.
+        """
+        defaults = dict(propid=cls.SISPI_DICT['propid'], limit='',
+                        object_fmt = cls.OBJECT_FMT%'')
+        kwargs = setdefaults(kwargs,copy.deepcopy(defaults))
+
+        # Should pull this out to be accessible (self.query())?
+        query ="""
+        SELECT object, seqid, seqnum, telra as RA, teldec as dec,
+        expTime, filter,
+        to_char(to_timestamp(utc_beg), 'YYYY/MM/DD HH24:MI:SS.MS') AS DATE,
+        COALESCE(airmass,-1) as AIRMASS, COALESCE(moonangl,-1) as MOONANGLE,
+        COALESCE(ha, -1) as HOURANGLE, COALESCE(slewangl,-1) as SLEW
+        FROM exposure where propid = '%(propid)s' and exptime > 89
+        and discard = False and delivered = True and flavor = 'object'
+        and object like '%(object_fmt)s%%'
+        -- i-band AOS failures 'sqrt(pow(qc_fwhm,2)-pow(dimm2see,2)) > 0.9'
+        and id not in (652771,652794,652795,652796,652797,652799,652800,652803,652804,652806,652807,652808,652809,652810,652812,652813,652814,652815,652816,652817,652818,652819,652820,652821,652822,652823,652824,652825,652826,652827,652828,652829,652830,652831,652832,652833,652834,652835,652836,652837,652838,652839)
+        -- z-band AOS failers 'sqrt(pow(qc_fwhm,2)-pow(dimm2see,2)) > 0.7'
+        and id not in (652692,652693,652694,652695,652702,652703,652704,652705,652706,652707,652709,652752,652753,652760,652762,652763,652764,652765,652773,652774,652775,652776,652777,652781,652782,652784,652785,652786,652787,652788,652789,652790,652791,652792,652801,652802,652811)
+        ORDER BY utc_beg %(limit)s
+        """%kwargs
+        return query
+
+
+class AlfredoFieldArray(FieldArray):
+    """ Array of BLISS fields """
+    PROGRAM  = 'eRosita'
+    PROPID   = '2017A-0388'
+    PROPOSER = 'Alfredo Zenteno'
+
+    SISPI_DICT = copy.deepcopy(SISPI_DICT)
+    SISPI_DICT["program"] = PROGRAM
+    SISPI_DICT["propid"] = PROPID
+    SISPI_DICT["proposer"] = PROPOSER
+
+    OBJECT_FMT = '%s'
+    SEQID_FMT = '%(DATE)s'
+    BANDS = BANDS
+
+    @classmethod
+    def query(cls, **kwargs):
+        """ Generate the database query.
+
+        Parameters:
+        -----------
+        kwargs : Keyword arguments to fill the query.
+
+        Returns:
+        --------
+        query  : The query string.
+        """
+        from obztak.utils.date import setdefaults
+        defaults = dict(propid=cls.SISPI_DICT['propid'], limit='')
+        kwargs = setdefaults(kwargs,copy.deepcopy(defaults))
+
+        query ="""
+        SELECT object, seqid, seqnum, telra as RA, teldec as dec,
+        expTime, filter,
+        to_char(to_timestamp(utc_beg), 'YYYY/MM/DD HH24:MI:SS.MS') AS DATE,
+        COALESCE(airmass,-1) as AIRMASS, COALESCE(moonangl,-1) as MOONANGLE,
+        COALESCE(ha, -1) as HOURANGLE, COALESCE(slewangl,-1) as SLEW
+        FROM exposure where propid = '%(propid)s' and exptime > 59
+        and discard = False and delivered = True and flavor = 'object'
+        and qc_teff > 0.3
+        ORDER BY utc_beg %(limit)s
+        """%kwargs
+        return query
 
 
 class BlissScheduler(Scheduler):

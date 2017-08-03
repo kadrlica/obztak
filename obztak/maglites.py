@@ -223,7 +223,6 @@ class MaglitesFieldArray(FieldArray):
                         object_fmt = cls.OBJECT_FMT%'')
         kwargs = setdefaults(kwargs,copy.deepcopy(defaults))
 
-        # Should pull this out to be accessible (self.query())?
         query ="""
         SELECT object, seqid, seqnum, telra as RA, teldec as dec,
         expTime, filter,
@@ -233,8 +232,17 @@ class MaglitesFieldArray(FieldArray):
         FROM exposure where propid = '%(propid)s' and exptime > 89
         and discard = False and delivered = True and flavor = 'object'
         and object like '%(object_fmt)s%%'
-        -- Discard exposures from Y1 with teff < 0.1
-        and not (qc_teff < 0.1 and date < '2017/01/01')
+        -- Discard exposures with teff < 0.1
+        --and not (qc_teff < 0.1 and date < '2017/01/01')
+        and
+        (
+          -- All exposures from tonight
+          (date > '2017/06/20 18:00:00')
+          -- Or pass teff cut or NULL from past nights
+          or ((qc_teff is NULL or qc_teff > 0.1) and date < '2017/06/20 18:00:00')
+          -- Or teff = 0 from February
+          or (qc_teff = 0 and date < '2017/03/01' and date > '2017/02/01')
+        )
         ORDER BY utc_beg %(limit)s
         """%kwargs
         return query

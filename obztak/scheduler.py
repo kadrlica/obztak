@@ -35,7 +35,7 @@ class Scheduler(object):
     Deal with survey scheduling.
     """
     _defaults = odict([
-        ('tactician','coverage'),
+        #('tactician','coverage'),
         ('windows',os.path.join(fileio.get_datadir(),"maglites-windows.csv")),
         ('targets',os.path.join(fileio.get_datadir(),"maglites-target-fields.csv")),
     ])
@@ -145,11 +145,10 @@ class Scheduler(object):
         self.completed_fields = self.completed_fields + new_fields
         return self.completed_fields
 
-    def create_tactician(self,tactician=None):
-        if tactician is None: tactician = self._defaults['tactician']
-        return tactician_factory(tactician,mode=tactician)
+    def create_tactician(self,mode=None):
+        return tactician_factory(cls=mode,mode=mode)
 
-    def select_field(self, date, mode='coverage'):
+    def select_field(self, date, mode=None):
         """
         Select field(s) using the survey tactician.
 
@@ -195,7 +194,7 @@ class Scheduler(object):
         return field_select
 
 
-    def run(self, tstart=None, tstop=None, clip=False, plot=False, mode='coverage'):
+    def run(self, tstart=None, tstop=None, clip=False, plot=False, mode=None):
         """
         Schedule a chunk of exposures. This is the loop where date is incremented
 
@@ -231,7 +230,9 @@ class Scheduler(object):
         msg = "Previously completed fields: %i"%len(self.completed_fields)
         logging.info(msg)
 
-        msg = "Scheduling with tactician: %s"%mode
+        # This is not safe since tactician is re-created in select_field
+        self.tactician = self.create_tactician(mode)
+        msg = "Scheduling with '%s' in mode '%s'"%(self.tactician.__class__.__name__,self.tactician.mode)
         logging.info(msg)
 
         date = tstart
@@ -255,7 +256,14 @@ class Scheduler(object):
                         logging.warning(msg)
 
             # Select one (or more) fields from the tactician
-            field_select = self.select_field(date, mode)
+            try:
+                field_select = self.select_field(date, mode)
+            except Exception as e:
+                if not inside:
+                    logging.warning(str(e))
+                    break
+                else:
+                    raise(e)
 
             # Now update the time from the selected field
             date = ephem.Date(field_select[-1]['DATE']) + constants.FIELDTIME
@@ -468,7 +476,9 @@ class Scheduler(object):
                             help = 'time chunk')
         parser.add_argument('-f','--fields',default=None,
                             help='all target fields.')
-        parser.add_argument('-m','--mode',default='coverage',
+        #parser.add_argument('-m','--mode',default='coverage',
+        #                    help='Mode for scheduler tactician.')
+        parser.add_argument('-m','--mode',default=None,
                             help='Mode for scheduler tactician.')
         parser.add_argument('-w','--windows',default=None,
                             help='observation windows.')
