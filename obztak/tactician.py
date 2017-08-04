@@ -340,7 +340,8 @@ class BlissTactician(Tactician):
         # Higher weight for larger slews
         # slew = 10 deg -> weight = 1e2
         #weight += self.slew**2
-        weight += self.slew
+        #weight += self.slew
+        weight += 2 * self.slew
 
         # Higher weight for higher airmass
         # airmass = 1.4 -> weight = 6.4
