@@ -289,13 +289,16 @@ class BlissTactician(Tactician):
         weight = np.zeros(len(sel))
 
         # Moon angle constraints
-        moon_limit = 35.
+        moon_limit = 30.
         sel &= (moon_angle > moon_limit)
 
         # Moon band constraints
         if (self.moon.phase >= 80) and (self.moon.alt > -0.04):
             # Moon is very bright; only do z
             sel &= (np.char.count('z',self.fields['FILTER']) > 0)
+            # Allow i,z but prefer z
+            #sel &= (np.char.count('iz',self.fields['FILTER']) > 0)
+            #weight += 1e2 * (np.char.count('i',self.fields['FILTER']) > 0)
         elif (self.moon.phase >= 45) and (self.moon.alt > -0.04):
             # Moon is more than half full; do i,z
             sel &= (np.char.count('iz',self.fields['FILTER']) > 0)
@@ -307,6 +310,7 @@ class BlissTactician(Tactician):
             # No g-band if Sun altitude > -16 deg
             sel &= ~(np.char.count('g',self.fields['FILTER']) > 0)
 
+
         # Airmass cut
         airmass_min, airmass_max = self.CONDITIONS[self.mode]
         sel &= ((airmass > airmass_min) & (airmass < airmass_max))
@@ -316,9 +320,12 @@ class BlissTactician(Tactician):
         if len(self.completed_fields):
             dates = np.array(map(ephem.Date,self.completed_fields['DATE']))
             recent = self.completed_fields[(self.date - dates) < 10*ephem.hour]
-            sel &= ~np.in1d(self.fields.field_id,recent.field_id)
+
+            #sel &= ~np.in1d(self.fields.field_id,recent.field_id)
+
             # Higher weight for duplicate HEXs
             weight += 500.0 * np.in1d(self.fields['HEX'],recent['HEX'])
+            weight += 1e9 * np.in1d(self.fields.field_id,recent.field_id)
             #cut = np.in1d(self.fields.field_id,recent.field_id)
             #sel &= ~cut
 
@@ -327,8 +334,8 @@ class BlissTactician(Tactician):
         # Higher weight for rising fields (higher hour angle)
         # HA [min,max] = [-53,54] (for airmass 1.4)
         #weight += 5.0 * self.hour_angle
-        #weight += 1.0 * self.hour_angle
-        weight += 0.1 * self.hour_angle
+        weight += 1.0 * self.hour_angle
+        #weight += 0.1 * self.hour_angle
 
         # Higher weight for larger slews
         # slew = 10 deg -> weight = 1e2
@@ -342,18 +349,20 @@ class BlissTactician(Tactician):
         # Higher weight for fields close to the moon (when up)
         # angle = 50 -> weight = 6.4
         if (self.moon.alt > -0.04):
-            weight += 100 * (35./moon_angle)**3
+            #weight += 100 * (35./moon_angle)**3
+            #weight += 10 * (35./moon_angle)**3
+            weight += 1 * (35./moon_angle)**3
 
         # Try hard to do the first tiling
         weight += 1e6 * (self.fields['TILING'] - 1)
 
         # Prioritize Planet 9 Region late in the survey/night
-        ra_zenith, dec_zenith = np.degrees(self.observatory.radec_of(0,'90'))
-        if ra_zenith > 270:
-            weight += 1e6 * (self.fields['PRIORITY'] - 1)
-            # Allow i,z exposures at high penalty
-            #sel &= (np.char.count('iz',self.fields['FILTER']) > 0)
-            #weight += 1e8 * (np.char.count('iz',self.fields['FILTER']) > 0)
+        #ra_zenith, dec_zenith = np.degrees(self.observatory.radec_of(0,'90'))
+        #if ra_zenith > 270:
+        #    weight += 1e6 * (self.fields['PRIORITY'] - 1)
+        #    # Allow i,z exposures at high penalty
+        #    #sel &= (np.char.count('iz',self.fields['FILTER']) > 0)
+        #    #weight += 1e8 * (np.char.count('iz',self.fields['FILTER']) > 0)
 
         # Set infinite weight to all disallowed fields
         weight[~sel] = np.inf
@@ -364,13 +373,15 @@ class BlissTactician(Tactician):
         weight = self.weight
         index = np.array([np.argmin(weight)],dtype=int)
         if np.any(~np.isfinite(weight[index])):
+        #if True:
             msg = "Infinite weight selected"
             print(msg)
             import obztak.utils.ortho, pylab as plt
             airmass_min, airmass_max = self.CONDITIONS[self.mode]
-            obztak.utils.ortho.plotFields(self.completed_fields[-1],self.fields,self.completed_fields,options_basemap=dict(airmass=airmass_max))
+            bmap = obztak.utils.ortho.plotFields(self.completed_fields[-1],self.fields,self.completed_fields,options_basemap=dict(airmass=airmass_max))
             import pdb; pdb.set_trace()
             raise ValueError(msg)
+
         return index
 
 if __name__ == "__main__":
