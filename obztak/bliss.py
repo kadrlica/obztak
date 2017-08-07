@@ -411,7 +411,7 @@ class BlissFieldArray(FieldArray):
         -- z-band AOS failers 'sqrt(pow(qc_fwhm,2)-pow(dimm2see,2)) > 0.7'
         and id not in (652692,652693,652694,652695,652702,652703,652704,652705,652706,652707,652709,652752,652753,652760,652762,652763,652764,652765,652773,652774,652775,652776,652777,652781,652782,652784,652785,652786,652787,652788,652789,652790,652791,652792,652801,652802,652811)
         -- t_eff values (careful about nulls)
-        and not (qc_teff < 0.1)
+        -- and not (qc_teff < 0.1)
         ORDER BY utc_beg %(limit)s
         """%kwargs
         return query
