@@ -54,6 +54,12 @@ class BlissSurvey(Survey):
         ['2017/07/15', 'second'], # phase=57%, set=nope
         ]
 
+    extra_night = [
+        ['2017/08/05', 'second'], # phase=99%, set=06:40 (4h dark)
+        ['2017/08/06', 'full'],   # phase=100%, set=nope
+        ['2017/08/07', 'full'],   # phase=99%, set=nope
+    ]
+
     alfredo_nights = [
         ['2017/03/06', 'full'],  # level=9
         ['2017/03/07','second'], # level=10
@@ -289,11 +295,16 @@ class BlissSurvey(Survey):
     def planet9v2(ra,dec):
         """The other high-probability region for Planet 9"""
         from matplotlib.path import Path
-        poly = np.genfromtxt(fileio.get_datafile('blissII-poly.txt'),
+        data = np.genfromtxt(fileio.get_datafile('blissII-poly.txt'),
                              names=['RA','DEC','POLY'])
-        poly = poly[poly['POLY'] == 1]
+        poly = data[data['POLY'] == 1]
         path = Path(zip(poly['RA'],poly['DEC']))
         sel = path.contains_points(np.vstack([ra,dec]).T)
+
+        poly = data[data['POLY'] == 4]
+        path = Path(zip(poly['RA'],poly['DEC']))
+        sel |= path.contains_points(np.vstack([ra,dec]).T)
+
         return sel
 
     @staticmethod
@@ -411,7 +422,7 @@ class BlissFieldArray(FieldArray):
         -- z-band AOS failers 'sqrt(pow(qc_fwhm,2)-pow(dimm2see,2)) > 0.7'
         and id not in (652692,652693,652694,652695,652702,652703,652704,652705,652706,652707,652709,652752,652753,652760,652762,652763,652764,652765,652773,652774,652775,652776,652777,652781,652782,652784,652785,652786,652787,652788,652789,652790,652791,652792,652801,652802,652811)
         -- t_eff values (careful about nulls)
-        -- and not (qc_teff < 0.1)
+        and not (qc_teff < 0.1 and date < '2017/08/07 12:00:00')
         ORDER BY utc_beg %(limit)s
         """%kwargs
         return query

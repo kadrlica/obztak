@@ -321,13 +321,12 @@ class BlissTactician(Tactician):
             dates = np.array(map(ephem.Date,self.completed_fields['DATE']))
             recent = self.completed_fields[(self.date - dates) < 10*ephem.hour]
 
-            #sel &= ~np.in1d(self.fields.field_id,recent.field_id)
+            # Don't allow the same fields twice on one night
+            sel &= ~np.in1d(self.fields.field_id,recent.field_id)
 
             # Higher weight for duplicate HEXs
             weight += 500.0 * np.in1d(self.fields['HEX'],recent['HEX'])
-            weight += 1e9 * np.in1d(self.fields.field_id,recent.field_id)
-            #cut = np.in1d(self.fields.field_id,recent.field_id)
-            #sel &= ~cut
+            #weight += 1e9 * np.in1d(self.fields.field_id,recent.field_id)
 
         # Set the weights for each field. Lower weight means more favorable.
 
@@ -341,7 +340,7 @@ class BlissTactician(Tactician):
         # slew = 10 deg -> weight = 1e2
         #weight += self.slew**2
         #weight += self.slew
-        weight += 2 * self.slew
+        weight += 1e3 * self.slew
 
         # Higher weight for higher airmass
         # airmass = 1.4 -> weight = 6.4
