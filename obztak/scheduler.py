@@ -259,6 +259,7 @@ class Scheduler(object):
             try:
                 field_select = self.select_field(date, mode)
             except Exception as e:
+                # Only write if error occurred outside observing window
                 if not inside:
                     logging.warning(str(e))
                     break
@@ -394,9 +395,9 @@ class Scheduler(object):
 
             if plot:
                 field_select = scheduled_fields[-1:]
-                ortho.plotField(field_select,self.target_fields,self.completed_fields)
+                bmap = ortho.plotField(field_select,self.target_fields,self.completed_fields)
                 if (raw_input(' ...continue ([y]/n)').lower()=='n'):
-                    break
+                    import pdb; pdb.set_trace()
 
             chunks.append(scheduled_fields)
             start = ephem.Date(chunks[-1]['DATE'][-1]) + constants.FIELDTIME
@@ -447,7 +448,7 @@ class Scheduler(object):
                 ortho.plotField(self.completed_fields[-1:],self.target_fields,self.completed_fields)#,options_basemap=dict(date='2017/02/21 05:00:00'))
 
                 if (raw_input(' ...continue ([y]/n)').lower()=='n'):
-                    break
+                    import pdb; pdb.set_trace()
 
         if plot: raw_input(' ...finish... ')
         return self.scheduled_nites

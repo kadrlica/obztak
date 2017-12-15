@@ -25,7 +25,7 @@ PROGRAM = NAME.lower()
 PROPID  = '2017A-0260'
 PROPOSER = 'Soares-Santos'
 BANDS = ['g','r','i','z']
-TILINGS = 2
+TILINGS = 4
 
 class BlissSurvey(Survey):
     """ Survey sublcass for BLISS. """
@@ -53,6 +53,12 @@ class BlissSurvey(Survey):
         ['2017/07/02', 'second'], # phase=71%, set=06:40 (4h dark)
         ['2017/07/15', 'second'], # phase=57%, set=nope
         ]
+
+    extra_night = [
+        ['2017/08/05', 'second'], # phase=99%, set=06:40 (4h dark)
+        ['2017/08/06', 'full'],   # phase=100%, set=nope
+        ['2017/08/07', 'full'],   # phase=99%, set=nope
+    ]
 
     alfredo_nights = [
         ['2017/03/06', 'full'],  # level=9
@@ -168,12 +174,14 @@ class BlissSurvey(Survey):
         p9 = self.planet9(fields['RA'],fields['DEC'])
         ligo = self.ligo_mw(fields['RA'],fields['DEC'])
         alfredo = self.alfredo(fields['RA'],fields['DEC'])
+        p9v2 = self.planet9v2(fields['RA'],fields['DEC'])
 
         fields['PRIORITY'][p9] = 1
         fields['PRIORITY'][ligo] = 2
         fields['PRIORITY'][alfredo] = 3
 
-        sel = (p9 | ligo | alfredo)
+        #sel = (p9 | ligo | alfredo)
+        sel = (p9 | ligo | alfredo | p9v2)
 
         # Apply telescope constraints
         sel &= (fields['DEC'] > constants.SOUTHERN_REACH)
@@ -182,7 +190,7 @@ class BlissSurvey(Survey):
         #sel &= self.uncovered(fields['RA'],fields['DEC'],fields['FILTER'])[0]
         # Apply covered fields (but take everything in P9 region)
         uncovered = self.uncovered(fields['RA'],fields['DEC'],fields['FILTER'])[0]
-        sel &= ((p9 & (fields['RA'] > 180)) | uncovered)
+        sel &= ( (p9v2) | (p9 & (fields['RA'] > 180)) | uncovered )
 
         fields = fields[sel]
 
@@ -228,6 +236,9 @@ class BlissSurvey(Survey):
 
             if not sys.flags.interactive:
                 plt.show(block=True)
+
+        # Just 3rd tiling
+        #fields = fields[fields['TILING'] == 3]
 
         if outfile: fields.write(outfile)
 
@@ -278,6 +289,22 @@ class BlissSurvey(Survey):
         #sel = ((ra > 305)|(ra < 15)) & (dec > -40) & (dec < -25) # v1
         #sel = ((ra > 305)|(ra < 15)) & (dec > -35) & (dec < -25) # v2
         #sel = ((ra > 305)|(ra < 15)) & (dec > -40) & (dec < -28) # v3
+        return sel
+
+    @staticmethod
+    def planet9v2(ra,dec):
+        """The other high-probability region for Planet 9"""
+        from matplotlib.path import Path
+        data = np.genfromtxt(fileio.get_datafile('blissII-poly.txt'),
+                             names=['RA','DEC','POLY'])
+        poly = data[data['POLY'] == 1]
+        path = Path(zip(poly['RA'],poly['DEC']))
+        sel = path.contains_points(np.vstack([ra,dec]).T)
+
+        poly = data[data['POLY'] == 4]
+        path = Path(zip(poly['RA'],poly['DEC']))
+        sel |= path.contains_points(np.vstack([ra,dec]).T)
+
         return sel
 
     @staticmethod
@@ -394,6 +421,8 @@ class BlissFieldArray(FieldArray):
         and id not in (652771,652794,652795,652796,652797,652799,652800,652803,652804,652806,652807,652808,652809,652810,652812,652813,652814,652815,652816,652817,652818,652819,652820,652821,652822,652823,652824,652825,652826,652827,652828,652829,652830,652831,652832,652833,652834,652835,652836,652837,652838,652839)
         -- z-band AOS failers 'sqrt(pow(qc_fwhm,2)-pow(dimm2see,2)) > 0.7'
         and id not in (652692,652693,652694,652695,652702,652703,652704,652705,652706,652707,652709,652752,652753,652760,652762,652763,652764,652765,652773,652774,652775,652776,652777,652781,652782,652784,652785,652786,652787,652788,652789,652790,652791,652792,652801,652802,652811)
+        -- t_eff values (careful about nulls)
+        and not (qc_teff < 0.1 and date < '2017/08/07 12:00:00')
         ORDER BY utc_beg %(limit)s
         """%kwargs
         return query
