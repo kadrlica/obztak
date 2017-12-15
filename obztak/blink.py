@@ -20,62 +20,30 @@ from obztak.utils import fileio
 from obztak.utils.constants import BANDS,SMASH_POLE,CCD_X,CCD_Y,STANDARDS,COLORS
 from obztak.utils.date import setdefaults
 
-NAME    = 'BLISS'
+NAME    = 'BLINK'
 PROGRAM = NAME.lower()
-PROPID  = '2017A-0260'
-PROPOSER = 'Soares-Santos'
-BANDS = ['g','r','i','z']
-TILINGS = 4
+PROPID  = '2018A-9995'
+PROPOSER = 'Makler'
+BANDS = ['i']
+TILINGS = 3
 
-class BlissSurvey(Survey):
-    """ Survey sublcass for BLISS. """
+class BlinkSurvey(Survey):
+    """ Survey sublcass for BLINK. """
 
-    # 2017A SCHEDULED (bliss-windows.csv is actually used)
+    # 2018A SCHEDULED (blink-windows.csv is actually used for scheduling)
     nights = [
-        ['2017/02/07', 'second'], # phase=90%, set=07:40 (1.5h dark)
-        ['2017/02/08', 'second'], # phase=95%, set=08:40 (0.5h dark)
-        ['2017/02/13', 'second'], # phase=90%, set=nope
-        ['2017/02/14', 'second'], # phase=82%, set=nope
-        ['2017/02/19', 'second'], # phase=37%, set=nope
-        ['2017/02/20', 'second'], # phase=28%, rise=05:51 (1h dark)
-        ['2017/03/07', 'first'],  # phase=77%, set=nope
-        ['2017/03/17', 'second'], # phase=73%, set=nope
-        ['2017/04/13', 'second'], # phase=92%, set=nope
-        ['2017/04/14', 'second'], # phase=86%, set=nope
-        ['2017/05/02', 'first'],  # phase=49%, set=04:20 (0.2h dark)
-        ['2017/05/30', 'first'],  # phase=34%, set=03:12 (1.3h dark)
-        ['2017/05/31', 'first'],  # phase=45%, set=04:11 (0.3h dark)
-        ['2017/06/01', 'first'],  # phase=55%, set=nope
-        ['2017/06/02', 'full'],   # phase=65%, set=06:04 (5h dark)
-        ['2017/06/03', 'full'],   # phase=75%, set=06:58 (4h dark)
-        ['2017/06/04', 'full'],   # phase=82%, set=07:52 (3h dark)
-        ['2017/07/01', 'second'], # phase=62%, set=05:47 (5h dark)
-        ['2017/07/02', 'second'], # phase=71%, set=06:40 (4h dark)
-        ['2017/07/15', 'second'], # phase=57%, set=nope
-        ]
-
-    extra_night = [
-        ['2017/08/05', 'second'], # phase=99%, set=06:40 (4h dark)
-        ['2017/08/06', 'full'],   # phase=100%, set=nope
-        ['2017/08/07', 'full'],   # phase=99%, set=nope
-    ]
-
-    alfredo_nights = [
-        ['2017/03/06', 'full'],  # level=9
-        ['2017/03/07','second'], # level=10
-        ['2017/06/21','first'],
+        ['2018/02/02', 'second'], 
+        ['2018/02/03', 'second'], 
+        ['2018/02/04', 'second'], 
+        ['2018/02/05', 'second'], 
+        ['2018/04/17', 'first']
         ]
     
     def prepare_fields(self, infile=None, outfile=None, mode='bliss_rotate', plot=True, smcnod=False):
-        """Create the list of fields to be targeted by the BLISS survey.
+        """Create the list of fields to be targeted by the BLINK survey.
 
-        Selection starts with 3 regions:
-        - P9 - Planet 9 region above DES footprint (priority 1)
-        - LIGO - Region targeted based on LIGO sensitivity maps (and good for MW)
-        - Alfredo - Overlap with Alfredo's eRosita companion survey.
-
-        Fields that have been previously covered by DECam are removed
-        from the LIGO and Alfredo fooptrint regions.
+        Selection starts with 1 region:
+        
 
         Parameters:
         -----------
@@ -171,17 +139,8 @@ class BlissSurvey(Survey):
         #sel = self.footprint(fields['RA'],fields['DEC']) # NORMAL OPERATION
 
         # Apply footprint selection after tiling/dither
-        p9 = self.planet9(fields['RA'],fields['DEC'])
-        ligo = self.ligo_mw(fields['RA'],fields['DEC'])
-        alfredo = self.alfredo(fields['RA'],fields['DEC'])
-        p9v2 = self.planet9v2(fields['RA'],fields['DEC'])
-
-        fields['PRIORITY'][p9] = 1
-        fields['PRIORITY'][ligo] = 2
-        fields['PRIORITY'][alfredo] = 3
-
-        #sel = (p9 | ligo | alfredo)
-        sel = (p9 | ligo | alfredo | p9v2)
+        sel = self.blink(fields['RA'],fields['DEC'])
+        fields['PRIORITY'][sel] = 1
 
         # Apply telescope constraints
         sel &= (fields['DEC'] > constants.SOUTHERN_REACH)
@@ -190,7 +149,7 @@ class BlissSurvey(Survey):
         #sel &= self.uncovered(fields['RA'],fields['DEC'],fields['FILTER'])[0]
         # Apply covered fields (but take everything in P9 region)
         uncovered = self.uncovered(fields['RA'],fields['DEC'],fields['FILTER'])[0]
-        sel &= ( (p9v2) | (p9 & (fields['RA'] > 180)) | uncovered )
+        sel &= uncovered
 
         fields = fields[sel]
 
@@ -246,76 +205,14 @@ class BlissSurvey(Survey):
 
     @staticmethod
     def footprint(ra,dec):
-        l, b = cel2gal(ra, dec)
-        # Starting to the north of the Galactic plane
-        sel = ((ra > 120) & (ra < 360)) | (ra < 10)
-        # Band in declination
-        sel &= (dec < -30 ) & (dec > -40)
-        # LIGO/DSPHS high probability region south of nominal stripe
-        sel |= ((ra > 140) & (ra < 185) & (dec < -30) & (dec > -60))
-        # Alfredo's eRosita survey
-        sel |= BlissSurvey.alfredo(ra,dec)
-        # 10 deg from the Galactic plane
-        sel &= (np.fabs(b) > 10.)
-        return sel
-
-    @staticmethod
-    def footprint(ra,dec):
         # The high-probability region for LIGO/MW dwarfs
-        sel = BlissSurvey.ligo_mw(ra,dec)
-        # Alfredo's eRosita survey
-        sel |= BlissSurvey.alfredo(ra,dec)
-        # Planet 9 Region
-        sel |= BlissSurvey.planet9(ra,dec)
-
-        return sel
+        return BlinkSurvey.blink(ra,dec)
 
     @staticmethod
-    def ligo_mw(ra,dec):
-        """The high-probability region for LIGO/MW dwarfs"""
-        l, b = cel2gal(ra, dec)
-        # Starting to the north of the Galactic plane
-        sel = (ra > 120) & (ra < 270)
-        # Upper limit in declination
-        sel &= (dec < -30 )
-        # 10 deg above the Galactic plane
-        sel &= (b > 10.)
-        return sel
-
-    @staticmethod
-    def planet9(ra,dec):
-        """The high-probability region for Planet 9"""
-        sel = ((ra > 305)|(ra < 15)) & (dec > -40) & (dec < -30) # v0, v4
-        #sel = ((ra > 305)|(ra < 15)) & (dec > -40) & (dec < -25) # v1
-        #sel = ((ra > 305)|(ra < 15)) & (dec > -35) & (dec < -25) # v2
-        #sel = ((ra > 305)|(ra < 15)) & (dec > -40) & (dec < -28) # v3
-        return sel
-
-    @staticmethod
-    def planet9v2(ra,dec):
-        """The other high-probability region for Planet 9"""
-        from matplotlib.path import Path
-        data = np.genfromtxt(fileio.get_datafile('blissII-poly.txt'),
-                             names=['RA','DEC','POLY'])
-        poly = data[data['POLY'] == 1]
-        path = Path(zip(poly['RA'],poly['DEC']))
-        sel = path.contains_points(np.vstack([ra,dec]).T)
-
-        poly = data[data['POLY'] == 4]
-        path = Path(zip(poly['RA'],poly['DEC']))
-        sel |= path.contains_points(np.vstack([ra,dec]).T)
-
-        return sel
-
-    @staticmethod
-    def alfredo(ra,dec):
-        """Alfredo's eRosita survey extension"""
-        l, b = cel2gal(ra, dec)
-        sel = ((b > 20) & (b < 30))
-        sel &= ((l < 360) & (l > 240))
-        #sel &= ((ra > 135) & (ra < 245))
-        sel &= ((ra > 135) & (ra < 180))
-        sel &= ((dec > -30) & (dec < -10))
+    def blink(ra,dec):
+        """ Initial guess at BLINK survey region """
+        sel  = ( dec > 4) & (dec < 11)
+        sel &= (( ra > 133) & (ra < 141)) | ((ra > 170) & (ra < 238))
         return sel
 
     @staticmethod
@@ -336,7 +233,8 @@ class BlissSurvey(Survey):
         import healpy as hp
         #dirname = '/home/s1/kadrlica/projects/bliss/v0/data'
         #basename = 'decam_coverage_90s_%s_n1024.fits.gz'
-        dirname = '/Users/kadrlica/bliss/observing/data'
+        #dirname = '/Users/kadrlica/bliss/observing/data'
+        dirname = '/home/s1/kadrlica/software/obztak/obztak/data'
         basename1 = 'decam_max_expmap_%s_n1024.fits.gz'
         basename2 = 'decam_sum_expmap_%s_n1024.fits.gz'
 
@@ -376,8 +274,8 @@ class BlissSurvey(Survey):
         sel = (frac < 2/3.)
         return sel,frac
 
-class BlissFieldArray(FieldArray):
-    """ Array of BLISS fields """
+class BlinkFieldArray(FieldArray):
+    """ Array of BLINK fields """
     PROGRAM  = PROGRAM
     PROPID   = PROPID
     PROPOSER = PROPOSER
@@ -387,8 +285,8 @@ class BlissFieldArray(FieldArray):
     SISPI_DICT["propid"] = PROPID
     SISPI_DICT["proposer"] = PROPOSER
 
-    OBJECT_FMT = 'BLISS field' + SEP + ' %s'
-    SEQID_FMT = 'BLISS scheduled' + SEP + ' %(DATE)s'
+    OBJECT_FMT = 'BLINK field' + SEP + ' %s'
+    SEQID_FMT = 'BLINK scheduled' + SEP + ' %(DATE)s'
     BANDS = BANDS
 
     @classmethod
@@ -417,66 +315,15 @@ class BlissFieldArray(FieldArray):
         FROM exposure where propid = '%(propid)s' and exptime > 89
         and discard = False and delivered = True and flavor = 'object'
         and object like '%(object_fmt)s%%'
-        -- i-band AOS failures 'sqrt(pow(qc_fwhm,2)-pow(dimm2see,2)) > 0.9'
-        and id not in (652771,652794,652795,652796,652797,652799,652800,652803,652804,652806,652807,652808,652809,652810,652812,652813,652814,652815,652816,652817,652818,652819,652820,652821,652822,652823,652824,652825,652826,652827,652828,652829,652830,652831,652832,652833,652834,652835,652836,652837,652838,652839)
-        -- z-band AOS failers 'sqrt(pow(qc_fwhm,2)-pow(dimm2see,2)) > 0.7'
-        and id not in (652692,652693,652694,652695,652702,652703,652704,652705,652706,652707,652709,652752,652753,652760,652762,652763,652764,652765,652773,652774,652775,652776,652777,652781,652782,652784,652785,652786,652787,652788,652789,652790,652791,652792,652801,652802,652811)
-        -- t_eff values (careful about nulls)
-        and not (qc_teff < 0.1 and date < '2017/08/07 12:00:00')
         ORDER BY utc_beg %(limit)s
         """%kwargs
         return query
 
 
-class AlfredoFieldArray(FieldArray):
-    """ Array of BLISS fields """
-    PROGRAM  = 'eRosita'
-    PROPID   = '2017A-0388'
-    PROPOSER = 'Alfredo Zenteno'
-
-    SISPI_DICT = copy.deepcopy(SISPI_DICT)
-    SISPI_DICT["program"] = PROGRAM
-    SISPI_DICT["propid"] = PROPID
-    SISPI_DICT["proposer"] = PROPOSER
-
-    OBJECT_FMT = '%s'
-    SEQID_FMT = '%(DATE)s'
-    BANDS = BANDS
-
-    @classmethod
-    def query(cls, **kwargs):
-        """ Generate the database query.
-
-        Parameters:
-        -----------
-        kwargs : Keyword arguments to fill the query.
-
-        Returns:
-        --------
-        query  : The query string.
-        """
-        from obztak.utils.date import setdefaults
-        defaults = dict(propid=cls.SISPI_DICT['propid'], limit='')
-        kwargs = setdefaults(kwargs,copy.deepcopy(defaults))
-
-        query ="""
-        SELECT object, seqid, seqnum, telra as RA, teldec as dec,
-        expTime, filter,
-        to_char(to_timestamp(utc_beg), 'YYYY/MM/DD HH24:MI:SS.MS') AS DATE,
-        COALESCE(airmass,-1) as AIRMASS, COALESCE(moonangl,-1) as MOONANGLE,
-        COALESCE(ha, -1) as HOURANGLE, COALESCE(slewangl,-1) as SLEW
-        FROM exposure where propid = '%(propid)s' and exptime > 59
-        and discard = False and delivered = True and flavor = 'object'
-        and qc_teff > 0.3
-        ORDER BY utc_beg %(limit)s
-        """%kwargs
-        return query
-
-
-class BlissScheduler(Scheduler):
+class BlinkScheduler(Scheduler):
     _defaults = odict(Scheduler._defaults.items() + [
         ('tactician','coverage'),
-        ('windows',os.path.join(fileio.get_datadir(),"bliss-windows.csv")),
-        ('targets',os.path.join(fileio.get_datadir(),"bliss-target-fields.csv")),
+        ('windows',os.path.join(fileio.get_datadir(),"blink-windows.csv")),
+        ('targets',os.path.join(fileio.get_datadir(),"blink-target-fields.csv")),
     ])
-    FieldType = BlissFieldArray
+    FieldType = BlinkFieldArray
