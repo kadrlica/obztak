@@ -234,7 +234,7 @@ class BlinkSurvey(Survey):
         #dirname = '/home/s1/kadrlica/projects/bliss/v0/data'
         #basename = 'decam_coverage_90s_%s_n1024.fits.gz'
         #dirname = '/Users/kadrlica/bliss/observing/data'
-        dirname = '/home/s1/kadrlica/software/obztak/obztak/data'
+        dirname = fileio.get_datadir() #'/home/s1/kadrlica/software/obztak/obztak/data'
         basename1 = 'decam_max_expmap_%s_n1024.fits.gz'
         basename2 = 'decam_sum_expmap_%s_n1024.fits.gz'
 
