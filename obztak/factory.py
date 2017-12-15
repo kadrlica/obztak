@@ -47,7 +47,7 @@ TACTICIANS = odict([
     ('maglites','ConditionTactician'),
     ('complete','ConditionTactician'),
     ('bliss','BlissTactician'),
-    ('blink','BlissTactician'),
+    ('blink','ConditionTactician'),
 ])
 
 def factory(cls, modules=None, **kwargs):
