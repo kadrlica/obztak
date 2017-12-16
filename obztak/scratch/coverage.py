@@ -117,8 +117,9 @@ for band,sky in sum_skymaps.items():
     #plt.clf()
 
     outfile = outbase%(band,NSIDE)+'_hist.png'
+    print "Writing %s..."%outfile
     plt.hist(sky,bins=np.linspace(1,1e3,50),color=COLORS[band])
-    plt.title(title)
+    plt.title('%s-band'%band); plt.xlabel('sum(TEFF * EXPTIME)')
     plt.savefig(outfile,bbox_inches='tight')
     plt.clf()
 
@@ -150,8 +151,9 @@ for band,sky in max_skymaps.items():
     #plt.clf()
 
     outfile = outbase%(band,NSIDE)+'_hist.png'
-    plt.hist(sky,bins=np.linspace(1,1e3,50),color=COLORS[band])
-    plt.title(title); plt.xlabel(label)
+    print "Writing %s..."%outfile
+    plt.hist(sky,bins=np.linspace(1,5e2,50),color=COLORS[band])
+    plt.title('%s-band'%band); plt.xlabel('max(TEFF * EXPTIME)')
     plt.savefig(outfile,bbox_inches='tight')
     plt.clf()
 
