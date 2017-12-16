@@ -25,6 +25,8 @@ if __name__ == "__main__":
                         help='plot chunks of exposures file-by-file.')
     parser.add_argument('-a','--all',action='store_true',
                         help='plot all exposures at once.')
+    parser.add_argument('--airmass',default=None,type=float,
+                        help='Airmass to plot.')
     parser.add_argument('-c','--complete',const=None,nargs='?',action='append',
                         help="fields that have been completed.")
     parser.add_argument('-o','--outfile',
@@ -33,6 +35,7 @@ if __name__ == "__main__":
 
     # Set the backend for output (doesn't really work here...)
     #if args.outfile is not None: matplotlib.use('Agg')
+    survey = get_survey()
 
     ext = os.path.splitext(args.outfile)[-1] if args.outfile else None
 
@@ -42,7 +45,7 @@ if __name__ == "__main__":
         fields = fields + FieldArray.read(filename)
         if args.chunk: idx.append(len(fields)-1)
 
-    completed_fields = field_factory(get_survey())
+    completed_fields = field_factory(survey)
     if args.complete is not None:
         for f in args.complete:
             if f is None:
@@ -52,7 +55,14 @@ if __name__ == "__main__":
 
     movie = True if ext in MOVIES else False
         
-    options = dict(airmass=1.4,smash=False)
+    options = dict(airmass=args.airmass,smash=False)
+
+    if args.airmass is not None:
+        options['airmass'] = args.airmass
+    elif survey in ['maglites','pals']:
+        options['airmass'] = 2.0
+    else:
+        options['airmass'] = 1.4
 
     if args.all:
         plotFields(fields[-1],target_fields=fields,completed_fields=completed_fields+fields,options_basemap=options)
