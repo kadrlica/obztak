@@ -90,11 +90,59 @@ class DECamBasemap(Basemap):
         return x, y
 
     @staticmethod
-    def roll(ra,dec):
-        idx = np.abs(ra - 180).argmin()
-        if   (ra[idx]<180) and (ra[idx+1]>180): idx += 1
-        elif (ra[idx]>180) and (ra[idx+1]<180): idx += 1
-        return np.roll(ra,-idx), np.roll(dec,-idx)
+    def wrap_index(lon, lat, wrap=180.):
+        """ Find the index where the array wraps.
+        """
+        # No wrap: ignore
+        if wrap is None:  return None
+
+        lon = np.atleast_1d(lon)
+        lat = np.atleast_1d(lat)
+
+        # No array: ignore
+        if len(lon)==1 or len(lat)==1: return None
+
+        # Map [0,360)
+        lon = np.mod(lon,360)
+        wrap = np.mod(wrap,360)
+
+        # Find the index of the entry closest to the wrap angle
+        idx = np.abs(lon - wrap).argmin()
+        # First or last index: ignore
+        if idx == 0 or idx+1 == len(lon): return None
+        # Value exactly equals wrap, choose next value
+        elif (lon[idx] == wrap): idx += 1
+        # Wrap angle sandwiched
+        elif (lon[idx]<wrap) and (lon[idx+1]>wrap): idx += 1
+        elif (lon[idx]<wrap) and (lon[idx-1]>wrap): idx += 0
+        elif (lon[idx]>wrap) and (lon[idx+1]<wrap): idx += 1
+        elif (lon[idx]>wrap) and (lon[idx-1]<wrap): idx += 0
+        # There is no wrap: ignore
+        else: return None
+
+        return idx
+
+    @classmethod
+    def roll(cls,lon,lat,wrap=180.):
+        """ Roll an lon,lat combination to split 180 boundary
+        Parameters:
+        -----------
+        lon : right ascension (deg)
+        lat: declination (deg)
+        wrap_angle : angle to wrap at (deg)
+        """
+        lon = np.atleast_1d(lon)
+        lat = np.atleast_1d(lat)
+
+        # Do nothing
+        if wrap is None: return lon,lat
+        if len(lon)==1 or len(lat)==1: return lon,lat
+
+        idx = cls.wrap_index(lon,lat,wrap)
+        if idx is None: return lon, lat
+
+        return np.roll(lon,-idx), np.roll(lat,-idx)
+
 
     @staticmethod
     def split(ra,angle=180):
