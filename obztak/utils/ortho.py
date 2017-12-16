@@ -139,6 +139,7 @@ class DECamBasemap(Basemap):
         self.draw_polygon_radec(perim['ra'],perim['dec'],**kwargs)
 
     def draw_polygon_radec(self,ra,dec,**kwargs):
+        ra,dec = self.roll(ra,dec)
         xy = self.proj(ra,dec)
         self.plot(*xy,**kwargs)
         

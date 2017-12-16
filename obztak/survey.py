@@ -383,6 +383,55 @@ class Survey(object):
         ra1 += 360 * (ra1 < 0)
         return ra1,dec1
 
+############################################################
+
+def survey_coverage(nside=1024, bands=['g','r','i','z'],propid=None, exptime=30, teff=0.01):
+    from obztak.utils.database import Database
+    import healpy as hp
+
+    bands = np.atleast_1d(bands)
+
+    db = Database()
+    db.connect()
+
+    params = dict(propid = '')
+    if propid:
+        params['propid'] = "(propid = '%s')"%propid
+    else:
+        params['propid'] = "(propid not like '%-9999')"
+
+    params['exptime'] = "(exptime > %s)"%exptime
+    params['teff'] = "not (qc_teff < %s)"%teff
+    params['filter'] = "filter in (%s)"%(','.join(["'%s'"%b for b in bands]))
+
+    query = """select id as expnum, telra as ra, teldec as dec, filter, propid,
+    exptime from exposure where
+    discard = False and delivered = True and flavor = 'object'
+    and %(propid)s and %(exptime)s and %(teff)s and %(filter)s;
+    """%params
+    logging.debug(query)
+
+    data = db.query2rec(query)
+
+    out = dict()
+
+    for b in bands:
+        hpxmap = np.zeros(hp.nside2npix(nside))
+        d = data[data['filter'] == b]
+        theta = np.radians(90. - d['dec'])
+        phi = np.radians(d['ra'])
+        vec = hp.ang2vec(theta,phi)
+        for i,v in enumerate(vec):
+            if i%10000 == 0:
+                logging.info('%i/%i'%(i,len(vec)))
+            pix = hp.query_disc(nside,v,radius=np.radians(constants.DECAM))
+            hpxmap[pix] += d[i]['exptime']
+
+        hpxmap[np.where(hpxmap ==0)] = hp.UNSEEN
+        out[b] = hpxmap
+    return out
+
+############################################################
 
 def parser():
     import argparse
@@ -406,7 +455,6 @@ def parser():
                         help = "Don't include time for standard star observations.")
     return parser
 
-############################################################
 
 if __name__ == '__main__':
     main()

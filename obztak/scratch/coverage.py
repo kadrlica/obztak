@@ -107,14 +107,14 @@ for band,sky in sum_skymaps.items():
     plt.savefig(outfile,bbox_inches='tight')
     plt.clf()
 
-    outfile = outbase%(band,NSIDE)+'_cyl.png'
-    print "Writing %s..."%outfile
-    bmap = DECamBasemap(projection='cyl',celestial=True); bmap.draw_des()
-    bmap.draw_hpxmap(np.log10(sky));
-    plt.colorbar(label=label,**cbar_kwargs)
-    plt.title(title)
-    plt.savefig(outfile,bbox_inches='tight')
-    plt.clf()
+    #outfile = outbase%(band,NSIDE)+'_cyl.png'
+    #print "Writing %s..."%outfile
+    #bmap = DECamBasemap(projection='cyl',celestial=True); bmap.draw_des()
+    #bmap.draw_hpxmap(np.log10(sky));
+    #plt.colorbar(label=label,**cbar_kwargs)
+    #plt.title(title)
+    #plt.savefig(outfile,bbox_inches='tight')
+    #plt.clf()
 
     outfile = outbase%(band,NSIDE)+'_hist.png'
     plt.hist(sky,bins=np.linspace(1,1e3,50),color=COLORS[band])
@@ -140,14 +140,14 @@ for band,sky in max_skymaps.items():
     plt.savefig(outfile,bbox_inches='tight')
     plt.clf()
 
-    outfile = outbase%(band,NSIDE)+'_cyl.png'
-    print "Writing %s..."%outfile
-    bmap = DECamBasemap(projection='cyl',celestial=True); bmap.draw_des()
-    bmap.draw_hpxmap(np.log10(sky));
-    plt.colorbar(label=label,**cbar_kwargs)
-    plt.title(title)
-    plt.savefig(outfile,bbox_inches='tight')
-    plt.clf()
+    #outfile = outbase%(band,NSIDE)+'_cyl.png'
+    #print "Writing %s..."%outfile
+    #bmap = DECamBasemap(projection='cyl',celestial=True); bmap.draw_des()
+    #bmap.draw_hpxmap(np.log10(sky));
+    #plt.colorbar(label=label,**cbar_kwargs)
+    #plt.title(title)
+    #plt.savefig(outfile,bbox_inches='tight')
+    #plt.clf()
 
     outfile = outbase%(band,NSIDE)+'_hist.png'
     plt.hist(sky,bins=np.linspace(1,1e3,50),color=COLORS[band])
@@ -173,13 +173,13 @@ for band,sky in sum_skymaps.items():
     plt.savefig(outfile,bbox_inches='tight')
     plt.clf()
 
-    outfile = outbase%(band,NSIDE)+'_cyl.png'
-    print "Writing %s..."%outfile
-    bmap = DECamBasemap(projection='cyl',celestial=True); bmap.draw_des()
-    bmap.draw_hpxmap(np.log10(sky));
-    plt.title(title)
-    plt.savefig(outfile,bbox_inches='tight')
-    plt.clf()
+    #outfile = outbase%(band,NSIDE)+'_cyl.png'
+    #print "Writing %s..."%outfile
+    #bmap = DECamBasemap(projection='cyl',celestial=True); bmap.draw_des()
+    #bmap.draw_hpxmap(np.log10(sky));
+    #plt.title(title)
+    #plt.savefig(outfile,bbox_inches='tight')
+    #plt.clf()
 
 
 fig = plt.figure(1); plt.clf()
@@ -200,13 +200,13 @@ for band,sky in max_skymaps.items():
     plt.savefig(outfile,bbox_inches='tight')
     plt.clf()
 
-    outfile = outbase%(band,NSIDE)+'_cyl.png'
-    print "Writing %s..."%outfile
-    bmap = DECamBasemap(projection='cyl',celestial=True); bmap.draw_des()
-    bmap.draw_hpxmap(np.log10(sky));
-    plt.title(title)
-    plt.savefig(outfile,bbox_inches='tight')
-    plt.clf()
+    #outfile = outbase%(band,NSIDE)+'_cyl.png'
+    #print "Writing %s..."%outfile
+    #bmap = DECamBasemap(projection='cyl',celestial=True); bmap.draw_des()
+    #bmap.draw_hpxmap(np.log10(sky));
+    #plt.title(title)
+    #plt.savefig(outfile,bbox_inches='tight')
+    #plt.clf()
 
 if __name__ == "__main__":
     import argparse
