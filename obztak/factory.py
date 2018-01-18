@@ -113,7 +113,7 @@ def tactician_factory(cls=None, **kwargs):
     --------
     tac : The Tactician
     """
-    modules = ['obztak.tactician','obztak.maglites','obztak.bliss']
+    modules = ['obztak.tactician','obztak.maglites','obztak.bliss', 'obztak.blink']
     if cls is None: cls = get_survey()
     cls = TACTICIANS.get(cls,cls)
     return factory(cls, modules=modules, **kwargs)

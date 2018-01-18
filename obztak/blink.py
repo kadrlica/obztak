@@ -22,7 +22,7 @@ from obztak.utils.date import setdefaults
 
 NAME    = 'BLINK'
 PROGRAM = NAME.lower()
-PROPID  = '2018A-9995'
+PROPID  = '2018A-0914'
 PROPOSER = 'Makler'
 BANDS = ['i']
 TILINGS = 3
@@ -32,11 +32,12 @@ class BlinkSurvey(Survey):
 
     # 2018A SCHEDULED (blink-windows.csv is actually used for scheduling)
     nights = [
-        ['2018/02/02', 'second'], 
-        ['2018/02/03', 'second'], 
         ['2018/02/04', 'second'], 
         ['2018/02/05', 'second'], 
-        ['2018/04/17', 'first']
+        ['2018/04/11', 'second'], 
+        ['2018/04/12', 'second'], 
+        ['2018/04/13', 'second'],
+        ['2018/04/17', 'second']
         ]
     
     def prepare_fields(self, infile=None, outfile=None, mode='bliss_rotate', plot=True, smcnod=False):
@@ -211,8 +212,8 @@ class BlinkSurvey(Survey):
     @staticmethod
     def blink(ra,dec):
         """ Initial guess at BLINK survey region """
-        sel  = ( dec > 4) & (dec < 11)
-        sel &= (( ra > 133) & (ra < 141)) | ((ra > 170) & (ra < 238))
+        sel  = (( dec > -1) & (dec < 8)) | ((dec > 3) & (dec < 8)) | ((dec > 4) & (dec < 11))
+        sel &= (( ra > 141.5) & (ra < 156)) | ((ra > 133.7) & (ra < 156)) | ((ra > 170) & (ra < 238))
         return sel
 
     @staticmethod
