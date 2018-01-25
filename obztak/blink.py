@@ -212,7 +212,7 @@ class BlinkSurvey(Survey):
     @staticmethod
     def blink(ra,dec):
         """ Initial guess at BLINK survey region """
-        sel  = (( dec > 3) & (dec < 10)) 
+        sel  = (( dec > 3) & (dec < 10))    # newest initial guess - Jan 25, 2018
         sel &= (( ra > 133.7) & (ra < 230))
         return sel
 
