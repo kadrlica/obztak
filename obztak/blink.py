@@ -25,7 +25,7 @@ PROGRAM = NAME.lower()
 PROPID  = '2018A-0914'
 PROPOSER = 'Makler'
 BANDS = ['i']
-TILINGS = 3
+TILINGS = 2
 
 class BlinkSurvey(Survey):
     """ Survey sublcass for BLINK. """
@@ -212,8 +212,8 @@ class BlinkSurvey(Survey):
     @staticmethod
     def blink(ra,dec):
         """ Initial guess at BLINK survey region """
-        sel  = (( dec > -1) & (dec < 8)) | ((dec > 3) & (dec < 8)) | ((dec > 4) & (dec < 11))
-        sel &= (( ra > 141.5) & (ra < 156)) | ((ra > 133.7) & (ra < 156)) | ((ra > 170) & (ra < 238))
+        sel  = (( dec > 3) & (dec < 10)) #(( dec > -1) & (dec < 8)) | ((dec > 3) & (dec < 8)) | ((dec > 4) & (dec < 11))
+        sel &= (( ra > 133.7) & (ra < 230)) #(( ra > 141.5) & (ra < 156)) | ((ra > 133.7) & (ra < 156)) | ((ra > 170) & (ra < 238))
         return sel
 
     @staticmethod
