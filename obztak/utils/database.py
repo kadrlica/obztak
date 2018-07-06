@@ -94,6 +94,8 @@ class Database(object):
             raise ValueError(msg)
         return np.rec.array(data,names=names)
 
+    query2rec = query2recarray
+
 if __name__ == "__main__":
     import argparse
     description = "python script"

@@ -11,29 +11,38 @@ import pylab as plt
 
 from obztak.utils.database import Database
 from obztak.utils.ortho import DECamBasemap, DECamMcBride
+from obztak.utils.constants import COLORS
+
+NSIDE = 1024 # resolution
+DECAM = 1.1  # DECam radius
+BANDS = ['u','g','r','i','z','Y','VR']
+#BANDS = ['VR']
+
+# COALESCE(qc_teff,'NaN')
+query ="""
+SELECT id as expnum, telra as ra, teldec as dec, exptime, filter,
+(CASE WHEN qc_teff is NULL THEN 'NaN' WHEN qc_teff=-1 THEN 'NAN' ELSE qc_teff END) as teff
+FROM exposure where
+aborted=False and exposed=True and digitized=True and built=True and delivered=True and discard=False
+and flavor = 'object' and telra between 0 and 360 and teldec between -90 and 90
+and exptime >= 30
+and filter in (%s) and propid NOT LIKE '%%-9999'
+ORDER BY id;
+"""%(",".join(["'%s'"%b for b in BANDS]))
+
+shephard = """
+select ra,teldec,filter,exptime,propid,to_char(to_timestamp(utc_beg), 'YYYY/MM/DD HH24:MI:SS.MS') AS DATE from exposure where (propid = '2016B-0288' or propid = '2017A-0367') and flavor = 'object' order by date
+"""
+
+print(query)
 
 db = Database()
 db.connect()
-
-query ="""
-SELECT id as expnum, telra as ra, teldec as dec, expTime, filter, 
-COALESCE(qc_teff,'NaN') as teff
-FROM exposure where exptime >= 30 and discard = False and delivered = True 
-and flavor = 'object' and telra between 0 and 360 and teldec between -90 and 90
-and filter in ('u','g','r','i','z','Y') and propid NOT LIKE '%-9999'
-ORDER BY id;
-"""
-
 data = db.query2recarray(query)
 
-exposures = odict([
-        ('u',data[data['filter'] =='u']),
-        ('g',data[data['filter'] =='g']),
-        ('r',data[data['filter'] =='r']),
-        ('i',data[data['filter'] =='i']),
-        ('z',data[data['filter'] =='z']),
-        ('Y',data[data['filter'] =='Y']),
-        ])
+exposures = odict([(b,data[data['filter'] ==b]) for b in BANDS])
+sum_skymaps = odict([(b,np.zeros(hp.nside2npix(NSIDE))) for b in BANDS])
+max_skymaps = odict([(b,np.zeros(hp.nside2npix(NSIDE))) for b in BANDS])
 
 for b,exp in exposures.items():
     nan = np.isnan(exp['teff'])
@@ -64,26 +73,6 @@ def ang2disc(nside, lon, lat, radius, inclusive=False, fact=4, nest=False):
     vec = ang2vec(lon,lat)
     return hp.query_disc(nside,vec,radius,inclusive,fact,nest)
 
-NSIDE = 1024 # resolution
-DECAM = 1.1  # DECam radius
-
-sum_skymaps = odict([
-        ('u',np.zeros(hp.nside2npix(NSIDE))),
-        ('g',np.zeros(hp.nside2npix(NSIDE))),
-        ('r',np.zeros(hp.nside2npix(NSIDE))),
-        ('i',np.zeros(hp.nside2npix(NSIDE))),
-        ('z',np.zeros(hp.nside2npix(NSIDE))),
-        ('Y',np.zeros(hp.nside2npix(NSIDE))),
-        ])
-
-max_skymaps = odict([
-        ('u',np.zeros(hp.nside2npix(NSIDE))),
-        ('g',np.zeros(hp.nside2npix(NSIDE))),
-        ('r',np.zeros(hp.nside2npix(NSIDE))),
-        ('i',np.zeros(hp.nside2npix(NSIDE))),
-        ('z',np.zeros(hp.nside2npix(NSIDE))),
-        ('Y',np.zeros(hp.nside2npix(NSIDE))),
-        ])
 
 for (band,_max),(band,_sum) in zip(max_skymaps.items(),sum_skymaps.items()):
     print band
@@ -98,108 +87,128 @@ for (band,_max),(band,_sum) in zip(max_skymaps.items(),sum_skymaps.items()):
         _sum[pix] += d['teff']*d['exptime']
     print
 
-outbase = "decam_sum_expmap_%s_n%s"
-fig = plt.figure(1)
-bmap = DECamMcBride()
-bmap.draw_parallels(); bmap.draw_meridians()
+cbar_kwargs = dict(orientation='horizontal',aspect=40)
 
+fig = plt.figure(1); plt.clf()
+outbase = "decam_sum_expmap_%s_n%s"
+label = r'$\log_{10} \sum(t_{\rm eff} t_{\rm exp})$'
 for band,sky in sum_skymaps.items():
     outfile = outbase%(band,NSIDE)+'.fits.gz'
+    title = '%s-band'%band
     print "Writing %s..."%outfile
     hp.write_map(outfile,sky)
 
     outfile = outbase%(band,NSIDE)+'_mbt.png'
     print "Writing %s..."%outfile
-    bmap.draw_hpxmap(np.log10(sky))
+    bmap = DECamMcBride(); bmap.draw_des()
+    bmap.draw_hpxmap(np.log10(sky));
+    plt.colorbar(label=label,**cbar_kwargs)
+    plt.title(title)
     plt.savefig(outfile,bbox_inches='tight')
     plt.clf()
 
-    outfile = outbase%(band,NSIDE)+'_car.png'
-    print "Writing %s..."%outfile
-    hp.cartview(np.log10(sky),title='DECam Coverage (%s-band)'%band,
-                unit='log10(TEFF*EXPTIME)',fig=1)
-    plt.savefig(outfile,bbox_inches='tight')
-    plt.clf()
+    #outfile = outbase%(band,NSIDE)+'_cyl.png'
+    #print "Writing %s..."%outfile
+    #bmap = DECamBasemap(projection='cyl',celestial=True); bmap.draw_des()
+    #bmap.draw_hpxmap(np.log10(sky));
+    #plt.colorbar(label=label,**cbar_kwargs)
+    #plt.title(title)
+    #plt.savefig(outfile,bbox_inches='tight')
+    #plt.clf()
 
     outfile = outbase%(band,NSIDE)+'_hist.png'
-    plt.hist(sky,bins=np.linspace(1,1e3,50),color=COLORS['band'])
+    print "Writing %s..."%outfile
+    plt.hist(sky,bins=np.linspace(1,1e3,50),color=COLORS[band])
     plt.title('%s-band'%band); plt.xlabel('sum(TEFF * EXPTIME)')
     plt.savefig(outfile,bbox_inches='tight')
     plt.clf()
 
-fig = plt.figure(1)
-bmap = DECamMcBride()
-bmap.draw_parallels(); bmap.draw_meridians()
-
+fig = plt.figure(1); plt.clf()
 outbase = "decam_max_expmap_%s_n%s"
+label = r'$\log_{10} (\max(t_{\rm eff} t_{\rm exp})$'
 for band,sky in max_skymaps.items():
     outfile = outbase%(band,NSIDE)+'.fits.gz'
+    title = '%s-band'%band
     print "Writing %s..."%outfile
     hp.write_map(outfile,sky)
 
     outfile = outbase%(band,NSIDE)+'_mbt.png'
     print "Writing %s..."%outfile
-    bmap.draw_hpxmap(np.log10(sky),vmin=np.log10(30),vmax=np.log10(300))
+    bmap = DECamMcBride(); bmap.draw_des()
+    bmap.draw_hpxmap(np.log10(sky));
+    plt.colorbar(label=label,**cbar_kwargs)
+    plt.title(title);
     plt.savefig(outfile,bbox_inches='tight')
     plt.clf()
 
-    outfile = outbase%(band,NSIDE)+'_car.png'
-    print "Writing %s..."%outfile
-    hp.cartview(np.log10(sky),title='DECam Coverage (%s-band)'%band,
-                unit='log10(max(EXPTIME))',fig=1)
-    plt.savefig(outfile,bbox_inches='tight')
-    plt.clf()
+    #outfile = outbase%(band,NSIDE)+'_cyl.png'
+    #print "Writing %s..."%outfile
+    #bmap = DECamBasemap(projection='cyl',celestial=True); bmap.draw_des()
+    #bmap.draw_hpxmap(np.log10(sky));
+    #plt.colorbar(label=label,**cbar_kwargs)
+    #plt.title(title)
+    #plt.savefig(outfile,bbox_inches='tight')
+    #plt.clf()
 
     outfile = outbase%(band,NSIDE)+'_hist.png'
-    plt.hist(sky,bins=np.linspace(1,1e3,50),color=COLORS['band'])
+    print "Writing %s..."%outfile
+    plt.hist(sky,bins=np.linspace(1,5e2,50),color=COLORS[band])
     plt.title('%s-band'%band); plt.xlabel('max(TEFF * EXPTIME)')
     plt.savefig(outfile,bbox_inches='tight')
     plt.clf()
 
-fig = plt.figure(1)
+fig = plt.figure(1); plt.clf()
 outbase = "decam_sum_90s_%s_n%s"
+label = r'$\sum(t_{\rm eff} t_{\rm exp}) > 90$'
 for band,sky in sum_skymaps.items():
     sky = (sky > 90)
-    outfile = outbase%(band,NSIDE)+'_mol.png'
-    print "Writing %s..."%outfile
-    hp.mollview(np.log10(sky),title='DECam Coverage (%s-band)'%band,
-                unit='log10(sum(TEFF*EXPTIME))',fig=1)
-    plt.savefig(outfile,bbox_inches='tight')
-    plt.clf()
-
-    outfile = outbase%(band,NSIDE)+'_car.png'
-    print "Writing %s..."%outfile
-    hp.cartview(np.log10(sky),title='DECam Coverage (%s-band)'%band,
-                unit='log10(TEFF*EXPTIME) > 90s',fig=1)
-    plt.savefig(outfile,bbox_inches='tight')
-    plt.clf()
-
     outfile = outbase%(band,NSIDE)+'.fits.gz'
+    title = '%s-band'%band
     print "Writing %s..."%outfile
     hp.write_map(outfile,sky,dtype=bool)
 
-fig = plt.figure(1)
+    outfile = outbase%(band,NSIDE)+'_mbt.png'
+    print "Writing %s..."%outfile
+    bmap = DECamMcBride(); bmap.draw_des()
+    bmap.draw_hpxmap(np.log10(sky));
+    plt.title(title)
+    plt.savefig(outfile,bbox_inches='tight')
+    plt.clf()
+
+    #outfile = outbase%(band,NSIDE)+'_cyl.png'
+    #print "Writing %s..."%outfile
+    #bmap = DECamBasemap(projection='cyl',celestial=True); bmap.draw_des()
+    #bmap.draw_hpxmap(np.log10(sky));
+    #plt.title(title)
+    #plt.savefig(outfile,bbox_inches='tight')
+    #plt.clf()
+
+
+fig = plt.figure(1); plt.clf()
 outbase = "decam_max_60s_%s_n%s"
+label = r'$\max(t_{\rm eff} t_{\rm exp}) > 60$'
 for band,sky in max_skymaps.items():
     sky = (sky > 60)
-    outfile = outbase%(band,NSIDE)+'_mol.png'
-    print "Writing %s..."%outfile
-    hp.mollview(np.log10(sky),title='DECam Coverage (%s-band)'%band,
-                unit='log10(max(TEFF*EXPTIME)) > 60s',fig=1)
-    plt.savefig(outfile,bbox_inches='tight')
-    plt.clf()
-
-    outfile = outbase%(band,NSIDE)+'_car.png'
-    print "Writing %s..."%outfile
-    hp.cartview(np.log10(sky),title='DECam Coverage (%s-band)'%band,
-                unit='log10(TEFF*EXPTIME)',fig=1)
-    plt.savefig(outfile,bbox_inches='tight')
-    plt.clf()
-
     outfile = outbase%(band,NSIDE)+'.fits.gz'
+    title = '%s-band'%band
     print "Writing %s..."%outfile
     hp.write_map(outfile,sky,dtype=bool)
 
+    outfile = outbase%(band,NSIDE)+'_mbt.png'
+    print "Writing %s..."%outfile
+    bmap = DECamMcBride(); bmap.draw_des()
+    bmap.draw_hpxmap(np.log10(sky));
+    plt.title(title)
+    plt.savefig(outfile,bbox_inches='tight')
+    plt.clf()
+
+    #outfile = outbase%(band,NSIDE)+'_cyl.png'
+    #print "Writing %s..."%outfile
+    #bmap = DECamBasemap(projection='cyl',celestial=True); bmap.draw_des()
+    #bmap.draw_hpxmap(np.log10(sky));
+    #plt.title(title)
+    #plt.savefig(outfile,bbox_inches='tight')
+    #plt.clf()
 
 if __name__ == "__main__":
     import argparse
