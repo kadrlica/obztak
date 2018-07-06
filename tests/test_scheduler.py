@@ -24,7 +24,8 @@ def test_schedule_field():
     check_dict(value,out[index])
 
 def test_schedule_chunk():
-    kwargs = dict(utc='2017-02-22T06:00:00',chunk=60,outfile='chunk_test.json',complete='None')
+    kwargs = dict(utc='2017-02-22T06:00:00',chunk=60,outfile='chunk_test.json',
+                  complete='None',mode='coverage')
     opts = make_options(kwargs)
     cmd = 'env OBZTAK_SURVEY="maglites" schedule_chunk %s'%opts
     call(cmd,shell=True)
@@ -37,7 +38,8 @@ def test_schedule_chunk():
     check_dict(value,out[index])
 
 def test_schedule_night():
-    kwargs = dict(nite='20160211',outfile='night_test/night_test.json',complete='None')
+    kwargs = dict(nite='20160211',outfile='night_test/night_test.json',complete='None',
+                  mode='coverage')
     opts = make_options(kwargs)
     cmd = 'env OBZTAK_SURVEY="maglites" schedule_night %s'%opts
     call(cmd,shell=True)

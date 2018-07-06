@@ -18,6 +18,7 @@ from obztak.utils import constants
 from obztak.utils.date import datestring
 
 CONDITIONS = odict([
+    (None,      [0.0, 2.0]), #default
     ('great',   [1.6, 2.0]),
     ('good',    [0.0, 2.0]),
     ('complete',[0.0, 2.0]),
@@ -215,6 +216,7 @@ class Tactician(object):
 
 class CoverageTactician(Tactician):
     name = 'coverage'
+    mode = None
 
     @property
     def weight(self):

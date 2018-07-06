@@ -145,7 +145,7 @@ class Scheduler(object):
         self.completed_fields = self.completed_fields + new_fields
         return self.completed_fields
 
-    def create_tactician(self,mode=None):
+    def create_tactician(self, mode=None):
         return tactician_factory(cls=mode,mode=mode)
 
     def select_field(self, date, mode=None):
