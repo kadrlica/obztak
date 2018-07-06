@@ -164,7 +164,11 @@ class FieldArray(np.recarray):
     def from_comment(self, string):
         integers = ['PRIORITY']
         floats   = ['AIRMASS','SLEW','MOONANGLE','HOURANGLE']
-        values = dict([x.strip().split('=') for x in string.split(SEP,1)[-1].split(',')])
+        if not string:
+            values = dict()
+        else:
+            values = dict([x.strip().split('=') for x in string.split(SEP,1)[-1].split(',')])
+
         for key,val in values.items():
             if key in integers:
                 self[key] = int(val)
