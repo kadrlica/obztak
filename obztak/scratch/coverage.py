@@ -13,20 +13,24 @@ from obztak.utils.database import Database
 from obztak.utils.ortho import DECamBasemap, DECamMcBride
 from obztak.utils.constants import COLORS
 
+import skymap
+
 NSIDE = 1024 # resolution
 DECAM = 1.1  # DECam radius
-BANDS = ['u','g','r','i','z','Y','VR']
+#BANDS = ['u','g','r','i','z','Y','VR']
+BANDS = ['g','r']
 #BANDS = ['VR']
 
 # COALESCE(qc_teff,'NaN')
 query ="""
-SELECT id as expnum, telra as ra, teldec as dec, exptime, filter,
+SELECT id as expnum, date, telra as ra, teldec as dec, exptime, filter,
 (CASE WHEN qc_teff is NULL THEN 'NaN' WHEN qc_teff=-1 THEN 'NAN' ELSE qc_teff END) as teff
 FROM exposure where
 aborted=False and exposed=True and digitized=True and built=True and delivered=True and discard=False
 and flavor = 'object' and telra between 0 and 360 and teldec between -90 and 90
 and exptime >= 30
 and filter in (%s) and propid NOT LIKE '%%-9999'
+-- and (current_date - date) > '365 days'
 ORDER BY id;
 """%(",".join(["'%s'"%b for b in BANDS]))
 
@@ -100,7 +104,7 @@ for band,sky in sum_skymaps.items():
 
     outfile = outbase%(band,NSIDE)+'_mbt.png'
     print "Writing %s..."%outfile
-    bmap = DECamMcBride(); bmap.draw_des()
+    bmap = DECamMcBride(); bmap.draw_des(); bmap.draw_bliss()
     bmap.draw_hpxmap(np.log10(sky));
     plt.colorbar(label=label,**cbar_kwargs)
     plt.title(title)
@@ -123,6 +127,8 @@ for band,sky in sum_skymaps.items():
     plt.savefig(outfile,bbox_inches='tight')
     plt.clf()
 
+
+"""
 fig = plt.figure(1); plt.clf()
 outbase = "decam_max_expmap_%s_n%s"
 label = r'$\log_{10} (\max(t_{\rm eff} t_{\rm exp})$'
@@ -134,7 +140,7 @@ for band,sky in max_skymaps.items():
 
     outfile = outbase%(band,NSIDE)+'_mbt.png'
     print "Writing %s..."%outfile
-    bmap = DECamMcBride(); bmap.draw_des()
+    bmap = DECamMcBride(); bmap.draw_des(); bmap.draw_bliss()
     bmap.draw_hpxmap(np.log10(sky));
     plt.colorbar(label=label,**cbar_kwargs)
     plt.title(title);
@@ -157,6 +163,7 @@ for band,sky in max_skymaps.items():
     plt.savefig(outfile,bbox_inches='tight')
     plt.clf()
 
+
 fig = plt.figure(1); plt.clf()
 outbase = "decam_sum_90s_%s_n%s"
 label = r'$\sum(t_{\rm eff} t_{\rm exp}) > 90$'
@@ -169,7 +176,7 @@ for band,sky in sum_skymaps.items():
 
     outfile = outbase%(band,NSIDE)+'_mbt.png'
     print "Writing %s..."%outfile
-    bmap = DECamMcBride(); bmap.draw_des()
+    bmap = DECamMcBride(); bmap.draw_des(); bmap.draw_bliss();
     bmap.draw_hpxmap(np.log10(sky));
     plt.title(title)
     plt.savefig(outfile,bbox_inches='tight')
@@ -196,7 +203,7 @@ for band,sky in max_skymaps.items():
 
     outfile = outbase%(band,NSIDE)+'_mbt.png'
     print "Writing %s..."%outfile
-    bmap = DECamMcBride(); bmap.draw_des()
+    bmap = DECamMcBride(); bmap.draw_des(); bmap.draw_bliss()
     bmap.draw_hpxmap(np.log10(sky));
     plt.title(title)
     plt.savefig(outfile,bbox_inches='tight')
@@ -209,6 +216,7 @@ for band,sky in max_skymaps.items():
     #plt.title(title)
     #plt.savefig(outfile,bbox_inches='tight')
     #plt.clf()
+"""
 
 if __name__ == "__main__":
     import argparse
