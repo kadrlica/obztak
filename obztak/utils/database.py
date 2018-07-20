@@ -32,7 +32,9 @@ class Database(object):
             if hostname in ('observer2.ctio.noao.edu','observer3.ctio.noao.edu'):
                 return 'db-ctio'
             else:
-                return 'db-fnal'
+                # REMEMBER TO RESET AFTER POWER OUTAGE
+                return 'db-ctio'
+                #return 'db-fnal'
         return dbname
 
     def parse_config(self, filename=None, section='db-fnal'):
