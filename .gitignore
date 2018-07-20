@@ -9,6 +9,10 @@
 build/
 dist/
 
+### Tests
+field_test.json
+chunk_test.json
+
 ### Latex
 *.fls
 *.aux
