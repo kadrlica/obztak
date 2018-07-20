@@ -140,6 +140,10 @@ class Survey(object):
             TILINGS = [(0., 0.),(8/3.*CCD_X, -11/3.*CCD_Y),
                        (8/3.*CCD_X, 8/3.*CCD_Y),(-8/3.*CCD_X, 0.)]
             dither = self.decam_dither
+        else:
+            msg = "Unrecognized dither mode: %s"%mode
+            raise ValueError(msg)
+        logging.info("Dither mode: %s"%mode.lower())
 
         if infile is None:
             infile = os.path.join(fileio.get_datadir(),'smash_fields_alltiles.txt')
@@ -223,6 +227,17 @@ class Survey(object):
         return self.prepare_fields(infile=infile,outfile=args.fields,plot=args.plot,smcnod=args.smcnod)
 
 
+    def coverage(self, ra, dec, nside=1024):
+        import healpy as hp
+        from obztak.utils.projector import ang2vec
+        vec = ang2vec(ra,dec)
+        m = np.zeros(hp.nside2npix(nside))
+        rad = np.radians(1.1) # DECam size
+        pixels = [hp.query_disc(nside,v,rad,inclusive=False,fact=4,nest=False) for v in vec]
+        pix,cts = np.unique(pixels,return_counts=True)
+        m[pix] = cts
+        return m
+
     @staticmethod
     def footprint(ra,dec):
         """" Dummy footprint selection.
@@ -239,6 +254,11 @@ class Survey(object):
         """
         sel = np.ones(len(ra),dtype=bool)
         return sel
+
+    @staticmethod
+    def no_dither(ra,dec,dx,dy):
+        """Non-op"""
+        return ra,dec
 
     @staticmethod
     def smash_dither(ra,dec,dx,dy):
@@ -358,12 +378,20 @@ class Survey(object):
         # Rotate back to the original frame (keeping the R2 shift)
         return R1.rotate(ra2,dec2,invert=True)
 
+
     @staticmethod
     def decals_rotate(ra,dec,dx,dy):
         """Perform a Euler angle rotation of the celesitial coordinates and
         return the rotated position of ra,dec in the original
         coordinate system. dx,dy specify the Z and Y Euler rotation
         angles in decimal degrees, respectively.
+
+        It seems that the origin 3 rotation angles used for DECaLS in
+        'decam-tiles_obstatus.fits' were:
+        dx,dy = (0.0,0.0), (-0.2917, 0.0833), and (-0.5861, 0.1333)
+
+        For a 4th rotation, I've used
+        dx,dy = (-0.8805,0.1833)
 
         Parameters:
         -----------
