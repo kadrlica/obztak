@@ -137,9 +137,9 @@ class BlissSurvey(Survey):
         #sel = obztak.utils.projector.footprint(data['RA'],data['DEC'])
 
         # This is currently a non-op
-        _id      = data['TILEID']
-        ra       = data['RA']
-        dec      = data['DEC']
+        decals_id = data['TILEID']
+        ra        = data['RA']
+        dec       = data['DEC']
 
         nhexes = len(data)
         #ntilings = len(DECAM_DITHERS)
@@ -152,7 +152,7 @@ class BlissSurvey(Survey):
         logging.info("Number of filters: %d"%nbands)
 
         fields = FieldArray(nfields)
-        fields['HEX'] = np.tile(np.repeat(_id,nbands),ntilings)
+        fields['HEX'] = np.tile(np.repeat(decals_id,nbands),ntilings)
         fields['PRIORITY'].fill(1)
         fields['TILING'] = np.repeat(np.arange(1,ntilings+1),nhexes*nbands)
         fields['FILTER'] = np.tile(BANDS,nhexes*ntilings)
