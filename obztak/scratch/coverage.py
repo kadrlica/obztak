@@ -10,13 +10,17 @@ import numpy as np
 import pylab as plt
 
 from obztak.utils.database import Database
-from obztak.utils.ortho import DECamBasemap, DECamMcBride
 from obztak.utils.constants import COLORS
+from obztak.utils.ortho import DECamBasemap, DECamMcBride
+from skymap.survey import MaglitesSkymap
 
 NSIDE = 1024 # resolution
 DECAM = 1.1  # DECam radius
 BANDS = ['u','g','r','i','z','Y','VR']
 #BANDS = ['VR']
+
+#SkymapCls,suffix = DECamMcBride,'_mbt'
+SkymapCls,suffix = MaglitesSkymap,'_ort'
 
 # COALESCE(qc_teff,'NaN')
 query ="""
@@ -27,6 +31,8 @@ aborted=False and exposed=True and digitized=True and built=True and delivered=T
 and flavor = 'object' and telra between 0 and 360 and teldec between -90 and 90
 and exptime >= 30
 and filter in (%s) and propid NOT LIKE '%%-9999'
+and propid = '2018A-0386'
+-- and date < current_date - interval '18 months'
 ORDER BY id;
 """%(",".join(["'%s'"%b for b in BANDS]))
 
@@ -48,6 +54,7 @@ for b,exp in exposures.items():
     nan = np.isnan(exp['teff'])
     median = np.median(exp[~nan]['teff'])
     print "Median teff for %s-band: %s"%(b,median)
+    if not nan.sum(): continue
 
     # Set the teff to a random value from the distribution
     idx = np.random.randint(len(nan)-nan.sum(),size=nan.sum())
@@ -93,14 +100,18 @@ fig = plt.figure(1); plt.clf()
 outbase = "decam_sum_expmap_%s_n%s"
 label = r'$\log_{10} \sum(t_{\rm eff} t_{\rm exp})$'
 for band,sky in sum_skymaps.items():
+    if not sky.sum():
+        print ("No exposures found in %s band; skipping..."%band)
+        continue
+
     outfile = outbase%(band,NSIDE)+'.fits.gz'
     title = '%s-band'%band
     print "Writing %s..."%outfile
     hp.write_map(outfile,sky)
 
-    outfile = outbase%(band,NSIDE)+'_mbt.png'
+    outfile = outbase%(band,NSIDE)+suffix+'.png'
     print "Writing %s..."%outfile
-    bmap = DECamMcBride(); bmap.draw_des()
+    bmap = SkymapCls(); bmap.draw_des()
     bmap.draw_hpxmap(np.log10(sky));
     plt.colorbar(label=label,**cbar_kwargs)
     plt.title(title)
@@ -127,14 +138,18 @@ fig = plt.figure(1); plt.clf()
 outbase = "decam_max_expmap_%s_n%s"
 label = r'$\log_{10} (\max(t_{\rm eff} t_{\rm exp})$'
 for band,sky in max_skymaps.items():
+    if not sky.sum():
+        print ("No exposures found in %s band; skipping..."%band)
+        continue
+
     outfile = outbase%(band,NSIDE)+'.fits.gz'
     title = '%s-band'%band
     print "Writing %s..."%outfile
     hp.write_map(outfile,sky)
 
-    outfile = outbase%(band,NSIDE)+'_mbt.png'
+    outfile = outbase%(band,NSIDE)+suffix+'.png'
     print "Writing %s..."%outfile
-    bmap = DECamMcBride(); bmap.draw_des()
+    bmap = SkymapCls(); bmap.draw_des()
     bmap.draw_hpxmap(np.log10(sky));
     plt.colorbar(label=label,**cbar_kwargs)
     plt.title(title);
@@ -161,15 +176,19 @@ fig = plt.figure(1); plt.clf()
 outbase = "decam_sum_90s_%s_n%s"
 label = r'$\sum(t_{\rm eff} t_{\rm exp}) > 90$'
 for band,sky in sum_skymaps.items():
+    if not sky.sum():
+        print ("No exposures found in %s band; skipping..."%band)
+        continue
+
     sky = (sky > 90)
     outfile = outbase%(band,NSIDE)+'.fits.gz'
     title = '%s-band'%band
     print "Writing %s..."%outfile
     hp.write_map(outfile,sky,dtype=bool)
 
-    outfile = outbase%(band,NSIDE)+'_mbt.png'
+    outfile = outbase%(band,NSIDE)+suffix+'.png'
     print "Writing %s..."%outfile
-    bmap = DECamMcBride(); bmap.draw_des()
+    bmap = SkymapCls(); bmap.draw_des()
     bmap.draw_hpxmap(np.log10(sky));
     plt.title(title)
     plt.savefig(outfile,bbox_inches='tight')
@@ -188,15 +207,19 @@ fig = plt.figure(1); plt.clf()
 outbase = "decam_max_60s_%s_n%s"
 label = r'$\max(t_{\rm eff} t_{\rm exp}) > 60$'
 for band,sky in max_skymaps.items():
+    if not sky.sum():
+        print ("No exposures found in %s band; skipping..."%band)
+        continue
+
     sky = (sky > 60)
     outfile = outbase%(band,NSIDE)+'.fits.gz'
     title = '%s-band'%band
     print "Writing %s..."%outfile
     hp.write_map(outfile,sky,dtype=bool)
 
-    outfile = outbase%(band,NSIDE)+'_mbt.png'
+    outfile = outbase%(band,NSIDE)+suffix+'.png'
     print "Writing %s..."%outfile
-    bmap = DECamMcBride(); bmap.draw_des()
+    bmap = SkymapCls(); bmap.draw_des()
     bmap.draw_hpxmap(np.log10(sky));
     plt.title(title)
     plt.savefig(outfile,bbox_inches='tight')
