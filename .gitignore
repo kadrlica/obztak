@@ -12,6 +12,8 @@ dist/
 ### Tests
 field_test.json
 chunk_test.json
+test_target_fields.csv
+test_windows.csv
 
 ### Latex
 *.fls
