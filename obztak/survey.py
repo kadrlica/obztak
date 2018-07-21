@@ -224,7 +224,9 @@ class Survey(object):
         windows = self.prepare_windows(self.nights, outfile=args.windows, standards=args.standards)
         #infile = os.path.join(fileio.get_datadir(),'smash_fields_alltiles.txt')
         infile = None # Use survey default
-        return self.prepare_fields(infile=infile,outfile=args.fields,plot=args.plot,smcnod=args.smcnod)
+        fields = self.prepare_fields(infile=infile,outfile=args.fields,plot=args.plot,smcnod=args.smcnod)
+        if np.any(fields['RA'] < 0): raise ValueError("All RA must be positive.")
+        return fields
 
 
     def coverage(self, ra, dec, nside=1024):
