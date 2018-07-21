@@ -42,12 +42,12 @@ class Maglites2Survey(Survey):
 
     # 2019A PREDICTED
     nights_2019A = [
+        ['2019/02/23', 'full'],
         ['2019/02/24', 'full'],
         ['2019/02/25', 'full'],
         ['2019/02/26', 'full'],
-        ['2019/02/27', 'full'],
-        ['2019/06/24', 'full'],
-        ['2019/06/25', 'full']
+        ['2019/06/22', 'full'],
+        ['2019/06/23', 'full']
         ]
 
     nights = nights_2018A + nights_2019A
@@ -93,7 +93,7 @@ class Maglites2Survey(Survey):
         fields = FieldArray(nfields)
         fields['HEX'] = np.repeat(data['TILEID'],nbands)
         fields['TILING'] = np.repeat(data['PASS'],nbands)
-        fields['PRIORITY'] = fields['TILING']
+
         fields['FILTER'] = np.tile(BANDS,nhexes*ntilings)
         fields['RA'] = np.repeat(data['RA'],nbands)
         fields['DEC'] = np.repeat(data['DEC'],nbands)
@@ -102,6 +102,14 @@ class Maglites2Survey(Survey):
         sel = self.footprint(fields['RA'],fields['DEC']) # NORMAL OPERATION
         sel = sel & (fields['DEC'] > constants.SOUTHERN_REACH)
         fields = fields[sel]
+
+        # Prioritize fields at high declination
+        fields['PRIORITY'][fields['TILING'] == 2] = 2
+        fields['PRIORITY'][fields['TILING'] == 3] = 3
+        fields['PRIORITY'][fields['TILING'] == 1] = 4
+        fields['PRIORITY'][fields['TILING'] == 4] = 5
+        #fields['PRIORITY'] = fields['TILING'] + 1
+        fields['PRIORITY'][(fields['DEC'] < -72) & (fields['TILING'] == 2)] -= 1
 
         logging.info("Number of target fields: %d"%len(fields))
 
@@ -123,13 +131,16 @@ class Maglites2Survey(Survey):
             if not sys.flags.interactive:
                 plt.show(block=True)
 
-        if outfile: fields.write(outfile)
+        if outfile:
+            logging.info("Writing %s..."%outfile)
+            fields.write(outfile)
 
         return fields
 
     @staticmethod
     def footprint(ra,dec):
         import matplotlib.path
+        ra,dec = np.copy(ra), np.copy(dec)
         filename = os.path.join(fileio.get_datadir(),'maglitesII-poly.txt')
         data = np.genfromtxt(filename,names=['ra','dec','poly'])
         paths = []
@@ -209,11 +220,14 @@ class Maglites2Tactician(Tactician):
     CONDITIONS = odict([
         (None,        [1.0, 2.0]),
         ('maglites2', [1.0, 2.0]),
+        ('split',      [1.0, 2.0]),
+        ('alt',       [1.0, 2.0]),
     ])
 
     def __init__(self, *args, **kwargs):
         super(Maglites2Tactician,self).__init__(*args,**kwargs)
         self.mode = kwargs.get('mode',None)
+        self.mode = 'alt'
 
     @property
     def weight(self):
@@ -227,20 +241,30 @@ class Maglites2Tactician(Tactician):
         moon_limit = 30.
         sel &= (moon_angle > moon_limit)
 
-        # Moon band constraints
-        if (self.moon.phase >= 80) and (self.moon.alt > 0.0):
-            # Moon is very bright; only do i
-            sel &= (np.char.count('i',self.fields['FILTER']) > 0)
-            # Allow i,z but prefer z
-            #sel &= (np.char.count('iz',self.fields['FILTER']) > 0)
-            #weight += 1e2 * (np.char.count('i',self.fields['FILTER']) > 0)
-        elif (self.moon.phase >= 45) and (self.moon.alt > 0.0):
-            # Moon is more than half full; do i,z
-            sel &= (np.char.count('ri',self.fields['FILTER']) > 0)
+        if self.mode == 'alt' or self.mode is None:
+            # Moon band constraints (alt = 0.175 rad = 10 deg)
+            if (self.moon.phase >= 80) and (self.moon.alt > 0.175):
+                # Moon is very bright; only do i
+                sel &= (np.char.count('i',self.fields['FILTER']) > 0)
+                # Allow i,z but prefer z
+                #sel &= (np.char.count('iz',self.fields['FILTER']) > 0)
+                #weight += 1e2 * (np.char.count('i',self.fields['FILTER']) > 0)
+            elif (self.moon.phase >= 45) and (self.moon.alt > 0.175):
+                # Moon is more than half full; do i,z
+                sel &= (np.char.count('ri',self.fields['FILTER']) > 0)
+            else:
+                # Moon is faint or down; do g,r (unless none available)
+                sel &= (np.char.count('r',self.fields['FILTER']) > 0)
+                #weight += 1e8 * (np.char.count('iz',self.fields['FILTER']) > 0)
+        elif self.mode == 'split':
+            # Moon band constraints (alt = 0.175 rad = 10 deg)
+            if (self.moon.phase >= 79):
+                # Moon is very bright; only do i
+                sel &= (np.char.count('i',self.fields['FILTER']) > 0)
+            else:
+                sel &= (np.char.count('r',self.fields['FILTER']) > 0)
         else:
-            # Moon is faint or down; do g,r (unless none available)
-            sel &= (np.char.count('r',self.fields['FILTER']) > 0)
-            #weight += 1e8 * (np.char.count('iz',self.fields['FILTER']) > 0)
+            raise ValueError("Unrecognized mode: %s"%self.mode)
 
         # Airmass cut
         airmass_min, airmass_max = self.CONDITIONS[self.mode]
@@ -250,8 +274,8 @@ class Maglites2Tactician(Tactician):
 
         # Higher weight for rising fields (higher hour angle)
         # HA [min,max] = [-53,54] (for airmass 1.4)
-        #weight += 5.0 * self.hour_angle
-        weight += 1.0 * self.hour_angle
+        weight += 5.0 * self.hour_angle
+        #weight += 1.0 * self.hour_angle
         #weight += 0.1 * self.hour_angle
 
         # Higher weight for larger slews
@@ -271,8 +295,8 @@ class Maglites2Tactician(Tactician):
             #weight += 10 * (35./moon_angle)**3
             weight += 1 * (35./moon_angle)**3
 
-        # Try hard to do the first tiling
-        weight += 1e6 * (self.fields['TILING'] - 1)
+        ## Try hard to do high priority fields
+        weight += 1e3 * (self.fields['PRIORITY'] - 1)
 
         # Set infinite weight to all disallowed fields
         weight[~sel] = np.inf
