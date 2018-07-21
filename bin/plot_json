@@ -45,6 +45,9 @@ if __name__ == "__main__":
         fields = fields + FieldArray.read(filename)
         if args.chunk: idx.append(len(fields)-1)
 
+    if np.any(fields['RA']) < 0:
+        raise ValueError("Negative RA not allowed by SISPI.")
+
     completed_fields = field_factory(survey)
     if args.complete is not None:
         for f in args.complete:
