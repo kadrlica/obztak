@@ -18,7 +18,8 @@ from obztak.utils.projector import cel2gal, angsep
 from obztak.utils import constants
 from obztak.utils import fileio
 from obztak.utils.constants import BANDS,SMASH_POLE,CCD_X,CCD_Y,STANDARDS,COLORS
-from obztak.utils.date import setdefaults
+from obztak.utils.constants import COLORS, CMAPS
+from obztak.utils.date import datestring, setdefaults, nite2utc,utc2nite,datestr
 
 NAME    = 'BLISS'
 PROGRAM = NAME.lower()
@@ -216,7 +217,7 @@ class BlissSurvey(Survey):
                 bmap.scatter(*bmap.proj(f['RA'],f['DEC']),c=COLORS[b],s=15,**kwargs)
 
             if outfile:
-                outfig = os.path.splitext(outfile)[0]+'_mcbride.png'
+                outfig = os.path.splitext(outfile)[0]+'_mbt.png'
                 plt.savefig(outfig,bbox_inches='tight')
 
             fig,ax = plt.subplots(2,2,figsize=(10,10))
@@ -480,3 +481,5 @@ class BlissScheduler(Scheduler):
         ('targets',os.path.join(fileio.get_datadir(),"bliss-target-fields.csv")),
     ])
     FieldType = BlissFieldArray
+
+# Below are several utility functions for plotting the survey

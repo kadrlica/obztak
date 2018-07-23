@@ -67,8 +67,7 @@ class Maglites2Survey(Survey):
         """
 
         if infile is None:
-            #infile = os.path.join(fileio.get_datadir(),'decam-tiles_obstatus.fits')
-            infile = os.path.join(fileio.get_datadir(),'decam-tiles-bliss.fits.gz')
+            infile = fileio.get_datafile('decam-tiles-bliss.fits.gz')
 
         # For decals input file
         #data['TILEID'] = np.tile(data['TILEID'][data['PASS'] == 1],len(TILINGS))
@@ -109,7 +108,7 @@ class Maglites2Survey(Survey):
         fields['PRIORITY'][fields['TILING'] == 1] = 4
         fields['PRIORITY'][fields['TILING'] == 4] = 5
         #fields['PRIORITY'] = fields['TILING'] + 1
-        fields['PRIORITY'][(fields['DEC'] < -72) & (fields['TILING'] == 2)] -= 1
+        fields['PRIORITY'][(fields['DEC'] < -70) & np.in1d(fields['TILING'],[2,3])] -= 1
 
         logging.info("Number of target fields: %d"%len(fields))
 
@@ -141,7 +140,7 @@ class Maglites2Survey(Survey):
     def footprint(ra,dec):
         import matplotlib.path
         ra,dec = np.copy(ra), np.copy(dec)
-        filename = os.path.join(fileio.get_datadir(),'maglitesII-poly.txt')
+        filename = fileio.get_datafile('maglitesII-poly.txt')
         data = np.genfromtxt(filename,names=['ra','dec','poly'])
         paths = []
         ra -= 360 * (ra > 180)
@@ -199,8 +198,8 @@ class Maglites2FieldArray(FieldArray):
         FROM exposure where propid = '%(propid)s' and exptime > 89
         and discard = False and delivered = True and flavor = 'object'
         and object like '%(object_fmt)s%%'
-        -- Discard exposures with teff < 0.1
-        --and not (qc_teff < 0.1 and date < '2017/01/01')
+        -- #Discard exposures with teff < 0.1
+        and not (qc_teff < 0.05 and (date > '2018/07/21 12:00:00' and date < '2018/07/22 12:00:00'))
         ORDER BY utc_beg %(limit)s
         """%kwargs
         return query
@@ -209,8 +208,8 @@ class Maglites2FieldArray(FieldArray):
 class Maglites2Scheduler(Scheduler):
     _defaults = odict(Scheduler._defaults.items() + [
         ('tactician','coverage'),
-        ('windows',os.path.join(fileio.get_datadir(),"maglites2-windows.csv")),
-        ('targets',os.path.join(fileio.get_datadir(),"maglites2-target-fields.csv")),
+        ('windows',fileio.get_datafile("maglites2-windows.csv")),
+        ('targets',fileio.get_datafile("maglites2-target-fields.csv")),
     ])
 
     FieldType = Maglites2FieldArray
@@ -242,18 +241,22 @@ class Maglites2Tactician(Tactician):
         sel &= (moon_angle > moon_limit)
 
         if self.mode == 'alt' or self.mode is None:
+            if (self.sun.alt > -0.28):
+                # No i-band if Sun altitude > -16 deg
+                sel &= (np.char.count('i',self.fields['FILTER']) > 0)
             # Moon band constraints (alt = 0.175 rad = 10 deg)
-            if (self.moon.phase >= 80) and (self.moon.alt > 0.175):
+            elif (self.moon.phase >= 80) and (self.moon.alt > 0.175):
                 # Moon is very bright; only do i
                 sel &= (np.char.count('i',self.fields['FILTER']) > 0)
                 # Allow i,z but prefer z
                 #sel &= (np.char.count('iz',self.fields['FILTER']) > 0)
                 #weight += 1e2 * (np.char.count('i',self.fields['FILTER']) > 0)
-            elif (self.moon.phase >= 45) and (self.moon.alt > 0.175):
-                # Moon is more than half full; do i,z
+            #elif (self.moon.phase >= 45) and (self.moon.alt > 0.175):
+            elif (self.moon.phase >= 45) and (self.moon.alt > 0.0):
+                # Moon is more than half full; do r,i
                 sel &= (np.char.count('ri',self.fields['FILTER']) > 0)
             else:
-                # Moon is faint or down; do g,r (unless none available)
+                # Moon is faint or down; do r (unless none available)
                 sel &= (np.char.count('r',self.fields['FILTER']) > 0)
                 #weight += 1e8 * (np.char.count('iz',self.fields['FILTER']) > 0)
         elif self.mode == 'split':
@@ -318,7 +321,3 @@ class Maglites2Tactician(Tactician):
 
         return index
 
-if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser(description=__doc__)
-    args = parser.parse_args()

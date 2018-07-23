@@ -8,6 +8,7 @@ from collections import OrderedDict as odict
 import healpy as hp
 import numpy as np
 import pylab as plt
+import fitsio
 
 from obztak.utils.database import Database
 from obztak.utils.constants import COLORS
@@ -31,7 +32,7 @@ aborted=False and exposed=True and digitized=True and built=True and delivered=T
 and flavor = 'object' and telra between 0 and 360 and teldec between -90 and 90
 and exptime >= 30
 and filter in (%s) and propid NOT LIKE '%%-9999'
-and propid = '2018A-0386'
+and propid = '2014B-0404'
 -- and date < current_date - interval '18 months'
 ORDER BY id;
 """%(",".join(["'%s'"%b for b in BANDS]))
@@ -45,6 +46,8 @@ print(query)
 db = Database()
 db.connect()
 data = db.query2recarray(query)
+fitsio.write('decals-exposures.fits.gz',data)
+sys.exit()
 
 exposures = odict([(b,data[data['filter'] ==b]) for b in BANDS])
 sum_skymaps = odict([(b,np.zeros(hp.nside2npix(NSIDE))) for b in BANDS])
