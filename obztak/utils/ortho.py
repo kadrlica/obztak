@@ -871,7 +871,7 @@ def plot_coverage(fields,nitestr,outfile=None,**kwargs):
         bmap.draw_galaxy(10)
 
         proj = bmap.proj(t['RA'],t['DEC'])
-        bmap.scatter(*proj, c='0.7', **kwargs)
+        bmap.scatter(*proj, c='0.8', **kwargs)
 
         proj = bmap.proj(f['RA'],f['DEC'])
         bmap.scatter(*proj, c=f['TILING'], cmap=CMAPS[b], **kwargs)

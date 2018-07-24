@@ -199,7 +199,7 @@ class Maglites2FieldArray(FieldArray):
         and discard = False and delivered = True and flavor = 'object'
         and object like '%(object_fmt)s%%'
         -- #Discard exposures with teff < 0.1
-        and not (qc_teff < 0.05 and (date > '2018/07/21 12:00:00' and date < '2018/07/22 12:00:00'))
+        --and not (qc_teff < 0.05 and (date > '2018/07/21 12:00:00' and date < '2018/07/22 12:00:00'))
         ORDER BY utc_beg %(limit)s
         """%kwargs
         return query
@@ -245,14 +245,14 @@ class Maglites2Tactician(Tactician):
                 # No i-band if Sun altitude > -16 deg
                 sel &= (np.char.count('i',self.fields['FILTER']) > 0)
             # Moon band constraints (alt = 0.175 rad = 10 deg)
-            elif (self.moon.phase >= 80) and (self.moon.alt > 0.175):
+            elif (self.moon.phase >= 80) and (self.moon.alt > 0.04):
                 # Moon is very bright; only do i
                 sel &= (np.char.count('i',self.fields['FILTER']) > 0)
                 # Allow i,z but prefer z
                 #sel &= (np.char.count('iz',self.fields['FILTER']) > 0)
                 #weight += 1e2 * (np.char.count('i',self.fields['FILTER']) > 0)
             #elif (self.moon.phase >= 45) and (self.moon.alt > 0.175):
-            elif (self.moon.phase >= 45) and (self.moon.alt > 0.0):
+            elif (self.moon.phase >= 45) and (self.moon.alt > 0.08):
                 # Moon is more than half full; do r,i
                 sel &= (np.char.count('ri',self.fields['FILTER']) > 0)
             else:
