@@ -4,6 +4,7 @@ Generic python script.
 """
 import sys 
 from collections import OrderedDict as odict
+import warnings
 
 import healpy as hp
 import numpy as np
@@ -14,6 +15,8 @@ from obztak.utils.database import Database
 from obztak.utils.constants import COLORS
 from obztak.utils.ortho import DECamBasemap, DECamMcBride
 from skymap.survey import MaglitesSkymap
+
+warnings.simplefilter('ignore', UserWarning)
 
 NSIDE = 1024 # resolution
 DECAM = 1.1  # DECam radius
@@ -32,7 +35,7 @@ aborted=False and exposed=True and digitized=True and built=True and delivered=T
 and flavor = 'object' and telra between 0 and 360 and teldec between -90 and 90
 and exptime >= 30
 and filter in (%s) and propid NOT LIKE '%%-9999'
-and propid = '2014B-0404'
+-- and propid = '2014B-0404' -- DECaLS
 -- and date < current_date - interval '18 months'
 ORDER BY id;
 """%(",".join(["'%s'"%b for b in BANDS]))
@@ -46,8 +49,7 @@ print(query)
 db = Database()
 db.connect()
 data = db.query2recarray(query)
-fitsio.write('decals-exposures.fits.gz',data)
-sys.exit()
+fitsio.write('decam-exposures.fits.gz',data)
 
 exposures = odict([(b,data[data['filter'] ==b]) for b in BANDS])
 sum_skymaps = odict([(b,np.zeros(hp.nside2npix(NSIDE))) for b in BANDS])
@@ -59,10 +61,10 @@ for b,exp in exposures.items():
     print "Median teff for %s-band: %s"%(b,median)
     if not nan.sum(): continue
 
-    # Set the teff to a random value from the distribution
-    idx = np.random.randint(len(nan)-nan.sum(),size=nan.sum())
-    teff = exp['teff'][np.where(~nan)[0][idx]]
-    exp['teff'][nan] = teff
+    ## Set the teff to a random value from the distribution
+    #idx = np.random.randint(len(nan)-nan.sum(),size=nan.sum())
+    #teff = exp['teff'][np.where(~nan)[0][idx]]
+    #exp['teff'][nan] = teff
                   
 def phi2lon(phi): return np.degrees(phi)
 def lon2phi(lon): return np.radians(lon)
@@ -87,6 +89,7 @@ def ang2disc(nside, lon, lat, radius, inclusive=False, fact=4, nest=False):
 for (band,_max),(band,_sum) in zip(max_skymaps.items(),sum_skymaps.items()):
     print band
     d2 = exposures[band]
+    d2 = d2[d2['teff'] >= 0.2]
     vec = ang2vec(d2['ra'],d2['dec'])
     rad = np.radians(DECAM)
     for i,(v,d) in enumerate(zip(vec,d2)):
@@ -95,7 +98,19 @@ for (band,_max),(band,_sum) in zip(max_skymaps.items(),sum_skymaps.items()):
         pix = hp.query_disc(NSIDE,v,rad,inclusive=False,fact=4,nest=False)
         _max[pix] = np.clip(_max[pix],d['teff']*d['exptime'],None)
         _sum[pix] += d['teff']*d['exptime']
+
+    outfile = "decam_sum_expmap_%s_n%s.fits.gz"%(band,NSIDE)
+    print "Writing %s..."%outfile
+    hp.write_map(outfile,_sum)
+
+    outfile = "decam_max_expmap_%s_n%s.fits.gz"%(band,NSIDE)
+    print "Writing %s..."%outfile
+    hp.write_map(outfile,_max)
+
     print
+
+if True: sys.exit(0)
+
 
 cbar_kwargs = dict(orientation='horizontal',aspect=40)
 
@@ -107,11 +122,11 @@ for band,sky in sum_skymaps.items():
         print ("No exposures found in %s band; skipping..."%band)
         continue
 
-    outfile = outbase%(band,NSIDE)+'.fits.gz'
-    title = '%s-band'%band
-    print "Writing %s..."%outfile
-    hp.write_map(outfile,sky)
+    #outfile = outbase%(band,NSIDE)+'.fits.gz'
+    #print "Writing %s..."%outfile
+    #hp.write_map(outfile,sky)
 
+    title = '%s-band'%band
     outfile = outbase%(band,NSIDE)+suffix+'.png'
     print "Writing %s..."%outfile
     bmap = SkymapCls(); bmap.draw_des()
@@ -145,13 +160,13 @@ for band,sky in max_skymaps.items():
         print ("No exposures found in %s band; skipping..."%band)
         continue
 
-    outfile = outbase%(band,NSIDE)+'.fits.gz'
-    title = '%s-band'%band
-    print "Writing %s..."%outfile
-    hp.write_map(outfile,sky)
+    #outfile = outbase%(band,NSIDE)+'.fits.gz'
+    #print "Writing %s..."%outfile
+    #hp.write_map(outfile,sky)
 
     outfile = outbase%(band,NSIDE)+suffix+'.png'
     print "Writing %s..."%outfile
+    title = '%s-band'%band
     bmap = SkymapCls(); bmap.draw_des()
     bmap.draw_hpxmap(np.log10(sky));
     plt.colorbar(label=label,**cbar_kwargs)
