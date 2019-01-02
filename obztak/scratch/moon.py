@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Generic python script.
+Output exposure metadata with moon info.
 """
 import sys
 from collections import OrderedDict as odict
@@ -21,15 +21,18 @@ BANDS = ['g','r','i']
 query ="""
 SELECT id as expnum, date, telra as ra, teldec as dec, exptime, filter,
 (CASE WHEN moonangl is NULL THEN 'NaN' ELSE moonangl END) as moonangl,
-(CASE WHEN qc_teff is NULL THEN 'NaN' WHEN qc_teff=-1 THEN 'NAN' ELSE qc_teff END) as teff
+(CASE WHEN qc_teff is NULL THEN 'NaN' WHEN qc_teff=-1 THEN 'NAN' ELSE qc_teff END) as teff,
+qc_fwhm::FLOAT, qc_cloud::FLOAT, qc_sky::FLOAT
 FROM exposure where
 aborted=False and exposed=True and digitized=True and built=True and delivered=True and discard=False
 and flavor = 'object' and telra between 0 and 360 and teldec between -90 and 90
 and exptime >= 30
 and filter in (%s) and propid NOT LIKE '%%-9999'
 -- and date < current_date - interval '18 months'
+and qc_teff >= 0 and qc_cloud is not NULL
 ORDER BY id;
 """%(",".join(["'%s'"%b for b in BANDS]))
+#and filter in (%s) and propid = '2012B-0001'
 
 print(query)
 
