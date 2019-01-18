@@ -145,8 +145,19 @@ class Scheduler(object):
         self.completed_fields = self.completed_fields + new_fields
         return self.completed_fields
 
-    def create_tactician(self, mode=None):
-        return tactician_factory(cls=mode,mode=mode)
+    def create_tactician(self, cls=None, mode=None):
+        """ Create a tactician in the given mode.
+
+        Parameters:
+        -----------
+        cls : the tactician class [defaults to survey]
+        mode: the tactician mode
+
+        Returns:
+        --------
+        tac : the tactician
+        """
+        return tactician_factory(cls=cls, mode=mode)
 
     def select_field(self, date, mode=None):
         """
@@ -163,7 +174,7 @@ class Scheduler(object):
         """
         sel = ~np.in1d(self.target_fields['ID'],self.completed_fields['ID'])
 
-        self.tactician = self.create_tactician(mode)
+        self.tactician = self.create_tactician(mode=mode)
         self.tactician.set_date(date)
         self.tactician.set_target_fields(self.target_fields[sel])
         self.tactician.set_completed_fields(self.completed_fields)
@@ -231,7 +242,7 @@ class Scheduler(object):
         logging.info(msg)
 
         # This is not safe since tactician is re-created in select_field
-        self.tactician = self.create_tactician(mode)
+        self.tactician = self.create_tactician(mode=mode)
         msg = "Scheduling with '%s' in mode '%s'"%(self.tactician.__class__.__name__,self.tactician.mode)
         logging.info(msg)
 

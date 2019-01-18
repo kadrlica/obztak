@@ -311,6 +311,7 @@ class Survey(object):
         --------
         sel : Selection of fields within the footprint
         """
+        import fitsio
         sel = np.zeros(len(ra),dtype=bool)
         #filename = fileio.get_datafile('smash_fields_final.txt')
         filename = fileio.get_datafile('smash_check_calibrated_v6.fits')
