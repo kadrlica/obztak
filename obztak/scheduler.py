@@ -256,6 +256,7 @@ class Scheduler(object):
                         logging.warning(msg)
 
             # Select one (or more) fields from the tactician
+            field_select = self.select_field(date, mode)
             try:
                 field_select = self.select_field(date, mode)
             except Exception as e:

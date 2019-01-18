@@ -115,7 +115,7 @@ class BlissSurvey(Survey):
             dither = self.coord_rotate
         elif mode.lower() == 'decals_rotate':
             OFFSETS = [(0,0),(-0.2917, 0.0833),
-                       (-0.5861, 0.1333)][:TILINGS]
+                       (-0.5861, 0.1333),(-0.8805,0.1833)][:TILINGS]
             dither = self.decals_rotate
         elif mode.lower() == 'bliss_rotate':
             OFFSETS = [(0, 0), (8/3.*CCD_X, -11/3.*CCD_Y),
@@ -388,8 +388,8 @@ class BlissFieldArray(FieldArray):
     SISPI_DICT["propid"] = PROPID
     SISPI_DICT["proposer"] = PROPOSER
 
-    OBJECT_FMT = 'BLISS field' + SEP + ' %s'
-    SEQID_FMT = 'BLISS scheduled' + SEP + ' %(DATE)s'
+    OBJECT_FMT = NAME + ' field' + SEP + ' %s'
+    SEQID_FMT = NAME + ' scheduled' + SEP + ' %(DATE)s'
     BANDS = BANDS
 
     @classmethod

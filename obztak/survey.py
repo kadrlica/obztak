@@ -18,7 +18,7 @@ from obztak.field import FieldArray
 
 from obztak.utils.projector import cel2gal
 from obztak.utils.date import datestring
-from obztak.utils.constants import BANDS,SMASH_POLE,CCD_X,CCD_Y,STANDARDS
+from obztak.utils.constants import BANDS,SMASH_POLE,CCD_X,CCD_Y,STANDARDS,DECAM
 
 class Survey(object):
     """Base class for preparing a survey. Creates a list of observation
@@ -74,6 +74,7 @@ class Survey(object):
 
         observation_windows = []
         for date, mode in nights:
+            mode = mode.lower().strip()
             observatory.date = '%s 03:00'%(date)
             observatory.date = observatory.date + 24. * ephem.hour
 
@@ -240,6 +241,30 @@ class Survey(object):
         m[pix] = cts
         return m
 
+
+    @staticmethod
+    def select_in_path(filename,ra,dec,polys=None,wrap=180.):
+        import matplotlib.path
+        from matplotlib import mlab
+        ra,dec = np.copy(ra), np.copy(dec)
+
+        try:
+            data = np.genfromtxt(filename,names=['ra','dec','poly'])
+        except ValueError:
+            data = np.genfromtxt(filename,names=['ra','dec'])
+            data = mlab.rec_append_fields(data,'poly',np.zeros(len(data)))
+
+        paths = []
+        ra -= 360 * (ra > wrap)
+
+        for p in np.unique(data['poly']):
+            if polys and (p not in polys): continue
+            poly = data[data['poly'] == p]
+            vertices = np.vstack(np.vstack([poly['ra'],poly['dec']])).T
+            paths.append(matplotlib.path.Path(vertices))
+        sel = np.sum([p.contains_points(np.vstack([ra,dec]).T) for p in paths],axis=0) > 0
+        return sel
+
     @staticmethod
     def footprint(ra,dec):
         """" Dummy footprint selection.
@@ -252,10 +277,85 @@ class Survey(object):
         Returns:
         --------
         sel : Selection of fields within the footprint
-
         """
         sel = np.ones(len(ra),dtype=bool)
         return sel
+
+    @staticmethod
+    def footprintDES(ra,dec):
+        """ Selecting exposures in the DES footprint
+
+        Parameters:
+        -----------
+        ra : Right ascension (deg)
+        dec: Declination (deg)
+
+        Returns:
+        --------
+        sel : Selection of fields within the footprint
+        """
+        filename = fileio.get_datafile('des-round17-poly.txt')
+        return Survey.select_in_path(filename,ra,dec)
+
+    @staticmethod
+    def footprintSMASH(ra,dec,angsep=DECAM):
+        """ Selecting exposures in the SMASH island footprint.
+
+        Parameters:
+        -----------
+        ra : Right ascension (deg)
+        dec: Declination (deg)
+        angsep : Angular separation (deg)
+
+        Returns:
+        --------
+        sel : Selection of fields within the footprint
+        """
+        sel = np.zeros(len(ra),dtype=bool)
+        #filename = fileio.get_datafile('smash_fields_final.txt')
+        filename = fileio.get_datafile('smash_check_calibrated_v6.fits')
+        smash = fitsio.read(filename)
+        smash = smash[smash['NUCALIB'] != 0]
+        idx1,idx2,sep = obztak.utils.projector.match(ra,dec,smash['RA'],smash['DEC'])
+        sel[idx1[sep < angsep]] = True
+        return sel
+
+    @staticmethod
+    def footprintDECALS(ra,dec):
+        """ Selecting exposures in the DESI footprint.
+
+        Parameters:
+        -----------
+        ra : Right ascension (deg)
+        dec: Declination (deg)
+
+        Returns:
+        --------
+        sel : Selection of fields within the footprint
+        """
+        import matplotlib.path
+        ra,dec = np.copy(ra), np.copy(dec)
+        filename = fileio.get_datafile('decals-poly.txt')
+        sel = Survey.select_in_path(filename,ra,dec)
+        #sel |= Survey.select_in_path(filename,ra,dec, wrap=360., poly=[3,4])
+        return sel
+
+    @staticmethod
+    def footprintMilkyWay(ra,dec,angsep=10.):
+        """ Selecting fields close to the Milky Way plane.
+
+        Parameters:
+        -----------
+        ra : Right ascension (deg)
+        dec: Declination (deg)
+        angsep : Angular separation (deg)
+
+        Returns:
+        --------
+        sel : Selection of fields within the footprint
+        """
+        glon,glat = cel2gal(ra,dec)
+        return (np.fabs(glat) < angsep)
 
     @staticmethod
     def no_dither(ra,dec,dx,dy):
@@ -278,6 +378,7 @@ class Survey(object):
         ra, dec : Dithered ra,dec tuple
 
         """
+        if float(dx) == 0.0 and float(dy) == 0.0: return ra,dec
         ra0,dec0 = SMASH_POLE
         # Rotate the pole at SMASH_POLE to (0,-90)
         R1 = obztak.utils.projector.SphericalRotator(ra0,90+dec0);
@@ -304,6 +405,7 @@ class Survey(object):
         --------
         ra, dec : Dithered ra,dec tuple
         """
+        if float(dx) == 0.0 and float(dy) == 0.0: return ra,dec
         out = []
         for _ra,_dec in zip(ra,dec):
             out.append(obztak.utils.projector.SphericalRotator(_ra,_dec).rotate(dx,dy,invert=True))
@@ -325,6 +427,7 @@ class Survey(object):
         --------
         ra, dec : Dithered ra,dec tuple
         """
+        if float(dx) == 0.0 and float(dy) == 0.0: return ra,dec
         ra0,dec0 = SMASH_POLE
         # Rotate the pole at SMASH_POLE to (0,-90)
         R1 = obztak.utils.projector.SphericalRotator(ra0,90+dec0);
@@ -351,6 +454,7 @@ class Survey(object):
         --------
         ra, dec : Dithered ra,dec tuple
         """
+        if float(dx) == 0.0 and float(dy) == 0.0: return ra,dec
         R = obztak.utils.projector.SphericalRotator(dx,dy)
         return R.rotate(ra,dec)
 
@@ -370,6 +474,7 @@ class Survey(object):
         --------
         ra, dec : Dithered ra,dec tuple
         """
+        if float(dx) == 0.0 and float(dy) == 0.0: return ra,dec
         ra0,dec0 = (0,-90)
         # Rotate the pole at SMASH_POLE to (0,-90)
         R1 = obztak.utils.projector.SphericalRotator(ra0,90+dec0);
@@ -407,11 +512,13 @@ class Survey(object):
         ra, dec : Dithered ra,dec tuple
 
         """
+        if float(dx) == 0.0 and float(dy) == 0.0: return ra,dec
         from astropy.modeling.rotations import EulerAngleRotation
         R = EulerAngleRotation(dx,dy,0,'zyx')
         ra1,dec1 = R(ra,dec)
         ra1 += 360 * (ra1 < 0)
         return ra1,dec1
+
 
 ############################################################
 
@@ -471,16 +578,16 @@ def parser():
     parser = Parser(description=description,formatter_class=formatter)
     parser.add_argument('--survey',default=None,
                         help='Type of survey to schedule.')
-    parser.add_argument('-p','--plot',action='store_true',
-                        help='Plot output.')
-    parser.add_argument('-f','--fields',default='target_fields.csv',
-                        help='List of all target fields.')
-    parser.add_argument('-w','--windows',default='observation_windows.csv',
-                        help='List of observation windows.')
     parser.add_argument('-d','--dither',default='smash_dither',
                         help='Dithering scheme.')
+    parser.add_argument('-f','--fields',default='target_fields.csv',
+                        help='List of all target fields.')
+    parser.add_argument('-p','--plot',action='store_true',
+                        help='Plot output.')
     parser.add_argument('-s','--smcnod',action='store_true',
                         help='Include SMC Northern Overdensity fields.')
+    parser.add_argument('-w','--windows',default='observation_windows.csv',
+                        help='List of observation windows.')
     parser.add_argument('--no-standards',action='store_false',dest='standards',
                         help = "Don't include time for standard star observations.")
     return parser

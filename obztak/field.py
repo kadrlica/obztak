@@ -28,6 +28,7 @@ DEFAULTS = odict([
     ('SLEW',      dict(dtype=float,value=-1.0)),
     ('MOONANGLE', dict(dtype=float,value=-1.0)),
     ('HOURANGLE', dict(dtype=float,value=-1.0)),
+    ('PROGRAM',   dict(dtype='S30',value='')),
 ])
 DTYPES = odict([(k,v['dtype']) for k,v in DEFAULTS.items()])
 VALUES = odict([(k,v['value']) for k,v in DEFAULTS.items()])
@@ -47,11 +48,8 @@ SISPI_DICT = odict([
     ("filter",  None),
     ("count",   1),
     ("expType", "object"),
-    #("program", PROGRAM),
     ("program", None),
     ("wait",    "False"),
-    #("propid",  PROPID),
-    #("proposer",'Bechtol'),
     ("propid",  None),
     ("comment", ""),
 ])
@@ -62,6 +60,7 @@ SISPI_MAP = odict([
     ('RA','RA'),
     ('dec','DEC'),
     ('filter','FILTER'),
+    ('program','PROGRAM'),
 ])
 
 class FieldArray(np.recarray):
@@ -132,8 +131,11 @@ class FieldArray(np.recarray):
         return np.array([self.BANDS.index(f)+1 for f in self['FILTER']],dtype=int)
 
     @property
+    def propid(self):
+        return np.repeat(PROPID,len(self))
+
+    @property
     def comment(self):
-        #comment = 'MAGLITES v%s: '%__version__
         comment = 'obztak v%s: '%__version__
         comment += 'PRIORITY=%(PRIORITY)i, '
 
@@ -189,6 +191,9 @@ class FieldArray(np.recarray):
             sispi_dict = copy.deepcopy(self.SISPI_DICT)
             for sispi_key,field_key in SISPI_MAP.items():
                 sispi_dict[sispi_key] = r[field_key]
+            # Fill default program
+            if not sispi_dict['program']:
+                sispi_dict['program'] = self.SISPI_DICT['program']
             sispi_dict['object'] = objects[i]
             sispi_dict['seqnum'] = seqnums[i]
             sispi_dict['seqid']  = seqids[i]
@@ -306,7 +311,7 @@ class FieldArray(np.recarray):
             sispi = fileio.read_json(filename)
             return cls().load_sispi(sispi)
         elif ext in ('.csv','.txt'):
-            dtype = DTYPES.items()
+            #dtype = DTYPES.items()
             #recarray = fileio.csv2rec(filename,dtype=dtype)
             recarray = fileio.csv2rec(filename)
             return cls().load_recarray(recarray)
@@ -323,6 +328,11 @@ class FieldArray(np.recarray):
         elif ext in ('.csv','.txt'):
             data = self.to_recarray()
             fileio.rec2csv(filename,data,**kwargs)
+        elif ext in ('.fits','.fz','.gz'):
+            import fitsio
+            data = self.to_recarray()
+            kwargs.setdefault('clobber',True)
+            fitsio.write(filename,data, **kwargs)
         else:
             msg = "Unrecognized file extension: %s"%ext
             raise IOError(msg)
@@ -374,16 +384,15 @@ class AllFieldArray(FieldArray):
         return query
 
 
-def fields2sispi(infile,outfile=None,force=False):
-    if not outfile: outfile = os.path.splitext(infile)[0]+'.json'
-    fields = FieldArray.read(infile)
-    if os.path.exists(outfile) and not force:
-        msg = "Output file already exists: %s"%(outfile)
-        raise IOError(msg)
-    logging.debug("Writing %s..."%outfile)
-    fields.write(outfile)
-    return outfile
-
+#def fields2sispi(infile,outfile=None,force=False):
+#    if not outfile: outfile = os.path.splitext(infile)[0]+'.json'
+#    fields = FieldArray.read(infile)
+#    if os.path.exists(outfile) and not force:
+#        msg = "Output file already exists: %s"%(outfile)
+#        raise IOError(msg)
+#    logging.debug("Writing %s..."%outfile)
+#    fields.write(outfile)
+#    return outfile
 
 if __name__ == "__main__":
     import argparse
