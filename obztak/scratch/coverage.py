@@ -5,6 +5,7 @@ Generic python script.
 import sys 
 from collections import OrderedDict as odict
 import warnings
+import datetime
 
 import healpy as hp
 import numpy as np
@@ -99,13 +100,14 @@ for (band,_max),(band,_sum) in zip(max_skymaps.items(),sum_skymaps.items()):
         _max[pix] = np.clip(_max[pix],d['teff']*d['exptime'],None)
         _sum[pix] += d['teff']*d['exptime']
 
+    hdr = dict(DATE=str(datetime.date.today()))
     outfile = "decam_sum_expmap_%s_n%s.fits.gz"%(band,NSIDE)
     print "Writing %s..."%outfile
-    hp.write_map(outfile,_sum)
+    hp.write_map(outfile,_sum,extra_header=hdr)
 
     outfile = "decam_max_expmap_%s_n%s.fits.gz"%(band,NSIDE)
     print "Writing %s..."%outfile
-    hp.write_map(outfile,_max)
+    hp.write_map(outfile,_max,extra_header=hdr)
 
     print
 
