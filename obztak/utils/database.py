@@ -9,9 +9,67 @@ https://opensource.ncsa.illinois.edu/confluence/x/lwCsAw
 
 import os
 import logging
+import datetime
 
 import psycopg2
 import numpy as np
+
+def desc2dtype(desc):
+    """ Covert from postgres type description to numpy dtype.
+    Tries to conform to the type mapping on the psycopg2 documentation:
+    https://pythonhosted.org/psycopg2/usage.html"""
+    # A list of all string types can be found in:
+    # from psycopg2.extensions import string_types
+    dtype = []
+    for d in desc:
+        name = d.name
+        code = d.type_code
+        size = d.internal_size
+        # Booleans
+        if code == psycopg2.extensions.BOOLEAN:
+            dt = (name, bool)
+        # Numeric types
+        elif code == psycopg2.extensions.LONGINTEGER:
+            dt = (name, long)
+        elif code == psycopg2.extensions.INTEGER:
+            dt = (name, 'i%i'%size)
+        elif code == psycopg2.extensions.FLOAT:
+            dt = (name, 'f%i'%size)
+        elif code == psycopg2.NUMBER:
+            # Catchall for other numbers
+            dt = (name, float)
+        # Character strings
+        elif code == psycopg2.STRING:
+            if size > 0:
+                dt = (name, 'S%i'%size)
+            else:
+                # These are TEXT objects of undefined length
+                dt = (name, object)
+        elif code == psycopg2.extensions.UNICODE:
+            # Probably doesn't get called because STRING is a catchall
+            dt = (name, 'U%i'%size)
+        # Dates and times (should eventually move to np.datetime64)
+        elif code == psycopg2.extensions.DATE:
+            dt = (name, datetime.date)
+        elif code == psycopg2.extensions.TIME:
+            dt = (name, datetime.time)
+        elif code == psycopg2.extensions.INTERVAL:
+            dt = (name, datetime.timedelta)
+        elif code == psycopg2.DATETIME:
+            dt = (name, datetime.datetime)
+        elif code == psycopg2._psycopg.UNKNOWN:
+            dt = (name, object)
+        # Binary stuff
+        elif code == psycopg2.BINARY:
+            dt = (name, bytearray)
+        elif code == psycopg2.ROWID:
+            dt = (name, bytearray)
+        else: # Ignore other types for now.
+            msg = "Unrecognized type code: "+str(d)
+            raise TypeError(msg)
+        dtype.append(dt)
+    return dtype
+
 
 class Database(object):
     
@@ -81,18 +139,29 @@ class Database(object):
     def reset(self):
         self.connection.reset()
 
-    def get_columns(self,query=None):
+    def get_description(self,query=None):
         if query: self.select(query)
-        return [d[0] for d in self.cursor.description]
+        return self.cursor.description
+
+    def get_columns(self,query=None):
+        return [d[0] for d in self.get_description(query)]
+
+    def get_dtypes(self,query=None):
+        desc = self.get_description(query)
+        return desc2dtype(desc)
 
     def query2recarray(self,query):
         # Doesn't work for all data types
         data = self.execute(query)
         names = self.get_columns()
+        dtypes = self.get_dtypes()
         if not len(data):
             msg = "No data returned by query"
-            raise ValueError(msg)
-        return np.rec.array(data,names=names)
+            #raise ValueError(msg)
+            return np.recarray(0,dtype=dtypes)
+
+        #return np.rec.array(data,names=names)
+        return np.rec.array(data,dtype=dtypes)
 
     query2rec = query2recarray
 

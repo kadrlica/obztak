@@ -65,8 +65,6 @@ def convert(fwhm_1,
     else:
         wave_2 = WAVE_DF.merge(pd.DataFrame({'filter':band_2}), on='filter').to_records()['trans']
 
-    import pdb; pdb.set_trace()
-
     fwhm_2 = fwhm * (wave_1/wave_2) * (airmass_2/airmass_1)**(0.6)
 
     return np.hypot(fwhm_2, inst_2)
@@ -157,7 +155,7 @@ class DimmSeeing(Seeing):
             query ="""
             select date, dimm2see as fwhm from exposure
             where date > '%s' and date < '%s'
-            and filter != 'VR'
+            and filter != 'VR' and dimm2see is not NULL
             """%(tmin, tmax)
             logging.debug(query)
             raw = db.query2rec(query)
@@ -208,7 +206,7 @@ class QcSeeing(Seeing):
             query ="""
             select date, qc_fwhm as fwhm, airmass, filter from exposure
             where date > '%s' and date < '%s'
-            and filter != 'VR'
+            and filter != 'VR' and qc_fwhm is not NULL
             """%(tmin, tmax)
             logging.debug(query)
             raw = db.query2rec(query)

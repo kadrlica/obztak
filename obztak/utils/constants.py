@@ -38,11 +38,12 @@ SMASH_POLE = (10., -30.)
 
 # Characteristics of the survey
 # 90 sec exposures with 30 sec between exposures
-EXPTIME   = 90*ephem.second # Exposure time
-DOWNTIME  = 30*ephem.second # Time between exposures from readout/slew
+OVERHEAD  = 30*ephem.second # Time between exposures from readout/slew
+# These should be DEPRECATED
 NEXP      = 2 # Number of exposures taken in a row
-FIELDTIME = EXPTIME+DOWNTIME
-BANDS     = ('g','r')
+EXPTIME   = 90*ephem.second # Exposure time
+FIELDTIME = EXPTIME+OVERHEAD # DEPRECATED
+BANDS     = ('g','r') # DEPRECATED
 
 # Time for taking standards
 STANDARDS = 10*ephem.minute

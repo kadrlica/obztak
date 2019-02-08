@@ -198,15 +198,18 @@ class Tactician(object):
 
     def select_fields(self):
         index = self.select_index()
+        fields = self.fields[index]
 
-        timedelta = constants.FIELDTIME*np.arange(len(index))
-        if np.any(self.slew[index] > 5.):
-            # Apply a 30 second penalty for slews over 5 deg.
-            # This is not completely realistic, but better than nothing
-            # WARNING: This is broken when selecting two fields at once
-            timedelta += 30*ephem.second
+        timedelta = (fields['EXPTIME'] + constants.OVERHEAD)*np.arange(len(index))
+        timedelta[self.slew[index] > 5.] += 30*ephem.second
 
-        fields              = self.fields[index]
+        #timedelta = constants.FIELDTIME*np.arange(len(index))
+        #if np.any(self.slew[index] > 5.):
+        #    # Apply a 30 second penalty for slews over 5 deg.
+        #    # This is not completely realistic, but better than nothing
+        #    # WARNING: This is broken when selecting two fields at once
+        #    timedelta += 30*ephem.second
+
         fields['AIRMASS']   = self.airmass[index]
         fields['DATE']      = map(datestring,self.date+timedelta)
         fields['SLEW']      = self.slew[index]

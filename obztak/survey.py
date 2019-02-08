@@ -75,6 +75,7 @@ class Survey(object):
         observation_windows = []
         for date, mode in nights:
             mode = mode.lower().strip()
+            # Afternoon
             observatory.date = '%s 03:00'%(date)
             observatory.date = observatory.date + 24. * ephem.hour
 
@@ -105,6 +106,7 @@ class Survey(object):
         observation_windows = np.rec.fromrecords(observation_windows,names=names)
 
         if outfile:
+            logging.debug("Writing %s..."%outfile)
             fileio.rec2csv(outfile,observation_windows)
 
         return observation_windows
@@ -319,6 +321,26 @@ class Survey(object):
         smash = smash[smash['NUCALIB'] != 0]
         idx1,idx2,sep = obztak.utils.projector.match(ra,dec,smash['RA'],smash['DEC'])
         sel[idx1[sep < angsep]] = True
+        return sel
+
+    @staticmethod
+    def footprintDECALS(ra,dec):
+        """ Selecting exposures in the DESI footprint.
+
+        Parameters:
+        -----------
+        ra : Right ascension (deg)
+        dec: Declination (deg)
+
+        Returns:
+        --------
+        sel : Selection of fields within the footprint
+        """
+        import matplotlib.path
+        ra,dec = np.copy(ra), np.copy(dec)
+        filename = fileio.get_datafile('decals-poly.txt')
+        sel = Survey.select_in_path(filename,ra,dec)
+        #sel |= Survey.select_in_path(filename,ra,dec, wrap=360., poly=[3,4])
         return sel
 
     @staticmethod

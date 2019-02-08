@@ -50,6 +50,16 @@ class Scheduler(object):
         self.scheduled_fields = self.FieldType()
         self.observatory = CTIO()
 
+        self.create_seeing()
+
+    def create_seeing(self,**kwargs):
+        import obztak.seeing
+        dirname ='/Users/kadrlica/delve/observing/data/'
+        basename = 'delve_sim_01.csv.gz'
+        filename = os.path.join(dirname,basename)
+        self.seeing = obztak.seeing.DimmSeeing(filename=filename)
+
+
     def load_target_fields(self, target_fields=None):
         if target_fields is None:
             target_fields = self._defaults['targets']
@@ -174,6 +184,7 @@ class Scheduler(object):
         """
         sel = ~np.in1d(self.target_fields['ID'],self.completed_fields['ID'])
 
+        # ADW: Why do we create the tactician each time?
         self.tactician = self.create_tactician(mode=mode)
         self.tactician.set_date(date)
         self.tactician.set_target_fields(self.target_fields[sel])
@@ -246,6 +257,11 @@ class Scheduler(object):
         msg = "Scheduling with '%s' in mode '%s'"%(self.tactician.__class__.__name__,self.tactician.mode)
         logging.info(msg)
 
+        self.seeing.set_date(datestr(tstart))
+        self.fwhm = self.seeing.get_fwhm(band='i',airmass=1.0)
+        logging.info("Predicted i-band zenith fwhm: %.2f arcsec"%self.fwhm)
+        logging.debug(self.seeing.raw)
+
         date = tstart
         latch = True
         while latch:
@@ -267,7 +283,6 @@ class Scheduler(object):
                         logging.warning(msg)
 
             # Select one (or more) fields from the tactician
-            field_select = self.select_field(date, mode)
             try:
                 field_select = self.select_field(date, mode)
             except Exception as e:
@@ -279,7 +294,8 @@ class Scheduler(object):
                     raise(e)
 
             # Now update the time from the selected field
-            date = ephem.Date(field_select[-1]['DATE']) + constants.FIELDTIME
+            fieldtime = field_select[-1]['EXPTIME']*ephem.second + constants.OVERHEAD
+            date = ephem.Date(field_select[-1]['DATE']) + fieldtime
 
             self.completed_fields = self.completed_fields + field_select
             self.scheduled_fields = self.scheduled_fields + field_select
@@ -403,7 +419,13 @@ class Scheduler(object):
             msg = "Scheduling %s -- Chunk %i"%(start,i)
             logging.debug(msg)
             end = start+chunk
-            scheduled_fields = self.run(start,end,clip=clip,plot=False,mode=mode)
+
+            try:
+                scheduled_fields = self.run(start,end,clip=clip,plot=False,mode=mode)
+            except ValueError:
+                # Write fields even if there is an error
+                #chunks.append(self.scheduled_fields)
+                break
 
             if plot:
                 field_select = scheduled_fields[-1:]
@@ -412,14 +434,16 @@ class Scheduler(object):
                     import pdb; pdb.set_trace()
 
             chunks.append(scheduled_fields)
-            start = ephem.Date(chunks[-1]['DATE'][-1]) + constants.FIELDTIME
+            fieldtime = chunks[-1]['EXPTIME'][-1]*ephem.second + constants.OVERHEAD
+            start = ephem.Date(chunks[-1]['DATE'][-1]) + fieldtime
             #start = end
 
         if plot: raw_input(' ...finish... ')
 
         return chunks
 
-    def schedule_survey(self,start=None,end=None,chunk=60,plot=False,mode=None):
+    def schedule_survey(self,start=None,end=None,chunk=60,plot=False,mode=None,
+                        write=False,dirname=None):
         """
         Schedule the entire survey.
 
@@ -456,14 +480,33 @@ class Scheduler(object):
 
             self.scheduled_nites[nite] = chunks
 
-            if plot:
-                ortho.plotField(self.completed_fields[-1:],self.target_fields,self.completed_fields)#,options_basemap=dict(date='2017/02/21 05:00:00'))
+            if write:
+                self.write_nite(nite,chunks,dirname=dirname)
 
+            if plot:
+                ortho.plotField(self.completed_fields[-1:],self.target_fields,
+                                self.completed_fields)
                 if (raw_input(' ...continue ([y]/n)').lower()=='n'):
                     import pdb; pdb.set_trace()
 
         if plot: raw_input(' ...finish... ')
         return self.scheduled_nites
+
+    def write_nite(self,nite,chunks,dirname=None):
+        if dirname:
+            outdir = os.path.join(dirname,nite)
+        else:
+            outdir = os.path.join(nite)
+        if not os.path.exists(outdir): os.makedirs(outdir)
+        outfile = os.path.join(outdir,nite+'.json')
+        base,ext = os.path.splitext(outfile)
+
+        for i,chunk in enumerate(chunks):
+            if len(chunks) > 1:
+                outfile = base+'_%02d'%(i+1)+ext
+            logging.debug("Writing %s..."%outfile)
+            chunk.write(outfile)
+
 
     def write(self,filename):
         self.scheduled_fields.write(filename)
@@ -492,7 +535,7 @@ class Scheduler(object):
         #parser.add_argument('-m','--mode',default='coverage',
         #                    help='Mode for scheduler tactician.')
         parser.add_argument('-m','--mode',default=None,
-                            help='Mode for scheduler tactician.')
+                            help='mode for scheduler tactician.')
         parser.add_argument('-w','--windows',default=None,
                             help='observation windows.')
         parser.add_argument('-c','--complete',nargs='?',action='append',

@@ -21,7 +21,8 @@ warnings.simplefilter('ignore', UserWarning)
 
 NSIDE = 1024 # resolution
 DECAM = 1.1  # DECam radius
-BANDS = ['u','g','r','i','z','Y','VR']
+#BANDS = ['u','g','r','i','z','Y','VR']
+BANDS = ['u','g','r','i','z','Y']
 #BANDS = ['VR']
 
 #SkymapCls,suffix = DECamMcBride,'_mbt'
@@ -29,9 +30,9 @@ SkymapCls,suffix = MaglitesSkymap,'_ort'
 
 # COALESCE(qc_teff,'NaN')
 query ="""
-SELECT id as expnum, telra as ra, teldec as dec, exptime, filter,
+SELECT id as expnum, telra as ra, teldec as dec, exptime, filter, propid,
 (CASE WHEN qc_teff is NULL THEN 'NaN' WHEN qc_teff=-1 THEN 'NAN' ELSE qc_teff END) as teff
-FROM exposure where
+FROM exposure WHERE
 aborted=False and exposed=True and digitized=True and built=True and delivered=True and discard=False
 and flavor = 'object' and telra between 0 and 360 and teldec between -90 and 90
 and exptime >= 30
@@ -42,7 +43,11 @@ ORDER BY id;
 """%(",".join(["'%s'"%b for b in BANDS]))
 
 shephard = """
-select ra,teldec,filter,exptime,propid,to_char(to_timestamp(utc_beg), 'YYYY/MM/DD HH24:MI:SS.MS') AS DATE from exposure where (propid = '2016B-0288' or propid = '2017A-0367') and flavor = 'object' order by date
+SELECT ra,teldec,filter,exptime,propid,
+to_char(to_timestamp(utc_beg), 'YYYY/MM/DD HH24:MI:SS.MS') AS DATE
+FROM exposure WHERE
+(propid = '2016B-0288' or propid = '2017A-0367')
+and flavor = 'object' order by date
 """
 
 print(query)
@@ -86,6 +91,8 @@ def ang2disc(nside, lon, lat, radius, inclusive=False, fact=4, nest=False):
     vec = ang2vec(lon,lat)
     return hp.query_disc(nside,vec,radius,inclusive,fact,nest)
 
+# Do we want to make maps?
+if True: sys.exit(0)
 
 for (band,_max),(band,_sum) in zip(max_skymaps.items(),sum_skymaps.items()):
     print band
@@ -111,11 +118,10 @@ for (band,_max),(band,_sum) in zip(max_skymaps.items(),sum_skymaps.items()):
 
     print
 
+# Do we want to plot?
 if True: sys.exit(0)
 
-
 cbar_kwargs = dict(orientation='horizontal',aspect=40)
-
 fig = plt.figure(1); plt.clf()
 outbase = "decam_sum_expmap_%s_n%s"
 label = r'$\log_{10} \sum(t_{\rm eff} t_{\rm exp})$'
