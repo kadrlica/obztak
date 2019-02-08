@@ -55,7 +55,7 @@ def desc2dtype(desc):
             dt = (name, datetime.time)
         elif code == psycopg2.extensions.INTERVAL:
             dt = (name, datetime.timedelta)
-        elif code == psycopg2.DATETIME:
+        elif code in (psycopg2.DATETIME, 1184):
             dt = (name, datetime.datetime)
         elif code == psycopg2._psycopg.UNKNOWN:
             dt = (name, object)
