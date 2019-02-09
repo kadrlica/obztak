@@ -57,6 +57,7 @@ class Scheduler(object):
         dirname ='/Users/kadrlica/delve/observing/data/'
         basename = 'delve_sim_01.csv.gz'
         filename = os.path.join(dirname,basename)
+        filename = None
         self.seeing = obztak.seeing.DimmSeeing(filename=filename)
 
 
