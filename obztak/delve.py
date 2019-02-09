@@ -113,13 +113,14 @@ class DelveSurvey(Survey):
             smap.draw_fields(fields[sel],alpha=0.3,edgecolor='none')
             smap.draw_des(c='r')
             smap.draw_milky_way()
+            smap.draw_smash()
 
             plt.figure()
             smap = skymap.survey.SurveyMcBryde()
             smap.draw_fields(fields[sel],alpha=0.3,edgecolor='none')
             smap.draw_des(c='r')
             smap.draw_milky_way()
-
+            smap.draw_smash()
 
             if outfile:
                 plt.savefig(os.path.splitext(outfile)[0]+'.png',bbox_inches='tight')
@@ -487,8 +488,6 @@ class DelveFieldArray(FieldArray):
         FROM exposure where propid = '%(propid)s' and exptime > 89
         and discard = False and delivered = True and flavor = 'object'
         and object like '%(object_fmt)s%%'
-        -- #Discard exposures with teff < 0.1
-        and not (qc_teff < 0.05 and (date > '2018/07/21 12:00:00' and date < '2018/07/22 12:00:00'))
         ORDER BY utc_beg %(limit)s
         """%kwargs
         return query
@@ -497,8 +496,8 @@ class DelveFieldArray(FieldArray):
 class DelveScheduler(Scheduler):
     _defaults = odict(Scheduler._defaults.items() + [
         ('tactician','coverage'),
-        ('windows',fileio.get_datafile("delve-windows.csv")),
-        ('targets',fileio.get_datafile("delve-target-fields.csv")),
+        ('windows',fileio.get_datafile("delve-windows.csv.gz")),
+        ('targets',fileio.get_datafile("delve-target-fields.csv.gz")),
     ])
 
     FieldType = DelveFieldArray

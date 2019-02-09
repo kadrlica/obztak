@@ -82,9 +82,11 @@ class Seeing():
     """
     DTYPE = [('date','<M8[ns]'),('fwhm',float),('airmass',float),('filter','S4')]
 
-    def __init__(self, date=None, filename=None):
+    def __init__(self, date=None, db='fnal', filename=None):
         self.set_date(date)
         self.df = self.read_file(filename)
+        self.db = 'db-'+db
+
 
     def set_date(self, date):
         if date is None:
@@ -123,7 +125,7 @@ class Seeing():
         x = np.log10([np.median(self.data[recent]['fwhm']),
                       np.median(self.data[ancient]['fwhm'])])
         # Nominal atmospheric psf i-band zenith fwhm = 0.9"
-        xmu = np.log10(0.9)
+        xmu = np.log10(0.74833) # sqrt(0.9**2 - 0.5**2)
 
         # Predicted log of the atmospheric psf
         xpred = xmu + 0.8 * (x[0] - xmu) + 0.14 * (x[1] - xmu)
@@ -131,6 +133,7 @@ class Seeing():
         fwhm_pred = convert(10**xpred,
                             band_1='i' , airmass_1=1.0    , inst_1=0.0,
                             band_2=band, airmass_2=airmass, inst_2=inst)
+
         return fwhm_pred
 
 
@@ -150,7 +153,7 @@ class DimmSeeing(Seeing):
         tmin = self.date - pd.Timedelta(timedelta)
         if self.df is None:
             # Don't want to create the DB each time?
-            db = Database()
+            db = Database(self.db)
             db.connect()
             query ="""
             select date, dimm2see as fwhm from exposure
@@ -206,7 +209,7 @@ class QcSeeing(Seeing):
             query ="""
             select date, qc_fwhm as fwhm, airmass, filter from exposure
             where date > '%s' and date < '%s'
-            and filter != 'VR' and qc_fwhm is not NULL
+            and filter != 'VR' -- and qc_fwhm is not NULL
             """%(tmin, tmax)
             logging.debug(query)
             raw = db.query2rec(query)

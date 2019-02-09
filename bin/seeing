@@ -17,8 +17,10 @@ def main():
     parser = Parser(description=__doc__)
     parser.add_argument('-m','--mode',default=None,choices=['dimm','qc'],
         help='mode seeing estimation.')
-    parser.add_argument('--utc',dest='utc',action=DatetimeAction,
+    parser.add_argument('--utc',action=DatetimeAction,
         help="time for seeing estimate.")
+    parser.add_argument('--db',default='fnal',choices=['fnal','ctio'],
+        help="database to connect to.")
 
     parser.add_argument('-a','--airmass',default=1.0,type=float,
         help='output airmass')
@@ -35,12 +37,13 @@ def main():
 
     date = ephem.Date(args.utc) if args.utc else ephem.now()
 
+    kwargs = dict(filename=args.filename, db=args.db)
     if args.mode == 'dimm':
-        seeing = obztak.seeing.DimmSeeing(filename=args.filename)
+        seeing = obztak.seeing.DimmSeeing(**kwargs)
     elif args.mode == 'qc':
-        seeing = obztak.seeing.QcSeeing(filename=args.filename)
+        seeing = obztak.seeing.QcSeeing(**kwargs)
     else:
-        seeing = obztak.seeing.QcSeeing(filename=args.filename)
+        seeing = obztak.seeing.QcSeeing(**kwargs)
 
     seeing.set_date(datestr(date))
 

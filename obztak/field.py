@@ -310,7 +310,7 @@ class FieldArray(np.recarray):
         if ext in ('.json'):
             sispi = fileio.read_json(filename)
             return cls().load_sispi(sispi)
-        elif ext in ('.csv','.txt'):
+        elif ext in ('.csv','.txt','.gz'):
             #dtype = DTYPES.items()
             #recarray = fileio.csv2rec(filename,dtype=dtype)
             recarray = fileio.csv2rec(filename)
