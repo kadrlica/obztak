@@ -5,6 +5,7 @@ Executable for predicting the seeing.
 import os
 import logging
 import ephem
+import pandas as pd
 
 import obztak.seeing
 from obztak.seeing import DECAMINST,WAVE
@@ -45,19 +46,33 @@ def main():
     else:
         seeing = obztak.seeing.QcSeeing(**kwargs)
 
+    # String formatting
+    pd.set_option('max_colwidth',18)
+    fmt={"date": lambda x: "{:%Y-%m-%d %H:%M}".format(pd.to_datetime(x))}
+    strkw = dict(index=False,float_format='{:5.2f}'.format,justify='left',
+                     formatters=fmt)
+
     seeing.set_date(datestr(date))
 
     kwargs = dict(band=args.band,airmass=args.airmass,timedelta=args.timedelta,
                   inst=args.inst)
 
+    # Run the fwhm calculation
     fwhm = seeing.get_fwhm(**kwargs)
-    logging.debug('raw data:\n'+str(seeing.raw))
-    logging.debug('i-band zenith atmospheric fwhm:\n'+str(seeing.data))
 
-    msg = "Predicted FWHM in {band}-band at airmass {airmass:.2f}: \n".format(**kwargs)
-    msg += "{:.2f} arcsec".format(fwhm)
+    # Print the raw data
+    df = pd.DataFrame(seeing.raw,copy=True)
+    tab=df.to_string(**strkw)
+    logging.debug('raw input data\n'+tab)
+
+    # Print the i-band zenith data
+    df = pd.DataFrame(seeing.data,copy=True)
+    tab=df.to_string(**strkw)
+    logging.debug('i-band zenith atmospheric data\n'+tab)
+
+    msg = "Predicted FWHM ({band}-band, airmass={airmass:.2f}): ".format(**kwargs)
+    msg += "  {:.2f} arcsec".format(fwhm)
     logging.info(msg)
-
 
 if __name__ == "__main__":
     main()
