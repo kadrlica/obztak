@@ -12,6 +12,7 @@ import logging
 import datetime
 
 import psycopg2
+import pandas as pd
 import numpy as np
 
 def desc2dtype(desc):
@@ -164,6 +165,38 @@ class Database(object):
         return np.rec.array(data,dtype=dtypes)
 
     query2rec = query2recarray
+
+
+    def qcInv(self, timedelta=None, propid=None):
+        """Get qc information.
+     
+        Parameters:
+        -----------
+        timedelta : time interval to query.
+        propid    : proposal id to select on.
+     
+        Returns:
+        --------
+        df        : pd.DataFrame with query results
+        """
+        if timedelta is None: timedelta = '12h'
+        propid = '' if propid is None else "and propid = '%s'"%propid
+        
+        query = """
+        SELECT 
+        id as expnum, telra as ra, teldec as dec, 
+        to_char(to_timestamp(utc_beg), 'HH24:MI') AS utc,
+        filter as fil, CAST(exptime AS INT) as time, airmass as secz,
+        qc_fwhm as psf, qc_sky as sky, qc_cloud as cloud, qc_teff as teff,
+        object
+        FROM exposure
+        WHERE
+        flavor = 'object' and
+        date > (now() - interval '{timedelta}') {propid}
+        ORDER BY expnum ASC
+        """.format(timedelta=timedelta, propid=propid)
+         
+        return pd.DataFrame(self.query2rec(query))
 
 if __name__ == "__main__":
     import argparse

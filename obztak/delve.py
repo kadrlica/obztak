@@ -718,3 +718,4 @@ class DelveTactician(Tactician):
             raise ValueError(msg)
 
         return index
+

@@ -17,7 +17,10 @@ def get_survey():
     survey = os.getenv('OBZTAK_SURVEY',None)
     if survey is None:
         msg = "$OBZTAK_SURVEY environment variable not set."
-        raise Exception(msg)
+        raise EnvironmentError(msg)
     return survey.lower()
 
-__survey__ = get_survey()
+try:
+    __survey__ = get_survey()
+except EnvironmentError as e:
+    __survey__ = None
