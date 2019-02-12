@@ -7,7 +7,6 @@ import copy
 import numpy as np
 import time
 import ephem
-import matplotlib.pyplot as plt
 import logging
 from collections import OrderedDict as odict
 
@@ -209,7 +208,7 @@ class Scheduler(object):
             msg += "weights=%s"%weight
             logging.info(msg)
             #ortho.plotWeight(self.scheduled_fields[-1], self.target_fields, self.tactician.weight)
-            ortho.plotField(self.scheduled_fields[-1],self.scheduled_fields,options_basemap=dict(date='2017/02/20 05:00:00'))
+            #ortho.plotField(self.scheduled_fields[-1],self.scheduled_fields,options_basemap=dict(date='2017/02/20 05:00:00'))
             raw_input('WAIT')
             import pdb; pdb.set_trace()
             raise Exception()

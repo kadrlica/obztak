@@ -703,12 +703,13 @@ class DelveTactician(Tactician):
         weight = self.weight
         index = np.array([np.argmin(weight)],dtype=int)
         if np.any(~np.isfinite(weight[index])):
-        #if True:
             msg = "Infinite weight selected"
-            print(msg)
-            import obztak.utils.ortho, pylab as plt
+            logging.warn(msg)
             airmass_min, airmass_max = self.CONDITIONS[self.mode]
-            bmap = obztak.utils.ortho.plotFields(self.completed_fields[-1],self.fields,self.completed_fields,options_basemap=dict(airmass=airmass_max))
+            if False:
+                import obztak.utils.ortho, pylab as plt
+                bmap = obztak.utils.ortho.plotFields(self.completed_fields[-1],self.fields,self.completed_fields,options_basemap=dict(airmass=airmass_max))
+            logging.info("Enter 'c' to continue")
             import pdb; pdb.set_trace()
             raise ValueError(msg)
 

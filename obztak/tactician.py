@@ -381,9 +381,11 @@ class BlissTactician(Tactician):
         #if True:
             msg = "Infinite weight selected"
             print(msg)
-            import obztak.utils.ortho, pylab as plt
+            print("Press 'c' to continue")
             airmass_min, airmass_max = self.CONDITIONS[self.mode]
-            bmap = obztak.utils.ortho.plotFields(self.completed_fields[-1],self.fields,self.completed_fields,options_basemap=dict(airmass=airmass_max))
+            if False:
+                import obztak.utils.ortho, pylab as plt
+                bmap = obztak.utils.ortho.plotFields(self.completed_fields[-1],self.fields,self.completed_fields,options_basemap=dict(airmass=airmass_max))
             import pdb; pdb.set_trace()
             raise ValueError(msg)
 
