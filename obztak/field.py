@@ -325,7 +325,7 @@ class FieldArray(np.recarray):
         if ext in ('.json'):
             data = self.to_sispi()
             fileio.write_json(filename,data,**kwargs)
-        elif ext in ('.csv','.txt'):
+        elif ext in ('.csv','.txt','.gz'):
             data = self.to_recarray()
             fileio.rec2csv(filename,data,**kwargs)
         elif ext in ('.fits','.fz','.gz'):

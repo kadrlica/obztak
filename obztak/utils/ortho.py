@@ -61,7 +61,7 @@ DPI = 80
 class DECamBasemap(Basemap):
 
     def __init__(self, *args, **kwargs):
-        super(DECamBasemap,self).__init__(self,*args,**kwargs)
+        super(DECamBasemap,self).__init__(*args,**kwargs)
         self.draw_parallels()
         self.draw_meridians()
 

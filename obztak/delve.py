@@ -248,6 +248,8 @@ class DelveSurvey(Survey):
         logging.info("Creating DEEP fields...")
         BANDS = ['g','i']
         EXPTIME = [300,300]
+        TILINGS = [15,10]
+
         dirname = '/Users/kadrlica/delve/observing/data'
         hexbase = 100000 # hex offset
         # target number and filename
@@ -278,6 +280,9 @@ class DelveSurvey(Survey):
             f = np.repeat(f,len(BANDS))
             f['FILTER'] = filters
             f['EXPTIME'] = exptimes
+
+            for (b,t) in zip(BANDS, TILINGS):
+                f = f[~((f['FILTER'] == b) & (f['TILING'] > t))]
 
             fields = fields + f
 
@@ -714,3 +719,4 @@ class DelveTactician(Tactician):
             raise ValueError(msg)
 
         return index
+

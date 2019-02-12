@@ -17,7 +17,7 @@ from obztak.utils.date import datestring
 from obztak.utils.database import Database
 
 
-# These are nominal values from eric neilsen
+# These are nominal transformation values from Eric Neilsen
 # WAVE[x] = (lambda[x]/lambda[i])**0.2
 WAVE = odict([
     ( 'u'  , 0.86603  ), # u (380nm) -> i (780nm)
@@ -115,20 +115,36 @@ class Seeing():
         """
         timedelta = pd.Timedelta(timedelta)
 
-        self.load_data(timedelta=3*timedelta)
+        self.load_data(timedelta=max(3*timedelta,pd.Timedelta('1h')))
 
         dt = pd.DatetimeIndex(self.data['date'])
+        previous = slice(-1,None) # most recent exposure
         recent = (dt < self.date) & (dt > (self.date - timedelta))
         ancient = (dt < (self.date - timedelta)) & (dt > (self.date - 2*timedelta))
 
-        # Observed log of the atmospheric psf i-band zenith
-        x = np.log10([np.median(self.data[recent]['fwhm']),
-                      np.median(self.data[ancient]['fwhm'])])
         # Nominal atmospheric psf i-band zenith fwhm = 0.9"
         xmu = np.log10(0.74833) # sqrt(0.9**2 - 0.5**2)
 
-        # Predicted log of the atmospheric psf
-        xpred = xmu + 0.8 * (x[0] - xmu) + 0.14 * (x[1] - xmu)
+        if not len(self.data):
+            # No data, use the mean and print a warning
+            logging.warn("No fwhm data available; using median fwhm")
+            xpred = xmu
+        elif not len(recent):
+            # Log of the i-band zenith fwhm from the previous exposure
+            xpred = np.log10(self.data[previous]['fwhm'])
+        elif not len(ancient):
+            # Median of the log of the observed atmospheric psf i-band zenith
+            xpred = np.log10(np.median(self.data[recent]['fwhm']))
+        else:
+            # Weighted median of recent and ancient exposures
+            # Log of the observed atmospheric psf i-band zenith
+            x = np.log10([np.median(self.data[recent]['fwhm']),
+                          np.median(self.data[ancient]['fwhm'])])
+
+            # Predicted log of the atmospheric psf
+            # NB: These constants were derived for timedelta=5min
+            # they may not hold for arbitrary time windows.
+            xpred = xmu + 0.8 * (x[0] - xmu) + 0.14 * (x[1] - xmu)
 
         fwhm_pred = convert(10**xpred,
                             band_1='i' , airmass_1=1.0    , inst_1=0.0,
@@ -158,7 +174,7 @@ class DimmSeeing(Seeing):
             query ="""
             select date, dimm2see as fwhm from exposure
             where date > '%s' and date < '%s'
-            and filter != 'VR' and dimm2see is not NULL
+            and dimm2see is not NULL
             """%(tmin, tmax)
             logging.debug(query)
             raw = db.query2rec(query)
@@ -209,7 +225,7 @@ class QcSeeing(Seeing):
             query ="""
             select date, qc_fwhm as fwhm, airmass, filter from exposure
             where date > '%s' and date < '%s'
-            and filter != 'VR' -- and qc_fwhm is not NULL
+            and filter != 'VR' and qc_fwhm is not NULL
             """%(tmin, tmax)
             logging.debug(query)
             raw = db.query2rec(query)
