@@ -86,12 +86,14 @@ class Survey(object):
             if mode == 'full':
                 window = [time_setting, time_rising]
             elif mode == 'first':
-                if standards:
-                    time_midpoint = time_midpoint - STANDARDS
+                # Don't do midpoint standards
+                #if standards:
+                #    time_midpoint = time_midpoint - STANDARDS
                 window = [time_setting, time_midpoint]
             elif mode == 'second':
-                if standards:
-                    time_midpoint = time_midpoint + STANDARDS
+                # Don't do midpoint standards
+                #if standards:
+                #    time_midpoint = time_midpoint + STANDARDS
                 window = [time_midpoint, time_rising]
             else:
                 msg = "Unrecognized mode: '%s'"%mode
