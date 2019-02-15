@@ -370,7 +370,7 @@ class Scheduler(object):
 
         return self.run(tstart,tstop,clip,plot,mode)
 
-    def schedule_nite(self,date=None,chunk=60,clip=False,plot=False,mode=None):
+    def schedule_nite(self,date=None,start=None,chunk=60,clip=False,plot=False,mode=None):
         """
         Schedule a night of observing.
 
@@ -398,7 +398,11 @@ class Scheduler(object):
         try:
             nites = [get_nite(w[0]) for w in self.windows]
             idx = nites.index(nite)
-            start,finish = self.windows[idx]
+            winstart,finish = self.windows[idx]
+            if start is None:
+                start = winstart
+            else:
+                logging.warn("Over-writing nite start time")
         except (TypeError, ValueError):
             msg = "Requested nite (%s) not found in windows:\n"%nite
             msg += '['+', '.join([n for n in nites])+']'
@@ -410,8 +414,8 @@ class Scheduler(object):
             finish = self.observatory.next_rising(ephem.Sun(), use_center=True)
             self.observatory.horizon = '0'
 
-            logging.info("Night start (UTC):  %s"%datestr(start))
-            logging.info("Night finish (UTC): %s"%datestr(finish))
+        logging.info("Night start (UTC):  %s"%datestr(start))
+        logging.info("Night finish (UTC): %s"%datestr(finish))
 
         chunks = []
         i = 0
