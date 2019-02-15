@@ -593,7 +593,7 @@ class DelveTactician(Tactician):
         weight = np.zeros(len(sel))
 
         # Moon angle constraints
-        moon_limit = 30.
+        moon_limit = 50.
         sel &= (moon_angle > moon_limit)
 
         # Sky brightness selection
@@ -622,10 +622,10 @@ class DelveTactician(Tactician):
 
         # Higher weight for fields close to the moon (when up)
         # angle = 50 -> weight = 6.4
-        if (self.moon.alt > -0.04):
+        if (self.moon.alt > -0.04) and (self.moon.phase >= 10):
             #weight += 100 * (35./moon_angle)**3
             #weight += 10 * (35./moon_angle)**3
-            weight += 1 * (35./moon_angle)**3
+            weight += 1 * (40./moon_angle)**3
 
         ## Try hard to do high priority fields
         weight += 1e3 * (self.fields['PRIORITY'] - 1)

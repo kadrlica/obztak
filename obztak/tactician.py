@@ -172,7 +172,11 @@ class Tactician(object):
         # Exclude special fields (unless using special tacticians)
         sel_special = self.fields['PRIORITY'] < 90
 
-        viable = sel_hour_angle & sel_airmass & sel_declination & sel_special
+        # Moon angle constraints
+        moon_limit = 20.
+        sel_moon = (self.moon_angle > moon_limit)
+
+        viable = sel_hour_angle & sel_airmass & sel_declination & sel_special & sel_moon
         return viable
 
     @property
