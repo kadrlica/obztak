@@ -2,6 +2,7 @@
 """
 Plot a night summary.
 """
+import os
 import numpy as np
 import pylab as plt
 import ephem
