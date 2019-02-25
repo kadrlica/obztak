@@ -94,10 +94,10 @@ class Scheduler(object):
             if ii > 0 and (start < self.windows[ii-1][1]):
                 logging.warn(msg)
 
-        logging.info('Observation Windows:')
+        logging.debug('Observation Windows:')
         for start,end in self.windows:
-            logging.info('  %s: %s UTC -- %s UTC'%(get_nite(start),datestr(start),datestr(end)))
-        logging.info(30*'-')
+            logging.debug('  %s: %s UTC -- %s UTC'%(get_nite(start),datestr(start),datestr(end)))
+        logging.debug(30*'-')
 
     def load_observed_fields(self):
         """
