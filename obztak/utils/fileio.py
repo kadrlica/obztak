@@ -5,6 +5,8 @@ Deal with file input/output.
 import os,pwd
 from os.path import splitext, exists, join
 from collections import OrderedDict as odict
+import subprocess
+
 from matplotlib import mlab
 import numpy as np
 import json
@@ -93,6 +95,11 @@ def rec2csv(filename,data,**kwargs):
     with open(filename,'wb') as out:
         out.write(header())
         df.to_csv(out,**kwargs)
+
+    basename,ext = os.path.splitext(filename)
+    if ext == '.gz':
+        cmd = 'gzip %s'%basename
+        subprocess.check_call(cmd,shell=True)
 
     #mlab.rec2csv(data,outfile,formatd=formatd,**kwargs)
     

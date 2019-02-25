@@ -61,7 +61,7 @@ DPI = 80
 class DECamBasemap(Basemap):
 
     def __init__(self, *args, **kwargs):
-        super(DECamBasemap,self).__init__(self,*args,**kwargs)
+        super(DECamBasemap,self).__init__(*args,**kwargs)
         self.draw_parallels()
         self.draw_meridians()
 
@@ -944,8 +944,9 @@ def plot_nightsum(fields,nitestr,date):
     db.connect()
     query = """
     select id, qc_fwhm as psf, qc_teff as teff, filter from exposure
-    where exptime = 90 and delivered = True and propid = '%s'
-    and qc_teff is not NULL 
+    where delivered = True and propid = '%s'
+    and flavor = 'object'
+    and qc_teff is not NULL
     and qc_fwhm is not NULL
     and to_timestamp(utc_beg) %s '%s'
     """
