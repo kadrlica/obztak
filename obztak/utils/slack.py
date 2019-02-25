@@ -11,7 +11,7 @@ import pandas as pd
 
 from obztak.utils.database import Database
 
-def slack_post(text, token=None, channel=None):
+def post_message(text, token=None, channel=None):
     """Post text to slack."""
     from slackclient import SlackClient
     slack_token   = os.environ["SLACK_API_TOKEN"] if token is None else token
@@ -22,7 +22,22 @@ def slack_post(text, token=None, channel=None):
     ret = sc.api_call(**kwargs)
     return ret
 
-def slack_qcinv(token=None, channel=None, propid=None, timedelta=None, debug=False):
+#slack_post = post_message
+
+def post_file(filepath, title=None, token=None, channels=None):
+    """Post a file to a Slack channel"""
+    from slackclient import SlackClient
+    token    = os.environ["SLACK_API_TOKEN"] if token is None else token
+    channels = os.environ["SLACK_API_CHANNEL"] if channels is None else channels
+
+    sc = SlackClient(token)
+    kwargs = dict(method="files.upload",channels=channels,title=title)
+    ret = None
+    with open(filepath, 'rb') as file_content:
+        ret = sc.api_call(file=file_content,**kwargs)
+    return ret
+
+def post_qcinv(token=None, channel=None, propid=None, timedelta=None, debug=False):
     """Post inventory results to Slack.
     
     Parameters:
@@ -59,5 +74,5 @@ def slack_qcinv(token=None, channel=None, propid=None, timedelta=None, debug=Fal
         logging.debug("Exiting without posting.")
         return df,package
 
-    ret = slack_post(package, token=token, channel=channel)
+    ret = post_message(package, token=token, channel=channel)
     return df,package
