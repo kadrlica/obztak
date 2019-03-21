@@ -2,7 +2,7 @@
 """
 Generic python script.
 """
-import sys 
+import os,sys
 from collections import OrderedDict as odict
 import warnings
 import datetime
@@ -19,6 +19,14 @@ from skymap.survey import MaglitesSkymap
 
 warnings.simplefilter('ignore', UserWarning)
 
+import argparse
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('outfile',default='decam-exposures.fits.gz')
+parser.add_argument('-m','--maps',action='store_true')
+parser.add_argument('-p','--plot',action='store_true')
+args = parser.parse_args()
+
+
 NSIDE = 1024 # resolution
 DECAM = 1.1  # DECam radius
 #BANDS = ['u','g','r','i','z','Y','VR']
@@ -29,7 +37,7 @@ BANDS = ['u','g','r','i','z','Y']
 SkymapCls,suffix = MaglitesSkymap,'_ort'
 
 # COALESCE(qc_teff,'NaN')
-query ="""
+QUERY ="""
 SELECT id as expnum, telra as ra, teldec as dec, exptime, filter, propid,
 (CASE WHEN qc_teff is NULL THEN 'NaN' WHEN qc_teff=-1 THEN 'NAN' ELSE qc_teff END) as teff
 FROM exposure WHERE
@@ -50,28 +58,8 @@ FROM exposure WHERE
 and flavor = 'object' order by date
 """
 
-print(query)
+print(QUERY)
 
-db = Database()
-db.connect()
-data = db.query2recarray(query)
-fitsio.write('decam-exposures.fits.gz',data)
-
-exposures = odict([(b,data[data['filter'] ==b]) for b in BANDS])
-sum_skymaps = odict([(b,np.zeros(hp.nside2npix(NSIDE))) for b in BANDS])
-max_skymaps = odict([(b,np.zeros(hp.nside2npix(NSIDE))) for b in BANDS])
-
-for b,exp in exposures.items():
-    nan = np.isnan(exp['teff'])
-    median = np.median(exp[~nan]['teff'])
-    print "Median teff for %s-band: %s"%(b,median)
-    if not nan.sum(): continue
-
-    ## Set the teff to a random value from the distribution
-    #idx = np.random.randint(len(nan)-nan.sum(),size=nan.sum())
-    #teff = exp['teff'][np.where(~nan)[0][idx]]
-    #exp['teff'][nan] = teff
-                  
 def phi2lon(phi): return np.degrees(phi)
 def lon2phi(lon): return np.radians(lon)
 
@@ -91,8 +79,32 @@ def ang2disc(nside, lon, lat, radius, inclusive=False, fact=4, nest=False):
     vec = ang2vec(lon,lat)
     return hp.query_disc(nside,vec,radius,inclusive,fact,nest)
 
+db = Database()
+db.connect()
+data = db.query2recarray(QUERY)
+if os.path.exists(args.outfile):
+    os.remove(args.outfile)
+fitsio.write(args.outfile,data)
+
 # Do we want to make maps?
-if True: sys.exit(0)
+if not args.maps: sys.exit()
+
+exposures = odict([(b,data[data['filter'] ==b]) for b in BANDS])
+sum_skymaps = odict([(b,np.zeros(hp.nside2npix(NSIDE))) for b in BANDS])
+max_skymaps = odict([(b,np.zeros(hp.nside2npix(NSIDE))) for b in BANDS])
+
+for b,exp in exposures.items():
+    nan = np.isnan(exp['teff'])
+    median = np.median(exp[~nan]['teff'])
+    print "Median teff for %s-band: %s"%(b,median)
+    if not nan.sum(): continue
+
+    ## Set the teff to a random value from the distribution
+    #idx = np.random.randint(len(nan)-nan.sum(),size=nan.sum())
+    #teff = exp['teff'][np.where(~nan)[0][idx]]
+    #exp['teff'][nan] = teff
+                  
+
 
 for (band,_max),(band,_sum) in zip(max_skymaps.items(),sum_skymaps.items()):
     print band
@@ -119,7 +131,7 @@ for (band,_max),(band,_sum) in zip(max_skymaps.items(),sum_skymaps.items()):
     print
 
 # Do we want to plot?
-if True: sys.exit(0)
+if not args.plot: sys.exit(0)
 
 cbar_kwargs = dict(orientation='horizontal',aspect=40)
 fig = plt.figure(1); plt.clf()
