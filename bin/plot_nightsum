@@ -28,7 +28,7 @@ if __name__ == "__main__":
         date = nite2utc(args.nite)
     else:
         # Yesterday...? Would 12*ephem.hour be better?
-        date = ephem.Date(ephem.now() - 8*ephem.hour)
+        date = ephem.Date(ephem.now() - 12*ephem.hour)
     nitestr = utc2nite(date)
 
     print "Plotting nightsum for: %s"%nitestr
