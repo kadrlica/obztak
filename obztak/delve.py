@@ -565,13 +565,19 @@ class DelveTactician(Tactician):
         if self.mode is None:
             # First priority is deep
             weights = self.weight_deep()
-            if np.isfinite(weights).sum(): return weights
+            if self.fwhm < 0.9 and np.isfinite(weights).sum():
+                logging.info("DEEP")
+                return weights
             # Then mc
             weights = self.weight_mc()
-            if np.isfinite(weights).sum(): return weights
+            if self.fwhm < 1.0 and np.isfinite(weights).sum():
+                logging.info("MC")
+                return weights
             # Then wide
             weights = self.weight_wide()
-            if np.isfinite(weights).sum(): return weights
+            if np.isfinite(weights).sum():
+                logging.info("WIDE")
+                return weights
         elif self.mode == 'deep':
             return self.weight_deep()
         elif self.mode == 'mc':
@@ -582,60 +588,6 @@ class DelveTactician(Tactician):
             raise ValueError("Unrecognized mode: %s"%self.mode)
 
         raise ValueError("No viable fields")
-
-    def weight_wide(self):
-        """ Calculate the field weight for the WIDE survey. """
-        airmass = self.airmass
-        moon_angle = self.moon_angle
-
-        sel = self.viable_fields
-        sel &= (self.fields['PROGRAM'] == 'delve-wide')
-        weight = np.zeros(len(sel))
-
-
-        # Sky brightness selection
-        sel &= self.skybright_select()
-
-        # Airmass cut
-        airmass_min, airmass_max = self.CONDITIONS['wide']
-        sel &= ((airmass > airmass_min) & (airmass < airmass_max))
-
-        # Higher weight for fields close to the moon (when up)
-        # angle = 50 -> weight = 6.4
-        # Moon angle constraints (viable fields sets moon_angle > 20.)
-        if (self.moon.alt > -0.04) and (self.moon.phase >= 10):
-            moon_limit = self.moon.phase/2.
-            sel &= (moon_angle > moon_limit)
-
-            #weight += 100 * (35./moon_angle)**3
-            #weight += 10 * (35./moon_angle)**3
-            weight += 1 * (35./moon_angle)**3
-
-        # Higher weight for rising fields (higher hour angle)
-        # HA [min,max] = [-53,54] (for airmass 1.4)
-        #weight += 5.0 * self.hour_angle
-        weight += 1.0 * self.hour_angle
-        #weight += 0.1 * self.hour_angle
-
-        # Higher weight for larger slews
-        # slew = 10 deg -> weight = 1e2
-        weight += self.slew**2
-        #weight += self.slew
-        #weight += 1e3 * self.slew
-
-        # Higher weight for higher airmass
-        # airmass = 1.4 -> weight = 6.4
-        #weight += 100. * (airmass - 1.)**3
-        weight += 1e3 * (airmass - 1.)**2
-
-
-        ## Try hard to do high priority fields
-        weight += 1e3 * (self.fields['PRIORITY'] - 1)
-
-        # Set infinite weight to all disallowed fields
-        weight[~sel] = np.inf
-
-        return weight
 
     def weight_deep(self):
         """ Calculate the field weight for the WIDE survey. """
@@ -705,6 +657,60 @@ class DelveTactician(Tactician):
         weight[~sel] = np.inf
 
         return weight
+
+    def weight_wide(self):
+        """ Calculate the field weight for the WIDE survey. """
+        airmass = self.airmass
+        moon_angle = self.moon_angle
+
+        sel = self.viable_fields
+        sel &= (self.fields['PROGRAM'] == 'delve-wide')
+        weight = np.zeros(len(sel))
+
+        # Sky brightness selection
+        sel &= self.skybright_select()
+
+        # Airmass cut
+        airmass_min, airmass_max = self.CONDITIONS['wide']
+        sel &= ((airmass > airmass_min) & (airmass < airmass_max))
+
+        # Higher weight for fields close to the moon (when up)
+        # angle = 50 -> weight = 6.4
+        # Moon angle constraints (viable fields sets moon_angle > 20.)
+        if (self.moon.alt > -0.04) and (self.moon.phase >= 10):
+            moon_limit = self.moon.phase/2.
+            sel &= (moon_angle > moon_limit)
+
+            #weight += 100 * (35./moon_angle)**3
+            #weight += 10 * (35./moon_angle)**3
+            weight += 1 * (35./moon_angle)**3
+
+        # Higher weight for rising fields (higher hour angle)
+        # HA [min,max] = [-53,54] (for airmass 1.4)
+        #weight += 5.0 * self.hour_angle
+        weight += 1.0 * self.hour_angle
+        #weight += 0.1 * self.hour_angle
+
+        # Higher weight for larger slews
+        # slew = 10 deg -> weight = 1e2
+        weight += self.slew**2
+        #weight += self.slew
+        #weight += 1e3 * self.slew
+
+        # Higher weight for higher airmass
+        # airmass = 1.4 -> weight = 6.4
+        #weight += 100. * (airmass - 1.)**3
+        weight += 1e3 * (airmass - 1.)**2
+
+
+        ## Try hard to do high priority fields
+        weight += 1e3 * (self.fields['PRIORITY'] - 1)
+
+        # Set infinite weight to all disallowed fields
+        weight[~sel] = np.inf
+
+        return weight
+
 
     def select_index(self):
         weight = self.weight
