@@ -27,6 +27,7 @@ WAVE = odict([
     ( 'z'  ,  1.036   ), # z (920nm) -> i (780nm)
     ( 'Y'  , 1.0523   ), # Y (990nm) -> i (780nm)
     ('dimm', 1/1.0916 ), # dimm (500 nm)->i (780nm)
+    ('VR'  , 0.9551   ), # VR (620 nm)->i (780nm)
 ])
 WAVE_DF = pd.DataFrame({'filter':WAVE.keys(),'trans':WAVE.values()})
 DECAMINST = 0.5 # DECam instrumental contribution to the PSF [arcsec]
@@ -86,7 +87,6 @@ class Seeing():
         self.set_date(date)
         self.df = self.read_file(filename)
         self.db = 'db-'+db
-
 
     def set_date(self, date):
         if date is None:
@@ -225,7 +225,8 @@ class QcSeeing(Seeing):
             query ="""
             select date, qc_fwhm as fwhm, airmass, filter from exposure
             where date > '%s' and date < '%s'
-            and filter != 'VR' and qc_fwhm is not NULL
+            --and filter != 'VR' and qc_fwhm is not NULL
+            and qc_fwhm is not NULL
             """%(tmin, tmax)
             logging.debug(query)
             raw = db.query2rec(query)
