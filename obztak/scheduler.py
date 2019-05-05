@@ -51,14 +51,19 @@ class Scheduler(object):
 
         self.create_seeing()
 
-    def create_seeing(self,**kwargs):
+    def create_seeing(self,filename=None,mode='qc'):
         import obztak.seeing
-        dirname ='/Users/kadrlica/delve/observing/data/'
-        basename = 'delve_sim_01.csv.gz'
-        filename = os.path.join(dirname,basename)
-        filename = None
-        self.seeing = obztak.seeing.DimmSeeing(filename=filename)
+        #dirname ='/Users/kadrlica/delve/observing/data/'
+        #basename = 'delve_sim_01.csv.gz'
+        #filename = os.path.join(dirname,basename)
+        if mode == 'dimm':
+            self.seeing = obztak.seeing.DimmSeeing(filename=filename)
+        elif mode == 'qc':
+            self.seeing = obztak.seeing.QcSeeing(filename=filename)
+        else:
+            self.seeing = obztak.seeing.QcSeeing(filename=filename)
 
+        return self.seeing
 
     def load_target_fields(self, target_fields=None):
         if target_fields is None:
@@ -189,6 +194,7 @@ class Scheduler(object):
         self.tactician.set_date(date)
         self.tactician.set_target_fields(self.target_fields[sel])
         self.tactician.set_completed_fields(self.completed_fields)
+        self.tactician.fwhm = self.fwhm
 
         field_select = self.tactician.select_fields()
 
