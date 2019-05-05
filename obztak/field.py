@@ -205,15 +205,19 @@ class FieldArray(np.recarray):
     def load_sispi(cls,sispi):
         fields = cls()
         for i,s in enumerate(sispi):
-            f = cls(1)
-            for sispi_key,field_key in SISPI_MAP.items():
-                f[field_key] = s[sispi_key]
-            f.from_object(s['object'])
-            # Parse scheduled date if date is not present
-            if 'date' in s: f['DATE'] = 'date'
-            else: f.from_seqid(s['seqid'])
-            f.from_comment(s['comment'])
-            fields = fields + f
+            try:
+                f = cls(1)
+                for sispi_key,field_key in SISPI_MAP.items():
+                    f[field_key] = s[sispi_key]
+                f.from_object(s['object'])
+                # Parse scheduled date if date is not present
+                if 'date' in s: f['DATE'] = s['date']
+                else: f.from_seqid(s['seqid'])
+                f.from_comment(s['comment'])
+                fields = fields + f
+            except (AttributeError,KeyError) as e: 
+                # Read non-obztak exposures without dying
+                logging.warn("Failed to load exposure\n%s"%s)
         return fields
 
     @classmethod

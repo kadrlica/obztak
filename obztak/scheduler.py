@@ -539,7 +539,7 @@ class Scheduler(object):
         parser.add_argument('--utc-end',action=DatetimeAction,
                             help="end time for observation.")
         parser.add_argument('-k','--chunk', default=60., type=float,
-                            help = 'time chunk')
+                            help = 'time chunk (minutes)')
         parser.add_argument('-f','--fields',default=None,
                             help='all target fields.')
         #parser.add_argument('-m','--mode',default='coverage',
