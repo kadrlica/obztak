@@ -563,14 +563,20 @@ class DelveTactician(Tactician):
     def weight(self):
 
         if self.mode is None:
+            fwhm_deep = np.inf
+            fwhm_mc = np.inf
+
+            #fwhm_deep = 0.9 #arcsec
+            #fwhm_mc = 1.1 #arcsec
+
             # First priority is deep
             weights = self.weight_deep()
-            if self.fwhm < 0.9 and np.isfinite(weights).sum():
+            if self.fwhm < fwhm_deep and np.isfinite(weights).sum():
                 logging.info("DEEP")
                 return weights
             # Then mc
             weights = self.weight_mc()
-            if self.fwhm < 1.0 and np.isfinite(weights).sum():
+            if self.fwhm < fwhm_mc and np.isfinite(weights).sum():
                 logging.info("MC")
                 return weights
             # Then wide
