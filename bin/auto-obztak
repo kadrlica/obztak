@@ -11,14 +11,19 @@ from obztak.utils.parser import Parser
 def main():
     parser = Parser()
     parser.add_argument("config", help="the configuration file")
-    parser.add_argument('-k','--chunk', default=15., type=float,
+    parser.add_argument('-k','--chunk', default=5., type=float,
                         help = 'time chunk (minutes)')
-    parser.add_argument("-q","--min-queue",default=10, type=int,
+    parser.add_argument("-q","--min-queue-len",default=15, type=int,
                         help="minimum queue length")
+    parser.add_argument("-t","--min-queue-time",default=30, type=int,
+                        help="minimum queue time (minutes)")
     args = parser.parse_args()
 
     auto = AutoObz(args.config)
-    auto.min_queue_len = args.min_queue
+    auto.chunk = args.chunk
+    if args.min_queue_len: auto.min_queue_len = args.min_queue_len
+    if args.min_queue_time: auto.min_queue_time = args.min_queue_time
+    
     auto()
     
 if __name__ == "__main__":
