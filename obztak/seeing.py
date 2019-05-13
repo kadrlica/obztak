@@ -98,7 +98,7 @@ class Seeing():
             self.date = dateutil.parser.parse(date)
 
 
-    def get_fwhm(self, timedelta='10m', band='i', airmass=1.0, inst=DECAMINST):
+    def get_fwhm(self, timedelta='15m', band='i', airmass=1.0, inst=DECAMINST):
         """Calculate the predict PSF FWHM (arcsec).
 
         Parameters:
@@ -127,16 +127,11 @@ class Seeing():
 
         if not len(self.data):
             # No data, use the mean and print a warning
-            logging.warn("No fwhm data available; using median fwhm")
+            logging.warn("No fwhm data available; using DECam median")
             xpred = xmu
-        elif not len(recent):
-            # Log of the i-band zenith fwhm from the previous exposure
-            xpred = np.log10(self.data[previous]['fwhm'])
-        elif not len(ancient):
-            # Median of the log of the observed atmospheric psf i-band zenith
-            xpred = np.log10(np.median(self.data[recent]['fwhm']))
-        else:
+        elif np.any(recent) and np.any(ancient):
             # Weighted median of recent and ancient exposures
+            logging.debug("Seeing from recent and ancient exposures")
             # Log of the observed atmospheric psf i-band zenith
             x = np.log10([np.median(self.data[recent]['fwhm']),
                           np.median(self.data[ancient]['fwhm'])])
@@ -145,11 +140,19 @@ class Seeing():
             # NB: These constants were derived for timedelta=5min
             # they may not hold for arbitrary time windows.
             xpred = xmu + 0.8 * (x[0] - xmu) + 0.14 * (x[1] - xmu)
+        elif np.any(recent):
+            # Median of the log of the observed atmospheric psf i-band zenith
+            logging.debug("Seeing from recent exposures")
+            xpred = np.log10(np.median(self.data[recent]['fwhm']))
+        else:
+            # Log of the i-band zenith fwhm from the previous exposure
+            logging.debug("Seeing from previous exposure")
+            xpred = np.log10(np.median(self.data[previous]['fwhm']))
 
         fwhm_pred = convert(10**xpred,
                             band_1='i' , airmass_1=1.0    , inst_1=0.0,
                             band_2=band, airmass_2=airmass, inst_2=inst)
-
+        #import pdb; pdb.set_trace()
         return fwhm_pred
 
 
@@ -226,7 +229,7 @@ class QcSeeing(Seeing):
             select date, qc_fwhm as fwhm, airmass, filter from exposure
             where date > '%s' and date < '%s'
             --and filter != 'VR' and qc_fwhm is not NULL
-            and qc_fwhm is not NULL
+            and qc_fwhm is not NULL and qc_fwhm > 0
             """%(tmin, tmax)
             logging.debug(query)
             raw = db.query2rec(query)
