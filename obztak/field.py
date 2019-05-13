@@ -41,7 +41,7 @@ SISPI_DICT = odict([
     ("object",  None),
     ("seqnum",  None), # 1-indexed
     ("seqtot",  2),
-    ("seqid",   None),
+    ("seqid",   ""),
     ("expTime", 90),
     ("RA",      None),
     ("dec",     None),
@@ -160,10 +160,12 @@ class FieldArray(np.recarray):
 
     def from_seqid(self, string):
         #date = string.lstrip(SEQID_PREFIX)
+        if SEP not in string: return
         date = string.split(SEP,1)[-1].strip()
         self['DATE'] = date
 
     def from_comment(self, string):
+        if SEP not in string: return
         integers = ['PRIORITY']
         floats   = ['AIRMASS','SLEW','MOONANGLE','HOURANGLE']
         values = dict([x.strip().split('=') for x in string.split(SEP,1)[-1].split(',')])
@@ -215,9 +217,10 @@ class FieldArray(np.recarray):
                 else: f.from_seqid(s['seqid'])
                 f.from_comment(s['comment'])
                 fields = fields + f
-            except (AttributeError,KeyError) as e: 
+            except (AttributeError,KeyError,ValueError) as e: 
                 # Read non-obztak exposures without dying
                 logging.warn("Failed to load exposure\n%s"%s)
+                logging.info(str(e))
         return fields
 
     @classmethod
