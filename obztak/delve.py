@@ -684,7 +684,8 @@ class DelveTactician(Tactician):
         # angle = 50 -> weight = 6.4
         # Moon angle constraints (viable fields sets moon_angle > 20.)
         if (self.moon.alt > -0.04) and (self.moon.phase >= 10):
-            moon_limit = self.moon.phase/2.
+            #moon_limit = np.min(20 + self.moon.phase/2., 40)
+            moon_limit = 30
             sel &= (moon_angle > moon_limit)
 
             #weight += 100 * (35./moon_angle)**3
