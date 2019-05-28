@@ -543,7 +543,7 @@ class DelveTactician(Tactician):
             # i-band if Sun altitude > -16 deg
             sel &= (np.char.count('i',self.fields['FILTER']) > 0)
         # Moon band constraints (alt = 0.175 rad = 10 deg)
-        elif (self.moon.phase >= 80) and (self.moon.alt > 0.175):
+        elif (self.moon.phase >= 70) and (self.moon.alt > 0.175):
             # Moon is very bright; only do i
             sel &= (np.char.count('i',self.fields['FILTER']) > 0)
             # Allow i,z but prefer z
@@ -657,7 +657,7 @@ class DelveTactician(Tactician):
 
         # Higher weight for higher airmass
         # airmass = 1.4 -> weight = 6.4
-        weight += 100. * (airmass - 1.)**3
+        weight += 500. * (airmass - 1.)**3
 
         # Set infinite weight to all disallowed fields
         weight[~sel] = np.inf
@@ -685,7 +685,7 @@ class DelveTactician(Tactician):
         # Moon angle constraints (viable fields sets moon_angle > 20.)
         if (self.moon.alt > -0.04) and (self.moon.phase >= 10):
             #moon_limit = np.min(20 + self.moon.phase/2., 40)
-            moon_limit = 30
+            moon_limit = 40
             sel &= (moon_angle > moon_limit)
 
             #weight += 100 * (35./moon_angle)**3
