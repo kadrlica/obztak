@@ -11,16 +11,19 @@ from obztak.utils.parser import Parser
 def main():
     parser = Parser()
     parser.add_argument("config", help="the configuration file")
-    parser.add_argument('-k','--chunk', default=5., type=float,
-                        help = 'time chunk (minutes)')
-    parser.add_argument("-q","--min-queue-len",default=15, type=int,
-                        help="minimum queue length")
+    parser.add_argument('-k','--chunk', default=6., type=float,
+                        help = 'duration of chunk to schedule (minutes)')
+    parser.add_argument("-q","--min-queue-len",default=25, type=int,
+                        help="minimum number of exposures in queue")
     parser.add_argument("-t","--min-queue-time",default=30, type=int,
                         help="minimum queue time (minutes)")
+    parser.add_argument('-m','--mode',default='wide',
+                        help='mode for scheduler tactician.')
     args = parser.parse_args()
 
     auto = AutoObz(args.config)
     auto.chunk = args.chunk
+    if args.mode: auto.mode = args.mode
     if args.min_queue_len: auto.min_queue_len = args.min_queue_len
     if args.min_queue_time: auto.min_queue_time = args.min_queue_time
     
