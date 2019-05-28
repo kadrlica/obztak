@@ -37,6 +37,7 @@ class AutoObz(object):
         self.fifo_fname = config.get('paths', 'fifo')  
 
         self.chunk = 10
+        self.mode = None
         self.min_queue_len = 30
         self.min_queue_time = 70
 
@@ -83,13 +84,14 @@ class AutoObz(object):
         params = dict(utc=utc,output=self.output_fname,chunk=self.chunk,
                       current=self.queue_fname,
                       previous=self.previous_queue_fname,
-                      progress=tmp.name)
+                      progress=tmp.name, mode=self.mode)
 
         # Schedule the next chunk of exposures
         cmd = "schedule_chunk -k %(chunk)i --utc %(utc)s -o %(output)s"%params
         cmd += " -c %(progress)s"%params # need to be first (hacked)
         cmd += " -c %(previous)s -c %(current)s"%params
-        #cmd += " -m wide" # hardcoded for now
+        if self.mode: cmd += " -m %(mode)"%params # hardcoded for now
+
         logging.info(cmd)
 
         # Generate the script
