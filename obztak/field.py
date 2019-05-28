@@ -206,7 +206,10 @@ class FieldArray(np.recarray):
     @classmethod
     def load_sispi(cls,sispi):
         fields = cls()
+        # SISPI has some weird possibilities...
+        if (sispi is None) or (not len(sispi)): return fields
         for i,s in enumerate(sispi):
+            if s is None: continue
             try:
                 f = cls(1)
                 for sispi_key,field_key in SISPI_MAP.items():
@@ -217,7 +220,7 @@ class FieldArray(np.recarray):
                 else: f.from_seqid(s['seqid'])
                 f.from_comment(s['comment'])
                 fields = fields + f
-            except (AttributeError,KeyError,ValueError) as e: 
+            except (AttributeError,KeyError,ValueError,TypeError) as e: 
                 # Read non-obztak exposures without dying
                 logging.warn("Failed to load exposure\n%s"%s)
                 logging.info(str(e))
