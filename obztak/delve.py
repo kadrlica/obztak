@@ -493,6 +493,7 @@ class DelveFieldArray(FieldArray):
         FROM exposure where propid = '%(propid)s' and exptime > 89
         and discard = False and delivered = True and flavor = 'object'
         and object like '%(object_fmt)s%%'
+        -- and id NOT IN (860597, 860598, 860599, 860600, 860601, 860602)
         ORDER BY utc_beg %(limit)s
         """%kwargs
         return query
