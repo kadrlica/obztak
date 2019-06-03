@@ -90,7 +90,7 @@ class AutoObz(object):
         cmd = "schedule_chunk -k %(chunk)i --utc %(utc)s -o %(output)s"%params
         cmd += " -c %(progress)s"%params # need to be first (hacked)
         cmd += " -c %(previous)s -c %(current)s"%params
-        if self.mode: cmd += " -m %(mode)"%params # hardcoded for now
+        if self.mode: cmd += " -m %(mode)s"%params # hardcoded for now
 
         logging.info(cmd)
 
