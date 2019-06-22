@@ -41,9 +41,9 @@ if __name__ == "__main__":
     ext = os.path.splitext(args.outfile)[-1] if args.outfile else None
 
     idx = []
-    fields = FieldArray()
+    fields = field_factory(survey) 
     for filename in args.infiles:
-        fields = fields + FieldArray.read(filename)
+        fields = fields + field_factory(survey).read(filename)
         if args.chunk: idx.append(len(fields)-1)
 
     if np.any(fields['RA']) < 0:
