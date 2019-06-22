@@ -65,7 +65,7 @@ class AutoObz(object):
         # Generic time for in-progress exposure
         delay = (90 + 30)*len(in_progress)
         # Sum the exposure times for the current queue
-        delay += sum([q['expTime']+30 for q in sispi_queue])
+        delay += sum([q.get('expTime',0)+30 for q in sispi_queue])
         logging.debug("Total queue time: %g seconds"%delay)
 
         # If we don't want to add anything, return an empty list
@@ -98,6 +98,12 @@ class AutoObz(object):
         logging.info("Calling scheduler")
         subprocess.check_call(cmd, shell=True)
 
+    def publish(self):
+        """Publish the current queue to the web"""
+        logging.info("Publishing current queue...")
+        cmd = 'ssh sispi@observer2 "python $PWD/publish.py $PWD/autoobs.conf"'
+        subprocess.call(cmd, shell=True)
+
     def __call__(self):
         """Execute the loop to check the fifo"""
         logging.info("Scheduler starting")
@@ -125,4 +131,8 @@ class AutoObz(object):
                             (time_string, str(self.stale_time_delta)))
                 continue
 
+            # Create the script
             new_sispi_script = self.make_script()
+
+            # Publish the queue (even if no new script is created)
+            self.publish()
