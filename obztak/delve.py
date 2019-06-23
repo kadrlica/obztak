@@ -503,7 +503,7 @@ class DelveScheduler(Scheduler):
     _defaults = odict(Scheduler._defaults.items() + [
         ('tactician','coverage'),
         ('windows',fileio.get_datafile("delve-windows.csv.gz")),
-        ('targets',fileio.get_datafile("delve-target-fields-v8.csv.gz")),
+        ('targets',fileio.get_datafile("delve-target-fields-v9.csv.gz")),
     ])
 
     FieldType = DelveFieldArray
@@ -696,7 +696,7 @@ class DelveTactician(Tactician):
         # Higher weight for rising fields (higher hour angle)
         # HA [min,max] = [-53,54] (for airmass 1.4)
         #weight += 5.0 * self.hour_angle
-        weight += 1.0 * self.hour_angle
+        #weight += 1.0 * self.hour_angle
         #weight += 0.1 * self.hour_angle
 
         # Higher weight for larger slews
