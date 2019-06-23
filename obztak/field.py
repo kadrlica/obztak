@@ -204,20 +204,44 @@ class FieldArray(np.recarray):
         return sispi
 
     @classmethod
-    def load_sispi(cls,sispi):
+    def check_sispi(cls, sdict, check_propid=False):
+        """Check that a dictionary is a valid sispi file
+
+        Parameters
+        ----------
+        sdict        : sispi exposure dictionary
+        check_propid : check that the propid matches this survey
+
+        Returns
+        -------
+        check : boolean of whether check passed
+        """
+        # Ignore null exposures
+        if sdict is None:
+            logging.warn("Null exposure; skipping...")
+            return False
+
+        # Ignore exposures with the wrong propid
+        propid = sdict.get('propid')
+        if check_propid and propid != cls.PROPID: 
+            logging.warn("Found exposure with propid=%s; skipping..."%propid)
+            return False
+
+        # Ignore exposures without RA,DEC columns
+        if (sdict.get('RA') is None) or (sdict.get('dec') is None):
+            logging.warn("RA,DEC not found; skipping...")
+            return False
+
+        return True
+        
+    @classmethod
+    def load_sispi(cls,sispi,check_propid=False):
         fields = cls()
         # SISPI can do weird things...
         if (sispi is None) or (not len(sispi)): return fields
         for i,s in enumerate(sispi):
-            # Ignore null exposures
-            if s is None:
-                logging.warn("Null exposure; skipping...")
-                continue
-            # Ignore exposures with the wrong propid
-            propid = s.get('propid',None)
-            if propid != self.PROPID: 
-                logging.warn("Found exposure with propid=%s; skipping..."%propid)
-                continue
+            # Check for some minimal exposure contents
+            if not cls.check_sispi(s,check_propid): continue
             # SISPI can still do weird things...
             try:
                 f = cls(1)
