@@ -35,6 +35,7 @@ class AutoObz(object):
         self.previous_queue_fname = config.get('paths', 'previous_queue')
         self.in_progress_fname = config.get('paths', 'inprogress')
         self.fifo_fname = config.get('paths', 'fifo')  
+        self.publish_script = config.get('publish','script')
 
         self.chunk = 10
         self.mode = None
@@ -101,7 +102,8 @@ class AutoObz(object):
     def publish(self):
         """Publish the current queue to the web"""
         logging.info("Publishing current queue...")
-        cmd = 'ssh sispi@observer2 "python $PWD/publish.py $PWD/autoobs.conf"'
+        script = self.publish_script
+        cmd = 'ssh sispi@observer2 "%s $PWD/autoobs.conf"'%(script)
         subprocess.call(cmd, shell=True)
 
     def __call__(self):
