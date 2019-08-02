@@ -348,7 +348,7 @@ class FieldArray(np.recarray):
         return fields
 
     @classmethod
-    def read(cls, filename):
+    def load(cls, filename):
         base,ext = os.path.splitext(filename)
         if ext in ('.json'):
             sispi = fileio.read_json(filename)
@@ -361,6 +361,8 @@ class FieldArray(np.recarray):
         else:
             msg = "Unrecognized file extension: %s"%ext
             raise IOError(msg)
+
+    read = load
 
     def write(self, filename, **kwargs):
         base,ext = os.path.splitext(filename)

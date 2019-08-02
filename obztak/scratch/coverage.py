@@ -19,9 +19,12 @@ from skymap.survey import MaglitesSkymap
 
 warnings.simplefilter('ignore', UserWarning)
 
+date = datetime.datetime.now().strftime('%Y%m%d')
+outfile = 'decam-exposures-%s.fits.gz'%date
+
 import argparse
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument('outfile',default='decam-exposures.fits.gz')
+parser.add_argument('outfile',default=outfile)
 parser.add_argument('-m','--maps',action='store_true')
 parser.add_argument('-p','--plot',action='store_true')
 args = parser.parse_args()
@@ -82,8 +85,8 @@ def ang2disc(nside, lon, lat, radius, inclusive=False, fact=4, nest=False):
 db = Database()
 db.connect()
 data = db.query2recarray(QUERY)
-if os.path.exists(args.outfile):
-    os.remove(args.outfile)
+if os.path.exists(args.outfile): os.remove(args.outfile)
+print("Writing %s..."%args.outfile)
 fitsio.write(args.outfile,data)
 
 # Do we want to make maps?
@@ -271,7 +274,3 @@ for band,sky in max_skymaps.items():
     #plt.savefig(outfile,bbox_inches='tight')
     #plt.clf()
 
-if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser(description=__doc__)
-    args = parser.parse_args()

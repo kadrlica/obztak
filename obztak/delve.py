@@ -31,11 +31,15 @@ BANDS = ['g','r','i']
 TILINGS = [1,2,3,4]
 DONE = -1
 
+TEFF_MIN_WIDE = pd.DataFrame(dict(FILTER=['g','i'],TEFF=[0.4,0.5]))
+TEFF_MIN_MC   = pd.DataFrame(dict(FILTER=['g','r','i'],TEFF=[0.3,0.3,0.45]))
+
+
 class DelveSurvey(Survey):
     """ Survey sublcass for BLISS. """
 
     # 2019A SCHEDULED (bliss-windows.csv is actually used)
-    nights = [
+    nights_2019A = [
         ['2019/02/07', 'second'], # phase=%, set=
         ['2019/02/08', 'second'], # phase=%, set=
         ['2019/02/09', 'second'], # phase=%, set=
@@ -72,7 +76,50 @@ class DelveSurvey(Survey):
         ['2019/06/28', 'second'], # phase=%, set=
         ]
 
+    nights_2019B = [
+        ['2019/08/07', 'first'], # phase=%, set=
+        ['2019/08/08', 'full'], # phase=%, set=
+        ['2019/08/09', 'full'], # phase=%, set=
+        ['2019/08/10', 'full'], # phase=%, set=
+        ['2019/08/20', 'first'], # phase=%, set=
+        ['2019/08/21', 'first'], # phase=%, set=
+        ['2019/08/30', 'first'], # phase=%, set=
+        ['2019/09/06', 'first'], # phase=%, set=
+        ['2019/09/07', 'first'], # phase=%, set=
+        ['2019/09/08', 'first'], # phase=%, set=
+        ['2019/09/09', 'first'], # phase=%, set=
+        ['2019/10/07', 'first'], # phase=%, set=
+        ['2019/10/08', 'first'], # phase=%, set=
+        ['2019/10/09', 'first'], # phase=%, set=
+        ['2019/11/04', 'second'], # phase=%, set=
+        ['2019/11/05', 'second'], # phase=%, set=
+        ['2019/11/06', 'second'], # phase=%, set=
+        ['2019/11/16', 'second'], # phase=%, set=
+        ['2019/11/17', 'second'], # phase=%, set=
+        ['2019/11/18', 'second'], # phase=%, set=
+        ['2019/12/01', 'second'], # phase=%, set=
+        ['2019/12/02', 'second'], # phase=%, set=
+        ['2019/12/03', 'second'], # phase=%, set=
+        ['2019/12/04', 'second'], # phase=%, set=
+        ['2019/12/05', 'second'], # phase=%, set=
+        ['2019/12/06', 'second'], # phase=%, set=
+        ['2019/12/07', 'second'], # phase=%, set=
+        ['2019/12/20', 'second'], # phase=%, set=
+        ['2019/12/21', 'full'], # phase=%, set=
+        ['2019/12/22', 'first'], # phase=%, set=
+        ['2019/12/23', 'full'], # phase=%, set=
+        ['2020/01/20', 'second'], # phase=%, set=
+        ['2020/01/21', 'second'], # phase=%, set=
+        ['2020/01/27', 'second'], # phase=%, set=
+        ['2020/01/28', 'second'], # phase=%, set=
+        ['2020/01/29', 'second'], # phase=%, set=
+        ['2020/01/30', 'second'], # phase=%, set=
+        ['2020/01/31', 'second'], # phase=%, set=
+        ]
+
     extra_nights = []
+
+    nights = nights_2019A + nights_2019B + extra_nights
 
     def prepare_fields(self, infile=None, outfile=None, plot=True, **kwargs):
         """ Create the list of fields to be targeted by this survey.
@@ -131,13 +178,37 @@ class DelveSurvey(Survey):
 
         return fields
 
+    @classmethod
+    def update_covered_fields(cls, fields):
+        """ Update the priority of covered fields. """
+        frac, depth = cls.covered(fields)
+        done = (fields['PRIORITY'] == DONE)
+        print("Found %i exposures already done."%done.sum())
+
+        wide = np.char.endswith(fields['PROGRAM'],'-wide')
+        teff_min_wide = pd.DataFrame(fields).merge(TEFF_MIN_WIDE,on='FILTER',how='left').to_records()['TEFF']
+        covered_wide = depth > teff_min_wide*fields['TILING']*fields['EXPTIME']
+        done_wide = wide & covered_wide
+        print('Found %i WIDE exposures newly done.'%(done_wide & ~done).sum())
+
+        mc = np.char.endswith(fields['PROGRAM'],'-mc')
+        teff_min_mc = pd.DataFrame(fields).merge(TEFF_MIN_MC,on='FILTER',how='left').to_records()['TEFF']
+        covered_mc = depth > teff_min_mc*fields['TILING']*fields['EXPTIME']
+        done_mc = mc & covered_mc
+        print('Found %i MC exposures newly done.'%(done_mc & ~done).sum())
+
+        fields['PRIORITY'][done_wide & ~done] = DONE
+        fields['PRIORITY'][done_mc & ~done] = DONE
+
+        return fields
+
     def create_wide_fields(self, data, plot=False):
         """ Create the wide field observations """
         logging.info("Creating DEEP fields...")
         BANDS = ['g','i']
         EXPTIME = [90,90]
         TILINGS = [4,4]
-        TEFF_MIN = pd.DataFrame(dict(FILTER=['g','i'],TEFF=[0.4,0.5]))
+        TEFF_MIN = TEFF_MIN_WIDE
 
         nhexes = len(np.unique(data['TILEID']))
         nbands = len(BANDS)
@@ -195,7 +266,7 @@ class DelveSurvey(Survey):
         BANDS = ['g','r','i']
         EXPTIME = [267,267,333]
         TILINGS = [4, 4, 4]
-        TEFF_MIN = pd.DataFrame(dict(FILTER=['g','r','i'],TEFF=[0.3,0.3,0.45]))
+        TEFF_MIN = TEFF_MIN_MC
 
         nhexes = len(np.unique(data['TILEID']))
         nbands = len(BANDS)
@@ -254,10 +325,10 @@ class DelveSurvey(Survey):
         hexbase = 100000 # hex offset
         # target number and filename
         basenames = odict([
-            (000, 'sextansB_fields.txt'),
-            (100, 'ic5152_fields.txt'),
-            (200, 'ngc300_fields.txt'),
-            (300, 'ngc55_fields.txt')
+            (000, 'sextansB_fields_v3.txt'),
+            (100, 'ic5152_fields_v3.txt'),
+            (200, 'ngc300_fields_v3.txt'),
+            (300, 'ngc55_fields_v3.txt')
         ])
 
         fields = FieldArray()
@@ -285,6 +356,10 @@ class DelveSurvey(Survey):
                 f = f[~((f['FILTER'] == b) & (f['TILING'] > t))]
 
             fields = fields + f
+
+            # Deep fields to be avoided
+            if num in [000,100,200]:
+                f['PROGRAM'] = DONE
 
         nhexes = len(np.unique(fields['HEX']))
         logging.info("  Number of hexes: %d"%nhexes)
@@ -502,7 +577,7 @@ class DelveFieldArray(FieldArray):
 class DelveScheduler(Scheduler):
     _defaults = odict(Scheduler._defaults.items() + [
         ('tactician','coverage'),
-        ('windows',fileio.get_datafile("delve-windows.csv.gz")),
+        ('windows',fileio.get_datafile("delve-windows-v2.csv.gz")),
         ('targets',fileio.get_datafile("delve-target-fields-v9.csv.gz")),
     ])
 
