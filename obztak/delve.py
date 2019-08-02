@@ -34,6 +34,9 @@ DONE = -1
 TEFF_MIN_WIDE = pd.DataFrame(dict(FILTER=['g','i'],TEFF=[0.4,0.5]))
 TEFF_MIN_MC   = pd.DataFrame(dict(FILTER=['g','r','i'],TEFF=[0.3,0.3,0.45]))
 
+# Seeing limits for DELVE survey components
+FWHM_DEEP = 0.9 # arcsec
+FWHM_MC   = 1.1 # arcsec
 
 class DelveSurvey(Survey):
     """ Survey sublcass for BLISS. """
@@ -639,20 +642,14 @@ class DelveTactician(Tactician):
     def weight(self):
 
         if self.mode is None:
-            #fwhm_deep = np.inf
-            #fwhm_mc = np.inf
-
-            fwhm_deep = 0.9 #arcsec
-            fwhm_mc = 1.1 #arcsec
-
             # First priority is deep
             weights = self.weight_deep()
-            if self.fwhm < fwhm_deep and np.isfinite(weights).sum():
+            if self.fwhm < FWHM_DEEP and np.isfinite(weights).sum():
                 logging.info("DEEP")
                 return weights
             # Then mc
             weights = self.weight_mc()
-            if self.fwhm < fwhm_mc and np.isfinite(weights).sum():
+            if self.fwhm < FWHM_MC and np.isfinite(weights).sum():
                 logging.info("MC")
                 return weights
             # Then wide
