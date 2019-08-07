@@ -328,14 +328,14 @@ class DelveSurvey(Survey):
         hexbase = 100000 # hex offset
         # target number and filename
         basenames = odict([
-            (000, 'sextansB_fields_v3.txt'),
-            (100, 'ic5152_fields_v3.txt'),
-            (200, 'ngc300_fields_v3.txt'),
-            (300, 'ngc55_fields_v3.txt')
+            ('SextansB', (000, 'sextansB_fields_v3.txt')),
+            ('IC5152',   (100, 'ic5152_fields_v3.txt')),
+            ('NGC300',   (200, 'ngc300_fields_v3.txt')),
+            ('NGC55',    (300, 'ngc55_fields_v3.txt')),
         ])
 
         fields = FieldArray()
-        for num,basename in basenames.items():
+        for name,(num,basename) in basenames.items():
             filename = os.path.join(dirname,basename)
             target = np.genfromtxt(filename,names=True,dtype=None)
             f = FieldArray(len(target))
@@ -347,7 +347,8 @@ class DelveSurvey(Survey):
             f['DEC']    = target['dec']
             f['HEX']    = hexbase + num + target['field']
             f['TILING'] = target['tiling']
-            f['PRIORITY'] = num + target['priority']
+            #f['PRIORITY'] = num + target['priority']
+            f['PRIORITY'] = target['priority']
             f['PROGRAM'] = PROGRAM+'-deep'
 
             # Group the fields by hex/tiling
@@ -358,11 +359,11 @@ class DelveSurvey(Survey):
             for (b,t) in zip(BANDS, TILINGS):
                 f = f[~((f['FILTER'] == b) & (f['TILING'] > t))]
 
-            fields = fields + f
-
-            # Deep fields to be avoided
+            # Not doing these deep fields
             if num in [000,100,200]:
-                f['PROGRAM'] = DONE
+                f['PRIORITY'] *= DONE
+
+            fields = fields + f
 
         nhexes = len(np.unique(fields['HEX']))
         logging.info("  Number of hexes: %d"%nhexes)
@@ -581,7 +582,7 @@ class DelveScheduler(Scheduler):
     _defaults = odict(Scheduler._defaults.items() + [
         ('tactician','coverage'),
         ('windows',fileio.get_datafile("delve-windows-v2.csv.gz")),
-        ('targets',fileio.get_datafile("delve-target-fields-v9.csv.gz")),
+        ('targets',fileio.get_datafile("delve-target-fields-v10.csv.gz")),
     ])
 
     FieldType = DelveFieldArray
