@@ -592,7 +592,7 @@ class DelveTactician(Tactician):
     CONDITIONS = odict([
         (None,       [1.0, 2.0]),
         ('wide',     [1.0, 1.4]),
-        ('deep',     [1.0, 1.47]),
+        ('deep',     [1.0, 1.2]),
         ('mc',       [1.0, 2.0]),
     ])
 
@@ -623,7 +623,7 @@ class DelveTactician(Tactician):
             # i-band if Sun altitude > -16 deg
             sel &= (np.char.count('i',self.fields['FILTER']) > 0)
         # Moon band constraints (alt = 0.175 rad = 10 deg)
-        elif (self.moon.phase >= 70) and (self.moon.alt > 0.175):
+        elif (self.moon.phase >= 60) and (self.moon.alt > 0.175):
             # Moon is very bright; only do i
             sel &= (np.char.count('i',self.fields['FILTER']) > 0)
             # Allow i,z but prefer z
@@ -710,7 +710,7 @@ class DelveTactician(Tactician):
         sel &= (moon_angle > moon_limit)
 
         # Airmass cut
-        airmass_min, airmass_max = self.CONDITIONS['wide']
+        airmass_min, airmass_max = self.CONDITIONS['mc']
         sel &= ((airmass > airmass_min) & (airmass < airmass_max))
 
         # Sky brightness selection
