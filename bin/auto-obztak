@@ -17,7 +17,7 @@ def main():
                         help="minimum number of exposures in queue")
     parser.add_argument("-t","--min-queue-time",default=30, type=int,
                         help="minimum queue time (minutes)")
-    parser.add_argument('-m','--mode',default='wide',
+    parser.add_argument('-m','--mode',default=None,
                         help='mode for scheduler tactician.')
     args = parser.parse_args()
 

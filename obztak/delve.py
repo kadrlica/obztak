@@ -598,6 +598,7 @@ class DelveTactician(Tactician):
 
     def __init__(self, *args, **kwargs):
         super(DelveTactician,self).__init__(*args,**kwargs)
+        #Default to mode 'wide' if no mode in kwargs
         self.mode = kwargs.get('mode','wide')
 
     @property
