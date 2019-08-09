@@ -89,9 +89,9 @@ class AutoObz(object):
 
         # Schedule the next chunk of exposures
         cmd = "schedule_chunk -k %(chunk)i --utc %(utc)s -o %(output)s"%params
-        cmd += " -c %(progress)s"%params # need to be first (hacked)
+        cmd += " -c %(progress)s"%params # needs to be first
         cmd += " -c %(previous)s -c %(current)s"%params
-        if self.mode: cmd += " -m %(mode)s"%params # hardcoded for now
+        if self.mode: cmd += " -m %(mode)s"%params
 
         logging.info(cmd)
 
