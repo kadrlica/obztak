@@ -592,7 +592,7 @@ class DelveTactician(Tactician):
     CONDITIONS = odict([
         (None,       [1.0, 2.0]),
         ('wide',     [1.0, 1.4]),
-        ('deep',     [1.0, 1.2]),
+        ('deep',     [1.0, 1.4]),
         ('mc',       [1.0, 2.0]),
     ])
 
