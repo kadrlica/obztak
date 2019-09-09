@@ -6,6 +6,7 @@ import os
 import logging
 import ephem
 import pandas as pd
+import numpy as np
 
 import obztak.seeing
 from obztak.seeing import DECAMINST,WAVE
@@ -65,10 +66,12 @@ def main():
     tab=df.to_string(**strkw)
     logging.debug('raw input data\n'+tab)
 
-    # Print the i-band zenith data
+    # Print the i-band zenith data (no instrument)
     df = pd.DataFrame(seeing.data,copy=True)
+    #obztak.seeing.convert(df['fwhm'],band_1=df['filter'],inst_1=0)
+    df['fwhm'] = np.hypot(df['fwhm'],obztak.seeing.DECAMINST)
     tab=df.to_string(**strkw)
-    logging.debug('i-band zenith atmospheric data\n'+tab)
+    logging.debug('i-band zenith (w/ DECam contribution)\n'+tab)
 
     msg = "Predicted FWHM ({band}-band, airmass={airmass:.2f}): ".format(**kwargs)
     msg += "  {:.2f} arcsec".format(fwhm)
