@@ -594,6 +594,9 @@ class DelveTactician(Tactician):
         ('wide',     [1.0, 1.4]),
         ('deep',     [1.0, 1.2]),
         ('mc',       [1.0, 2.0]),
+        ('mc_good',  [1.0, 2.0]),
+        ('mc_ok',    [1.0, 1.8]),
+        ('mc_poor',  [1.0, 1.7]),
     ])
 
     def __init__(self, *args, **kwargs):
@@ -710,8 +713,13 @@ class DelveTactician(Tactician):
         moon_limit = 30.
         sel &= (moon_angle > moon_limit)
 
-        # Airmass cut
-        airmass_min, airmass_max = self.CONDITIONS['mc']
+        # Airmass restrictions
+        if self.fwhm < 0.9:
+            airmass_min, airmass_max = self.CONDITIONS['mc_good']
+        elif self.fwhm < 1.0:
+            airmass_min, airmass_max = self.CONDITIONS['mc_ok']
+        else:
+            airmass_min, airmass_max = self.CONDITIONS['mc_poor']
         sel &= ((airmass > airmass_min) & (airmass < airmass_max))
 
         # Sky brightness selection
@@ -724,6 +732,7 @@ class DelveTactician(Tactician):
 
         # Prioritize fields
         weight += 3. * 360. * self.fields['PRIORITY']
+        weight += 1e4 * (self.fields['TILING'] > 3)
 
         # Slew weighting
         weight += self.slew**3
@@ -787,6 +796,7 @@ class DelveTactician(Tactician):
 
         ## Try hard to do high priority fields
         weight += 1e3 * (self.fields['PRIORITY'] - 1)
+        weight += 1e4 * (self.fields['TILING'] > 3)
 
         # Set infinite weight to all disallowed fields
         weight[~sel] = np.inf
