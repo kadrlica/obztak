@@ -42,9 +42,9 @@ def convert(fwhm_1,
 
     Parameters:
     -----------
-    fwhm_1   : observed fwhm [arcsec]
-    band_1   : observed band ['g','r','i','z','Y','dimm']
-    airmass_1: observed airmass
+    fwhm_1   : input fwhm [arcsec]
+    band_1   : input band ['g','r','i','z','Y','dimm']
+    airmass_1: input airmass
     inst_1   : instrumental contribution to the observed psf [arcsec]
 
     band_2    : output band ['g','r','i','z','Y','dimm']
