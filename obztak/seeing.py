@@ -223,16 +223,22 @@ class QcSeeing(Seeing):
         tmin = self.date - pd.Timedelta(timedelta)
         if self.df is None:
             # Don't want to create the DB each time?
-            db = Database()
-            db.connect()
-            query ="""
-            select date, qc_fwhm as fwhm, airmass, filter from exposure
-            where date > '%s' and date < '%s'
-            --and filter != 'VR' and qc_fwhm is not NULL
-            and qc_fwhm is not NULL and qc_fwhm > 0
-            """%(tmin, tmax)
-            logging.debug(query)
-            raw = db.query2rec(query)
+            try: 
+                db = Database()
+                db.connect()
+                query ="""
+                select date, qc_fwhm as fwhm, airmass, filter from exposure
+                where date > '%s' and date < '%s'
+                --and filter != 'VR' and qc_fwhm is not NULL
+                and qc_fwhm is not NULL and qc_fwhm > 0
+                """%(tmin, tmax)
+                logging.debug(query)
+                raw = db.query2rec(query)
+            except Exception as e:
+                logging.warn("Couldn't connect to database:\n%s"%str(e))
+                dtype=[('date', '<M8[ns]'), ('fwhm', '<f8'),
+                       ('airmass', '<f8'), ('filter', 'S4')]
+                raw = np.recarray(0,dtype=dtype)
         else:
             sel = (self.df.index > tmin) & (self.df.index < tmax)
             raw = self.df[sel].to_records()
