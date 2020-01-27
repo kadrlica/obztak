@@ -95,12 +95,15 @@ class Database(object):
         return dbname
 
     def parse_config(self, filename=None, section='db-fnal'):
-        #if not filename: filename=os.getenv("DES_SERVICES")
-        if os.path.exists(".desservices.ini"):
+        if filename: pass
+        elif os.getenv("DES_SERVICES"):
+            filename=os.getenv("DES_SERVICES")
+        elif os.path.exists(".desservices.ini"):
             filename=os.path.expandvars("$PWD/.desservices.ini")
         else:
             filename=os.path.expandvars("$HOME/.desservices.ini")
         logging.debug('.desservices.ini: %s'%filename)
+        if not os.path.exists(filename): raise IOError("%s does not exist"%filename)
 
         # ConfigParser throws "no section error" if file does not exist...
         # That's confusing, so 'open' to get a more understandable error
