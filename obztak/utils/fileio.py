@@ -92,17 +92,16 @@ def rec2csv(filename,data,**kwargs):
     kwargs.setdefault('mode','w')
     kwargs.setdefault('na_rep','nan')
     
+    basename,ext = os.path.splitext(filename)
+    if ext == '.gz': filename = basename
+
     with open(filename,'wb') as out:
         out.write(header())
         df.to_csv(out,**kwargs)
 
-    basename,ext = os.path.splitext(filename)
     if ext == '.gz':
-        cmd = 'gzip %s'%basename
+        cmd = 'gzip %s'%filename
         subprocess.check_call(cmd,shell=True)
-
-    #mlab.rec2csv(data,outfile,formatd=formatd,**kwargs)
-    
 
 def write_json(filename,data,**kwargs):
     kwargs.setdefault('indent',4)
