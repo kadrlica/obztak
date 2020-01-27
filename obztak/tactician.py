@@ -205,7 +205,9 @@ class Tactician(object):
         index = self.select_index()
         fields = self.fields[index]
 
-        timedelta = (fields['EXPTIME'] + constants.OVERHEAD)*np.arange(len(index))
+        # This is janky since MagLiteS was originally scheduling pairs of exposures
+        timedelta = np.arange(len(index),dtype=float)
+        timedelta *= (fields['EXPTIME']*ephem.second + constants.OVERHEAD)
         timedelta[self.slew[index] > 5.] += 30*ephem.second
 
         #timedelta = constants.FIELDTIME*np.arange(len(index))
