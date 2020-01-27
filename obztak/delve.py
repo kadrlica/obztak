@@ -582,7 +582,7 @@ class DelveScheduler(Scheduler):
     _defaults = odict(Scheduler._defaults.items() + [
         ('tactician','coverage'),
         ('windows',fileio.get_datafile("delve-windows-v2.csv.gz")),
-        ('targets',fileio.get_datafile("delve-target-fields-v10.csv.gz")),
+        ('targets',fileio.get_datafile("delve-target-fields-v11.csv.gz")),
     ])
 
     FieldType = DelveFieldArray
@@ -594,8 +594,8 @@ class DelveTactician(Tactician):
         ('wide',     [1.0, 1.4]),
         ('deep',     [1.0, 1.4]),
         ('mc',       [1.0, 2.0]),
-        ('mc_good',  [1.0, 2.0]),
-        ('mc_ok',    [1.0, 1.8]),
+        ('mc_good',  [1.8, 2.0]),
+        ('mc_ok',    [1.4, 1.8]),
         ('mc_poor',  [1.0, 1.7]),
     ])
 
@@ -728,7 +728,8 @@ class DelveTactician(Tactician):
         # Only a single tiling
         #sel &= (self.fields['PRIORITY'] == 3)
 
-        weight = 2.0 * self.hour_angle
+        # Get fields before they set
+        #weight += 2.0 * self.hour_angle
 
         # Prioritize fields
         weight += 3. * 360. * self.fields['PRIORITY']
@@ -793,6 +794,10 @@ class DelveTactician(Tactician):
         #weight += 100. * (airmass - 1.)**3
         weight += 1e3 * (airmass - 1.)**2
 
+        # Hack to target fields with RA < 100 & DEC > -30
+        hack = (self.fields['RA'] < 100) & (self.fields['DEC'] > -30) &\
+            (self.fields['PRIORITY']>0) & (self.fields['PRIORITY']<4) 
+        self.fields['PRIORITY'][hack] = 1
 
         ## Try hard to do high priority fields
         weight += 1e3 * (self.fields['PRIORITY'] - 1)
