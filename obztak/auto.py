@@ -103,8 +103,11 @@ class AutoObz(object):
         """Publish the current queue to the web"""
         logging.info("Publishing current queue...")
         script = self.publish_script
-        cmd = 'ssh sispi@observer2 "%s $PWD/autoobs.conf"'%(script)
-        subprocess.call(cmd, shell=True)
+        cmd = 'ssh sispi@observer2 "%s -v $PWD/autoobs.conf"'%(script)
+        try:
+            subprocess.call(cmd, shell=True)
+        except:
+            logging.warn("Publish failed.")
 
     def __call__(self):
         """Execute the loop to check the fifo"""
