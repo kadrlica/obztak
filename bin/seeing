@@ -1,0 +1,81 @@
+#!/usr/bin/env python
+"""
+Executable for predicting the seeing.
+"""
+import os
+import logging
+import ephem
+import pandas as pd
+import numpy as np
+
+import obztak.seeing
+from obztak.seeing import DECAMINST,WAVE
+from obztak.utils.date import datestr
+from obztak.utils.parser import Parser, DatetimeAction
+
+BANDS = WAVE.keys()
+
+def main():
+    parser = Parser(description=__doc__)
+    parser.add_argument('-m','--mode',default=None,choices=['dimm','qc'],
+        help='mode seeing estimation.')
+    parser.add_argument('--utc',action=DatetimeAction,
+        help="time for seeing estimate.")
+    parser.add_argument('--db',default='fnal',choices=['fnal','ctio'],
+        help="database to connect to.")
+
+    parser.add_argument('-a','--airmass',default=1.0,type=float,
+        help='output airmass')
+    parser.add_argument('-b','--band',choices=BANDS,default='i',
+        help="output band to predict.")
+    parser.add_argument('-i','--inst',default=DECAMINST,type=float,
+        help="file to read data from.")
+    parser.add_argument('-t','--timedelta',default='10m',
+        help="time delta to average.")
+
+    parser.add_argument('-f','--filename',default=None,
+        help="file to read data from.")
+    args = parser.parse_args()
+
+    date = ephem.Date(args.utc) if args.utc else ephem.now()
+
+    kwargs = dict(filename=args.filename, db=args.db)
+    if args.mode == 'dimm':
+        seeing = obztak.seeing.DimmSeeing(**kwargs)
+    elif args.mode == 'qc':
+        seeing = obztak.seeing.QcSeeing(**kwargs)
+    else:
+        seeing = obztak.seeing.QcSeeing(**kwargs)
+
+    # String formatting
+    pd.set_option('max_colwidth',18)
+    fmt={"date": lambda x: "{:%Y-%m-%d %H:%M}".format(pd.to_datetime(x))}
+    strkw = dict(index=False,float_format='{:5.2f}'.format,justify='left',
+                     formatters=fmt)
+
+    seeing.set_date(datestr(date))
+
+    kwargs = dict(band=args.band,airmass=args.airmass,timedelta=args.timedelta,
+                  inst=args.inst)
+
+    # Run the fwhm calculation
+    fwhm = seeing.get_fwhm(**kwargs)
+
+    # Print the raw data
+    df = pd.DataFrame(seeing.raw,copy=True)
+    tab=df.to_string(**strkw)
+    logging.debug('raw input data\n'+tab)
+
+    # Print the i-band zenith data (no instrument)
+    df = pd.DataFrame(seeing.data,copy=True)
+    #obztak.seeing.convert(df['fwhm'],band_1=df['filter'],inst_1=0)
+    df['fwhm'] = np.hypot(df['fwhm'],obztak.seeing.DECAMINST)
+    tab=df.to_string(**strkw)
+    logging.debug('i-band zenith (w/ DECam contribution)\n'+tab)
+
+    msg = "Predicted FWHM ({band}-band, airmass={airmass:.2f}): ".format(**kwargs)
+    msg += "  {:.2f} arcsec".format(fwhm)
+    logging.info(msg)
+
+if __name__ == "__main__":
+    main()

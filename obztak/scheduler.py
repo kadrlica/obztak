@@ -7,7 +7,6 @@ import copy
 import numpy as np
 import time
 import ephem
-import matplotlib.pyplot as plt
 import logging
 from collections import OrderedDict as odict
 
@@ -50,6 +49,22 @@ class Scheduler(object):
         self.scheduled_fields = self.FieldType()
         self.observatory = CTIO()
 
+        self.create_seeing()
+
+    def create_seeing(self,filename=None,mode='qc'):
+        import obztak.seeing
+        #dirname ='/Users/kadrlica/delve/observing/data/'
+        #basename = 'delve_sim_01.csv.gz'
+        #filename = os.path.join(dirname,basename)
+        if mode == 'dimm':
+            self.seeing = obztak.seeing.DimmSeeing(filename=filename)
+        elif mode == 'qc':
+            self.seeing = obztak.seeing.QcSeeing(filename=filename)
+        else:
+            self.seeing = obztak.seeing.QcSeeing(filename=filename)
+
+        return self.seeing
+
     def load_target_fields(self, target_fields=None):
         if target_fields is None:
             target_fields = self._defaults['targets']
@@ -84,10 +99,10 @@ class Scheduler(object):
             if ii > 0 and (start < self.windows[ii-1][1]):
                 logging.warn(msg)
 
-        logging.info('Observation Windows:')
+        logging.debug('Observation Windows:')
         for start,end in self.windows:
-            logging.info('  %s: %s UTC -- %s UTC'%(get_nite(start),datestr(start),datestr(end)))
-        logging.info(30*'-')
+            logging.debug('  %s: %s UTC -- %s UTC'%(get_nite(start),datestr(start),datestr(end)))
+        logging.debug(30*'-')
 
     def load_observed_fields(self):
         """
@@ -145,8 +160,19 @@ class Scheduler(object):
         self.completed_fields = self.completed_fields + new_fields
         return self.completed_fields
 
-    def create_tactician(self, mode=None):
-        return tactician_factory(cls=mode,mode=mode)
+    def create_tactician(self, cls=None, mode=None):
+        """ Create a tactician in the given mode.
+
+        Parameters:
+        -----------
+        cls : the tactician class [defaults to survey]
+        mode: the tactician mode
+
+        Returns:
+        --------
+        tac : the tactician
+        """
+        return tactician_factory(cls=cls, mode=mode)
 
     def select_field(self, date, mode=None):
         """
@@ -163,10 +189,12 @@ class Scheduler(object):
         """
         sel = ~np.in1d(self.target_fields['ID'],self.completed_fields['ID'])
 
-        self.tactician = self.create_tactician(mode)
+        # ADW: Why do we create the tactician each time?
+        self.tactician = self.create_tactician(mode=mode)
         self.tactician.set_date(date)
         self.tactician.set_target_fields(self.target_fields[sel])
         self.tactician.set_completed_fields(self.completed_fields)
+        self.tactician.fwhm = self.fwhm
 
         field_select = self.tactician.select_fields()
 
@@ -186,7 +214,7 @@ class Scheduler(object):
             msg += "weights=%s"%weight
             logging.info(msg)
             #ortho.plotWeight(self.scheduled_fields[-1], self.target_fields, self.tactician.weight)
-            ortho.plotField(self.scheduled_fields[-1],self.scheduled_fields,options_basemap=dict(date='2017/02/20 05:00:00'))
+            #ortho.plotField(self.scheduled_fields[-1],self.scheduled_fields,options_basemap=dict(date='2017/02/20 05:00:00'))
             raw_input('WAIT')
             import pdb; pdb.set_trace()
             raise Exception()
@@ -212,9 +240,10 @@ class Scheduler(object):
         self.scheduled_fields = self.FieldType()
 
         # If no tstop, run for 90 minutes
-        timedelta = 90*ephem.minute
         if tstart is None: tstart = ephem.now()
-        if tstop is None: tstop = tstart + timedelta
+        if tstop is None:
+            timedelta = 90*ephem.minute
+            tstop = tstart + timedelta
 
         # Convert strings into dates
         if isinstance(tstart,basestring):
@@ -222,18 +251,22 @@ class Scheduler(object):
         if isinstance(tstop,basestring):
             tstop = ephem.Date(tstop)
 
-        msg  = "Run start: %s\n"%datestr(tstart,4)
+        msg  = "\nRun start: %s\n"%datestr(tstart,4)
         msg += "Run end: %s\n"%datestr(tstop,4)
-        msg += "Run time: %s minutes"%(timedelta/ephem.minute)
         logging.debug(msg)
 
         msg = "Previously completed fields: %i"%len(self.completed_fields)
         logging.info(msg)
 
         # This is not safe since tactician is re-created in select_field
-        self.tactician = self.create_tactician(mode)
+        self.tactician = self.create_tactician(mode=mode)
         msg = "Scheduling with '%s' in mode '%s'"%(self.tactician.__class__.__name__,self.tactician.mode)
         logging.info(msg)
+
+        self.seeing.set_date(datestr(tstart))
+        self.fwhm = self.seeing.get_fwhm(band='i',airmass=1.0)
+        logging.info("Predicted i-band zenith fwhm: %.2f arcsec"%self.fwhm)
+        logging.debug(self.seeing.raw)
 
         date = tstart
         latch = True
@@ -266,8 +299,9 @@ class Scheduler(object):
                 else:
                     raise(e)
 
-            # Now update the time from the selected field
-            date = ephem.Date(field_select[-1]['DATE']) + constants.FIELDTIME
+            # Now update the time from the last selected field (note duplication in tactician.select_field)
+            fieldtime = field_select[-1]['EXPTIME']*ephem.second + constants.OVERHEAD
+            date = ephem.Date(field_select[-1]['DATE']) + fieldtime
 
             self.completed_fields = self.completed_fields + field_select
             self.scheduled_fields = self.scheduled_fields + field_select
@@ -341,7 +375,7 @@ class Scheduler(object):
 
         return self.run(tstart,tstop,clip,plot,mode)
 
-    def schedule_nite(self,date=None,chunk=60,clip=False,plot=False,mode=None):
+    def schedule_nite(self,date=None,start=None,chunk=60,clip=False,plot=False,mode=None):
         """
         Schedule a night of observing.
 
@@ -369,7 +403,11 @@ class Scheduler(object):
         try:
             nites = [get_nite(w[0]) for w in self.windows]
             idx = nites.index(nite)
-            start,finish = self.windows[idx]
+            winstart,finish = self.windows[idx]
+            if start is None:
+                start = winstart
+            else:
+                logging.warn("Over-writing nite start time")
         except (TypeError, ValueError):
             msg = "Requested nite (%s) not found in windows:\n"%nite
             msg += '['+', '.join([n for n in nites])+']'
@@ -381,8 +419,8 @@ class Scheduler(object):
             finish = self.observatory.next_rising(ephem.Sun(), use_center=True)
             self.observatory.horizon = '0'
 
-            logging.info("Night start (UTC):  %s"%datestr(start))
-            logging.info("Night finish (UTC): %s"%datestr(finish))
+        logging.info("Night start (UTC):  %s"%datestr(start))
+        logging.info("Night finish (UTC): %s"%datestr(finish))
 
         chunks = []
         i = 0
@@ -391,7 +429,13 @@ class Scheduler(object):
             msg = "Scheduling %s -- Chunk %i"%(start,i)
             logging.debug(msg)
             end = start+chunk
-            scheduled_fields = self.run(start,end,clip=clip,plot=False,mode=mode)
+
+            try:
+                scheduled_fields = self.run(start,end,clip=clip,plot=False,mode=mode)
+            except ValueError:
+                # Write fields even if there is an error
+                #chunks.append(self.scheduled_fields)
+                break
 
             if plot:
                 field_select = scheduled_fields[-1:]
@@ -400,14 +444,16 @@ class Scheduler(object):
                     import pdb; pdb.set_trace()
 
             chunks.append(scheduled_fields)
-            start = ephem.Date(chunks[-1]['DATE'][-1]) + constants.FIELDTIME
+            fieldtime = chunks[-1]['EXPTIME'][-1]*ephem.second + constants.OVERHEAD
+            start = ephem.Date(chunks[-1]['DATE'][-1]) + fieldtime
             #start = end
 
         if plot: raw_input(' ...finish... ')
 
         return chunks
 
-    def schedule_survey(self,start=None,end=None,chunk=60,plot=False,mode=None):
+    def schedule_survey(self,start=None,end=None,chunk=60,plot=False,mode=None,
+                        write=False,dirname=None):
         """
         Schedule the entire survey.
 
@@ -444,14 +490,33 @@ class Scheduler(object):
 
             self.scheduled_nites[nite] = chunks
 
-            if plot:
-                ortho.plotField(self.completed_fields[-1:],self.target_fields,self.completed_fields)#,options_basemap=dict(date='2017/02/21 05:00:00'))
+            if write:
+                self.write_nite(nite,chunks,dirname=dirname)
 
+            if plot:
+                ortho.plotField(self.completed_fields[-1:],self.target_fields,
+                                self.completed_fields)
                 if (raw_input(' ...continue ([y]/n)').lower()=='n'):
                     import pdb; pdb.set_trace()
 
         if plot: raw_input(' ...finish... ')
         return self.scheduled_nites
+
+    def write_nite(self,nite,chunks,dirname=None):
+        if dirname:
+            outdir = os.path.join(dirname,nite)
+        else:
+            outdir = os.path.join(nite)
+        if not os.path.exists(outdir): os.makedirs(outdir)
+        outfile = os.path.join(outdir,nite+'.json')
+        base,ext = os.path.splitext(outfile)
+
+        for i,chunk in enumerate(chunks):
+            if len(chunks) > 1:
+                outfile = base+'_%02d'%(i+1)+ext
+            logging.debug("Writing %s..."%outfile)
+            chunk.write(outfile)
+
 
     def write(self,filename):
         self.scheduled_fields.write(filename)
@@ -474,13 +539,13 @@ class Scheduler(object):
         parser.add_argument('--utc-end',action=DatetimeAction,
                             help="end time for observation.")
         parser.add_argument('-k','--chunk', default=60., type=float,
-                            help = 'time chunk')
+                            help = 'time chunk (minutes)')
         parser.add_argument('-f','--fields',default=None,
                             help='all target fields.')
         #parser.add_argument('-m','--mode',default='coverage',
         #                    help='Mode for scheduler tactician.')
         parser.add_argument('-m','--mode',default=None,
-                            help='Mode for scheduler tactician.')
+                            help='mode for scheduler tactician.')
         parser.add_argument('-w','--windows',default=None,
                             help='observation windows.')
         parser.add_argument('-c','--complete',nargs='?',action='append',

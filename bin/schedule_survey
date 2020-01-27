@@ -19,10 +19,16 @@ def main():
     scheduler = scheduler_factory(target_fields=args.fields,
                                   windows=args.windows,
                                   completed_fields=args.complete)
+
+    basedir = args.outfile if args.outfile else 'survey'
+    if not os.path.exists(basedir): os.makedirs(basedir)
+    logging.info(basedir)
+
     try:
         survey = scheduler.schedule_survey(start=args.utc_start,end=args.utc_end,
                                            chunk=args.chunk,plot=args.plot,
-                                           mode=args.mode)
+                                           mode=args.mode,write=True,
+                                           dirname=basedir)
     except ValueError as error:
         logging.warn(str(error))
         survey = scheduler.scheduled_nites
@@ -30,21 +36,8 @@ def main():
     # Write all completed fields
     scheduler.completed_fields.write('survey_fields.csv')
 
-    basedir = args.outfile if args.outfile else 'survey'
-    if not os.path.exists(basedir): os.makedirs(basedir)
-    print(basedir)
-
     for nite,chunks in survey.items():
-        outdir = os.path.join(basedir,nite)
-        if not os.path.exists(outdir): os.makedirs(outdir)
-        outfile = os.path.join(outdir,nite+'.json')
-        base,ext = os.path.splitext(outfile)
-
-        for i,chunk in enumerate(chunks):
-            if len(chunks) > 1:
-                outfile = base+'_%02d'%(i+1)+ext
-            logging.debug("Writing %s..."%outfile)
-            chunk.write(outfile)
+        survey.write_nite(nite,chunks,dirname=basedir)
 
     return survey
 

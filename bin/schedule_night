@@ -26,10 +26,13 @@ def main():
 
     if args.utc_start:
         date = ephem.Date(args.utc_start)
+        start = date
     elif args.nite:
         date = nite2utc(str(args.nite))
+        start = None
     else:
         date = ephem.now()
+        start = None
 
     nitestr = utc2nite(date)
     datestr = datestring(date,0)
@@ -40,9 +43,11 @@ def main():
     scheduler = scheduler_factory(target_fields=args.fields,
                                   windows=args.windows,
                                   completed_fields=args.complete)
-    chunks = scheduler.schedule_nite(date,chunk=args.chunk,plot=args.plot,mode=args.mode)
+    chunks = scheduler.schedule_nite(date,start=start,chunk=args.chunk,
+                                     plot=args.plot,mode=args.mode)
 
-    
+
+
     if not args.outfile:
         outdir  = nitestr
         outfile = os.path.join(outdir,nitestr+'.json')

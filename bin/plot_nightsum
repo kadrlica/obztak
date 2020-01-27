@@ -2,22 +2,18 @@
 """
 Plot a night summary.
 """
-import argparse
-import pylab as plt
-
-import ephem
+import os
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
+import pylab as plt
+import ephem
 
 from obztak import get_survey
 from obztak.factory import field_factory
-from obztak.field import FieldArray
-from obztak.utils.ortho import makePlot
+from obztak.utils.ortho import plot_nightsum
 from obztak.utils.date import get_nite, nite2utc, utc2nite, datestr
 from obztak.utils.parser import Parser, DatetimeAction
-from obztak.utils.database import Database
-from obztak.utils.ortho import plot_bliss_coverage, DECamOrtho
-from obztak.utils.ortho import plot_maglites_nightsum
-from obztak.utils.constants import COLORS
 
 if __name__ == "__main__":
     parser = Parser(description=__doc__)
@@ -32,105 +28,18 @@ if __name__ == "__main__":
         date = nite2utc(args.nite)
     else:
         # Yesterday...? Would 12*ephem.hour be better?
-        date = ephem.Date(ephem.now() - 8*ephem.hour)
+        date = ephem.Date(ephem.now() - 12*ephem.hour)
     nitestr = utc2nite(date)
 
     print "Plotting nightsum for: %s"%nitestr
 
-    #if args.nite:
-    #    now = nite2utc(args.nite) if args.nite else ephem.now()
-    #nite = "%d%02d%d"%get_nite(now).tuple()[:3]
-    #date = "%d/%02d/%02d"%now.tuple()[:3]
-    #time = "%d/%02d/%02d"%date.tuple()[:3] + ' 00:00:00'
-
     fields = field_factory(survey).load_database()
-    if survey == 'maglites':
-        plot_maglites_nightsum(fields,nitestr)
-    elif survey == 'bliss':
+    fields = fields[fields['PRIORITY'] >= 0]
+    plot_nightsum(fields,nitestr,date)
 
-        plot_bliss_coverage(fields)
-        plt.suptitle('Coverage (%s)'%nitestr,fontsize=18)
-        plt.savefig('nightsum_coverage_%s.png'%nitestr)
-
-        fig,axes = plt.subplots(1,2,figsize=(12,5))
-        plt.sca(axes[0])
-        bmap = DECamOrtho(date='2017/02/08 07:00:00')
-        for b in np.unique(fields['FILTER']):
-            f = fields[fields['FILTER']==b]
-            bmap.draw_focal_planes(f['RA'],f['DEC'],color=COLORS[b],alpha=0.3)
-        bmap.draw_bliss()
-        bmap.draw_galaxy()
-        bmap.draw_des()
-
-        plt.sca(axes[1])
-        bmap = DECamOrtho(date='2017/02/08 19:00:00')
-        for b in np.unique(fields['FILTER']):
-            f = fields[fields['FILTER']==b]
-            bmap.draw_focal_planes(f['RA'],f['DEC'],color=COLORS[b],alpha=0.3)
-        bmap.draw_bliss()
-        bmap.draw_galaxy()
-        bmap.draw_des()
-        plt.suptitle('Coverage (%s)'%nitestr,fontsize=16)
-        plt.savefig('nightsum_summary_%s.png'%nitestr)
-
-        new = (np.array(map(utc2nite,fields['DATE'])) == nitestr)
-        new_fields = fields[new]
-        old_fields = fields[~new]
-
-        db = Database()
-        db.connect()
-
-        query = """select id, qc_fwhm as psf, qc_teff as teff, filter from exposure
-        where exptime = 90 and delivered = True and propid = '%s'
-        and qc_teff is not NULL and qc_fwhm is not NULL
-        and to_timestamp(utc_beg) %s '%s'
-        """
-
-        new = db.query2recarray(query%(fields.PROPID,'>',datestr(date)))
-        try:
-            old = db.query2recarray(query%(fields.PROPID,'<',date))
-        except ValueError as e:
-            print(e)
-            old = np.recarray(0,dtype=new.dtype)
-
-
-        nbins = 35
-        kwargs = dict(normed=True)
-        step_kwargs = dict(kwargs,histtype='step',lw=3.5)
-        fill_kwargs = dict(kwargs,histtype='stepfilled',lw=1.0,alpha=0.7)
-
-        plt.figure()
-        step_kwargs['bins'] = np.linspace(0.5,2.5,nbins)
-        fill_kwargs['bins'] = np.linspace(0.5,2.5,nbins)
-        plt.hist(new['psf'],color='green',zorder=10, label='Observed tonight', **fill_kwargs)
-        plt.hist(new['psf'],color='green',zorder=10, **step_kwargs)
-        plt.hist(old['psf'],color='0.5', label='Observed previously', **fill_kwargs)
-        plt.hist(old['psf'],color='0.5', **step_kwargs)
-        plt.axvline(1.20,ls='--',lw=2,color='gray')
-        plt.legend()
-        plt.title('Seeing (%s)'%nitestr)
-        plt.xlabel('FWHM (arcsec)')
-        plt.ylabel('Normalized Number of Exposures')
-        plt.savefig('nightsum_psf_%s.png'%nitestr,bbox_inches='tight')
-
-        plt.figure()
-        step_kwargs['bins'] = np.linspace(0,1.5,nbins)
-        fill_kwargs['bins'] = np.linspace(0,1.5,nbins)
-        plt.hist(new['teff'],color='green',zorder=10,label='Observed tonight', **fill_kwargs)
-        plt.hist(new['teff'],color='green',zorder=10, **step_kwargs)
-        plt.hist(old['teff'],color='0.5',label='Observed previously', **fill_kwargs)
-        plt.hist(old['teff'],color='0.5', **step_kwargs)
-        plt.axvline(0.25,ls='--',lw=2,color='gray')
-        plt.legend()
-        plt.title('Effective Depth (%s)'%nitestr)
-        plt.xlabel('Teff')
-        plt.ylabel('Normalized Number of Exposures')
-        plt.savefig('nightsum_teff_%s.png'%nitestr,bbox_inches='tight')
-
-        for b in ['g','r','i','z']:
-            f = new[new['filter'] == b]
-            print ' %s-band:'%b, len(f)
-
+    if survey in ['maglites'] :
+        from obztak import maglites
+        maglites.plot_nightsum(fields,nitestr)
 
     if args.inspect:
         raw_input(' ...finish...')

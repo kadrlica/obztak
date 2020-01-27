@@ -12,11 +12,12 @@ import numpy as np
 from obztak.field import FieldArray, SISPI_DICT, SEP
 from obztak.survey import Survey
 from obztak.scheduler import Scheduler
+from obztak.tactician import Tactician, ConditionTactician, CoverageTactician
 
 from obztak.utils import constants
 from obztak.utils.constants import SMASH_POLE,CCD_X,CCD_Y,STANDARDS
 from obztak.utils.projector import cel2gal, angsep
-from obztak.utils.date import datestring, setdefaults
+from obztak.utils.date import datestring, setdefaults, nite2utc,utc2nite
 from obztak.utils import fileio
 
 NAME = 'MagLiteS'
@@ -87,7 +88,7 @@ class MaglitesSurvey(Survey):
             dither = self.decam_dither
 
         if infile is None:
-            infile = os.path.join(fileio.get_datadir(),'smash_fields_alltiles.txt')
+            infile = fileio.get_datafile('smash_fields_alltiles.txt')
         data = np.recfromtxt(infile, names=True)
 
         # Apply footprint selection after tiling/dither
@@ -234,15 +235,15 @@ class MaglitesFieldArray(FieldArray):
         and object like '%(object_fmt)s%%'
         -- Discard exposures with teff < 0.1
         --and not (qc_teff < 0.1 and date < '2017/01/01')
-        and
-        (
-          -- All exposures from tonight
-          (date > '2017/06/20 18:00:00')
-          -- Or pass teff cut or NULL from past nights
-          or ((qc_teff is NULL or qc_teff > 0.1) and date < '2017/06/20 18:00:00')
-          -- Or teff = 0 from February
-          or (qc_teff = 0 and date < '2017/03/01' and date > '2017/02/01')
-        )
+        -- Final observing push
+        --and (
+        --  -- All exposures from tonight
+        --  (date > '2017/06/20 18:00:00')
+        --  -- Or pass teff cut or NULL from past nights
+        --  or ((qc_teff is NULL or qc_teff > 0.1) and date < '2017/06/20 18:00:00')
+        --  -- Or teff = 0 from February
+        --  or (qc_teff = 0 and date < '2017/03/01' and date > '2017/02/01')
+        --)
         ORDER BY utc_beg %(limit)s
         """%kwargs
         return query
@@ -251,13 +252,134 @@ class MaglitesFieldArray(FieldArray):
 class MaglitesScheduler(Scheduler):
     _defaults = odict(Scheduler._defaults.items() + [
         ('tactician','coverage'),
-        ('windows',os.path.join(fileio.get_datadir(),"maglites-windows.csv")),
-        ('targets',os.path.join(fileio.get_datadir(),"maglites-target-fields.csv")),
+        ('windows',fileio.get_datafile("maglites-windows.csv")),
+        ('targets',fileio.get_datafile("maglites-target-fields.csv")),
     ])
 
     FieldType = MaglitesFieldArray
 
-if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser(description=__doc__)
-    args = parser.parse_args()
+# Some plotting functions
+
+def plot_nightsum(fields,nitestr):
+    """ Plot the night summary for MagLiteS.
+
+    Parameters:
+    -----------
+    fields:  the fields observed tonight
+    nitestr: the nite in strig format
+
+    Returns:
+    --------
+    None
+    """
+    import pylab as plt
+    from obztak.utils.database import Database
+    from obztak.utils.ortho import makePlot
+
+    #fields = FieldArray.load_database()
+    #new = np.char.startswith(fields['DATE'],date)
+
+    date = nite2utc(nitestr)
+    new = (np.array(map(utc2nite,fields['DATE'])) == nitestr)
+    new_fields = fields[new]
+    old_fields = fields[~new]
+
+    kwargs = dict(edgecolor='none', s=50, vmin=0, vmax=4)
+    fig,basemap = makePlot(date=nitestr,name='nightsum',moon=False,airmass=False,center=(0,-90),bliss=False)
+    plt.title('Coverage (%s)'%nitestr)
+    kwargs['cmap'] = 'gray_r'
+    proj = basemap.proj(old_fields['RA'], old_fields['DEC'])
+    basemap.scatter(*proj, c=old_fields['TILING'],**kwargs)
+
+    kwargs['cmap'] = 'summer_r'
+    proj = basemap.proj(new_fields['RA'], new_fields['DEC'])
+    basemap.scatter(*proj, c=new_fields['TILING'],  **kwargs)
+    colorbar = plt.colorbar()
+    colorbar.set_label('Tiling')
+
+    plt.plot(np.nan, np.nan,'o',color='green',mec='green',label='Observed tonight')
+    plt.plot(np.nan, np.nan,'o',color='0.7',mec='0.7',label='Observed previously')
+    plt.legend(fontsize=10,loc='lower left',scatterpoints=1)
+    plt.savefig('nightsum_coverage_%s.png'%nitestr,bbox_inches='tight')
+
+    db = Database()
+    db.connect()
+
+    query = """
+    select id, qc_fwhm as psf, qc_teff as teff from exposure
+    where exptime = 90 and delivered = True 
+    and propid = '%s'
+    and qc_teff is not NULL and qc_fwhm is not NULL
+    and to_timestamp(utc_beg) %s '%s'
+    """
+
+    new = db.query2recarray(query%(PROPID,'>',date))
+    old = db.query2recarray(query%(PROPID,'<',date))
+
+    nbins = 35
+    kwargs = dict(normed=True)
+    step_kwargs = dict(kwargs,histtype='step',lw=3.5)
+    fill_kwargs = dict(kwargs,histtype='stepfilled',lw=1.0,alpha=0.7)
+
+    plt.figure()
+    step_kwargs['bins'] = np.linspace(0.5,2.5,nbins)
+    fill_kwargs['bins'] = np.linspace(0.5,2.5,nbins)
+    plt.hist(new['psf'],color='green',zorder=10, label='Observed tonight', **fill_kwargs)
+    plt.hist(new['psf'],color='green',zorder=10, **step_kwargs)
+    plt.hist(old['psf'],color='0.5', label='Observed previously', **fill_kwargs)
+    plt.hist(old['psf'],color='0.5', **step_kwargs)
+    plt.axvline(1.20,ls='--',lw=2,color='gray')
+    plt.legend()
+    plt.title('Seeing (%s)'%nitestr)
+    plt.xlabel('FWHM (arcsec)')
+    plt.ylabel('Normalized Number of Exposures')
+    plt.savefig('nightsum_psf_%s.png'%nitestr,bbox_inches='tight')
+
+    plt.figure()
+    step_kwargs['bins'] = np.linspace(0,1.5,nbins)
+    fill_kwargs['bins'] = np.linspace(0,1.5,nbins)
+    plt.hist(new['teff'],color='green',zorder=10,label='Observed tonight', **fill_kwargs)
+    plt.hist(new['teff'],color='green',zorder=10, **step_kwargs)
+    plt.hist(old['teff'],color='0.5',label='Observed previously', **fill_kwargs)
+    plt.hist(old['teff'],color='0.5', **step_kwargs)
+    plt.axvline(0.25,ls='--',lw=2,color='gray')
+    plt.legend()
+    plt.title('Effective Depth (%s)'%nitestr)
+    plt.xlabel('Teff')
+    plt.ylabel('Normalized Number of Exposures')
+    plt.savefig('nightsum_teff_%s.png'%nitestr,bbox_inches='tight')
+
+def plot_progress(outfile=None,**kwargs):
+    """ ADW 2018-07-22: DEPRECATED? """
+    defaults = dict(edgecolor='none', s=50, vmin=0, vmax=4, cmap='summer_r')
+    for k,v in defaults.items():
+        kwargs.setdefault(k,v)
+
+    fields = FieldArray.load_database()
+
+    nites = [get_nite(date) for date in fields['DATE']]
+    nite = ephem.Date(np.max(nites))
+    date = '%d/%02d/%d 00:00:00'%(nite.tuple()[:3])
+
+    fig,basemap = makePlot(date=date,moon=False,airmass=False,center=(0,-90),smash=False)
+    proj = basemap.proj(fields['RA'],fields['DEC'])
+    basemap.scatter(*proj, c=fields['TILING'],  **kwargs)
+    colorbar = plt.colorbar()
+    colorbar.set_label('Tiling')
+    plt.title('Coverage (%d/%02d/%d)'%nite.tuple()[:3])
+
+    if outfile is not None:
+        plt.savefig(outfile,bbox_inches='tight')
+
+    return fig,basemap
+
+class SMCNODTactician(Tactician):
+
+    @property
+    def weight(self):
+        sel = self.viable_fields
+        weight = 10000. * np.logical_not(np.in1d(self.fields['HEX'], obztak.utils.constants.HEX_SMCNOD)).astype(float)
+        weight[~sel] = np.inf
+        weight += 360. * self.fields['TILING']
+        weight += slew
+        return weight

@@ -415,3 +415,10 @@ def hpx_gal2cel(galhpx):
     glon,glat = cel2gal(ra,dec)
 
     return galhpx[ang2pix(nside,glon,glat)]
+
+def ang2disc(nside, lon, lat, radius, inclusive=False, fact=4, nest=False):
+    """
+    Wrap `query_disc` to use lon, lat, and radius in degrees.
+    """
+    vec = ang2vec(lon,lat)
+    return hp.query_disc(nside,vec,radius,inclusive,fact,nest)

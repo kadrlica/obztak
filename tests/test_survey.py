@@ -22,7 +22,7 @@ def test_prepare_windows():
               ['2017/2/23', 'first']]
 
     survey = Survey()
-    windows = survey.prepare_windows(nights)
+    windows = survey.prepare_windows(nights,standards=True)
 
     assert windows['UTC_START'][0] == '2017/02/22 00:29:35'
     assert windows['UTC_END'][0] == '2017/02/22 09:24:12'
@@ -34,7 +34,8 @@ def test_prepare_windows():
 def test_survey_prepare():
     kwargs = dict(fields='test_target_fields.csv',windows='test_windows.csv')
     opts = make_options(kwargs)
-    cmd = 'survey_prepare %s'%(opts)
+    env  = 'OBZTAK_SURVEY="maglites" DES_SERVICES="/dev/null"'
+    cmd = 'env %s survey_prepare %s'%(env,opts)
     call(cmd,shell=True)
 
     fields = fileio.csv2rec(kwargs['fields'])

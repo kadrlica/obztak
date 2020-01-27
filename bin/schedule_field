@@ -8,6 +8,7 @@ import logging
 from obztak import get_survey
 from obztak.scheduler import Scheduler
 from obztak.factory import scheduler_factory
+from obztak.utils.date import datestring
 
 def main():
     parser = Scheduler.parser()
@@ -21,6 +22,10 @@ def main():
 
     logging.info("Scheduling field for survey: '%s'"%get_survey())
     date = ephem.Date(args.utc_start) if args.utc_start else ephem.now()
+    datestr = datestring(date,0)
+
+    logging.info("Start Time (UTC): %s"%(datestr))
+
     #scheduler = Scheduler(args.fields,None,None)
     scheduler = scheduler_factory(target_fields=args.fields)
     field = scheduler.schedule_field(args.hex,args.tiling,band=args.band,date=date,plot=args.plot)
@@ -33,6 +38,7 @@ def main():
             outfile = '%s_'%field['ID'][0]
         outfile += '%4d%02d%02d_%02d:%02d:%02d.json'%date.tuple()
 
+    logging.info("Writing %s..."%(outfile))
     field.write(outfile)
 
 if __name__ == "__main__":

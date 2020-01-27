@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 """
-Deal with file input/output
+Deal with file input/output.
 """
 import os,pwd
 from os.path import splitext, exists, join
 from collections import OrderedDict as odict
+import subprocess
+
 from matplotlib import mlab
 import numpy as np
 import json
@@ -31,7 +33,7 @@ def get_datafile(filename):
 
     if not os.path.exists(filepath):
         msg = "File does not exists: %s"%filepath
-        raise IOError(msg)
+        logging.warn(msg)
     else:
         return filepath
 
@@ -90,18 +92,22 @@ def rec2csv(filename,data,**kwargs):
     kwargs.setdefault('mode','w')
     kwargs.setdefault('na_rep','nan')
     
+    basename,ext = os.path.splitext(filename)
+    if ext == '.gz': filename = basename
+
     with open(filename,'wb') as out:
         out.write(header())
         df.to_csv(out,**kwargs)
 
-    #mlab.rec2csv(data,outfile,formatd=formatd,**kwargs)
-    
+    if ext == '.gz':
+        cmd = 'gzip %s'%filename
+        subprocess.check_call(cmd,shell=True)
 
-def write_json(outfile,data,**kwargs):
+def write_json(filename,data,**kwargs):
     kwargs.setdefault('indent',4)
     json.encoder.FLOAT_REPR = lambda o: format(o, '.4f')
 
-    with open(outfile,'wb') as out:
+    with open(filename,'wb') as out:
         # It'd be nice to have a header
         #out.write(header())
         out.write(json.dumps(data,**kwargs))
@@ -110,8 +116,20 @@ def read_json(filename,**kwargs):
     with open(filename,'r') as f:
         return json.loads(f.read(),**kwargs)
             
-def fields2sispi(infile,outfile=None,force=False):
-    if not outfile: outfile = splitext(infile)[0]+'.json'
+def fields2sispi(filename,outfile=None,force=False):
+    """ Convert a file of fields to a sispi json file.
+
+    Parameters:
+    -----------
+    filename : input filename
+    outfile  : output filename
+    force    : overwrite output
+
+    Returns:
+    --------
+    outfile  : output filename
+    """
+    if not outfile: outfile = splitext(filename)[0]+'.json'
     fields = FieldArray.read(filename)
     if exists(outfile) and not force:
         msg = "Output file already exists: %s"%(outfile)

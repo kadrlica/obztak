@@ -10,11 +10,15 @@ import logging
 
 from obztak import get_survey
 
+MODULES = ['obztak.maglites','obztak.bliss','obztak.maglites2','obztak.delve']
+
 SURVEYS = odict([
     (None,'Survey'),
     ('obztak','Survey'),
     ('maglites','MaglitesSurvey'),
     ('bliss','BlissSurvey'),
+    ('maglites2','Maglites2Survey'),
+    ('delve','DelveSurvey'),
 ])
 
 SCHEDULERS = odict([
@@ -22,6 +26,8 @@ SCHEDULERS = odict([
     ('obztak','Scheduler'),
     ('maglites','MaglitesScheduler'),
     ('bliss','BlissScheduler'),
+    ('maglites2','Maglites2Scheduler'),
+    ('delve','DelveScheduler'),
 ])
 
 FIELDS = odict([
@@ -29,12 +35,14 @@ FIELDS = odict([
     ('obztak','FieldArray'),
     ('maglites','MaglitesFieldArray'),
     ('bliss','BlissFieldArray'),
+    ('maglites2','Maglites2FieldArray'),
+    ('delve','DelveFieldArray'),
 ])
 
 TACTICIANS = odict([
     (None,'Tactician'),
     ('tactician','Tactician'),
-    ('coverage','CoverageTactician'),
+    #('coverage','CoverageTactician'), #coverage now a mode of condition
     ('great','ConditionTactician'),
     ('good','ConditionTactician'),
     ('fine','ConditionTactician'),
@@ -44,6 +52,8 @@ TACTICIANS = odict([
     ('maglites','ConditionTactician'),
     ('complete','ConditionTactician'),
     ('bliss','BlissTactician'),
+    ('maglites2','Maglites2Tactician'),
+    ('delve','DelveTactician'),
 ])
 
 def factory(cls, modules=None, **kwargs):
@@ -81,19 +91,24 @@ def factory(cls, modules=None, **kwargs):
     return members[lower](**kwargs)
 
 def scheduler_factory(cls=None, **kwargs):
-    modules = ['obztak.scheduler','obztak.maglites','obztak.bliss']
+    #modules = ['obztak.scheduler','obztak.maglites','obztak.bliss','obztak.maglites2']
+    modules = ['obztak.scheduler']+MODULES
     if cls is None: cls = get_survey()
     cls = SCHEDULERS.get(cls,cls)
     return factory(cls, modules=modules, **kwargs)
 
 def survey_factory(cls=None, **kwargs):
-    modules = ['obztak.survey','obztak.maglites','obztak.bliss']
+    #modules = ['obztak.survey','obztak.maglites','obztak.bliss','obztak.maglites2']
+    modules = ['obztak.survey']+MODULES
     if cls is None: cls = get_survey()
     cls = SURVEYS.get(cls,cls)
     return factory(cls, modules=modules, **kwargs)
 
 def field_factory(cls=None, **kwargs):
-    modules = ['obztak.field','obztak.maglites','obztak.bliss']
+    """Create a field array
+    """
+    #modules = ['obztak.field','obztak.maglites','obztak.bliss','obztak.maglites2']
+    modules = ['obztak.field']+MODULES
     if cls is None: cls = get_survey()
     cls = FIELDS.get(cls,cls)
     return factory(cls, modules=modules, **kwargs)
@@ -109,7 +124,8 @@ def tactician_factory(cls=None, **kwargs):
     --------
     tac : The Tactician
     """
-    modules = ['obztak.tactician','obztak.maglites','obztak.bliss']
+    #modules = ['obztak.tactician','obztak.maglites','obztak.bliss','obztak.maglites2']
+    modules = ['obztak.tactician']+MODULES
     if cls is None: cls = get_survey()
     cls = TACTICIANS.get(cls,cls)
     return factory(cls, modules=modules, **kwargs)

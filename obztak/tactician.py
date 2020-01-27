@@ -22,6 +22,7 @@ CONDITIONS = odict([
     ('great',   [1.6, 2.0]),
     ('good',    [0.0, 2.0]),
     ('complete',[0.0, 2.0]),
+    ('coverage',[0.0, 2.0]),
     ('maglites',[0.0, 2.0]),
     ('fine',    [0.0, 1.9]),
     ('ok',      [0.0, 1.6]),
@@ -172,7 +173,11 @@ class Tactician(object):
         # Exclude special fields (unless using special tacticians)
         sel_special = self.fields['PRIORITY'] < 90
 
-        viable = sel_hour_angle & sel_airmass & sel_declination & sel_special
+        # Moon angle constraints
+        moon_limit = 20.
+        sel_moon = (self.moon_angle > moon_limit)
+
+        viable = sel_hour_angle & sel_airmass & sel_declination & sel_special & sel_moon
         return viable
 
     @property
@@ -198,15 +203,20 @@ class Tactician(object):
 
     def select_fields(self):
         index = self.select_index()
+        fields = self.fields[index]
 
-        timedelta = constants.FIELDTIME*np.arange(len(index))
-        if np.any(self.slew[index] > 5.):
-            # Apply a 30 second penalty for slews over 5 deg.
-            # This is not completely realistic, but better than nothing
-            # WARNING: This is broken when selecting two fields at once
-            timedelta += 30*ephem.second
+        # This is janky since MagLiteS was originally scheduling pairs of exposures
+        timedelta = np.arange(len(index),dtype=float)
+        timedelta *= (fields['EXPTIME']*ephem.second + constants.OVERHEAD)
+        timedelta[self.slew[index] > 5.] += 30*ephem.second
 
-        fields              = self.fields[index]
+        #timedelta = constants.FIELDTIME*np.arange(len(index))
+        #if np.any(self.slew[index] > 5.):
+        #    # Apply a 30 second penalty for slews over 5 deg.
+        #    # This is not completely realistic, but better than nothing
+        #    # WARNING: This is broken when selecting two fields at once
+        #    timedelta += 30*ephem.second
+
         fields['AIRMASS']   = self.airmass[index]
         fields['DATE']      = map(datestring,self.date+timedelta)
         fields['SLEW']      = self.slew[index]
@@ -214,6 +224,7 @@ class Tactician(object):
         fields['HOURANGLE'] = self.hour_angle[index]
         return fields
 
+# DEPRECATED: ADW 2019-09-09
 class CoverageTactician(Tactician):
     name = 'coverage'
     mode = None
@@ -236,7 +247,21 @@ class ConditionTactician(Tactician):
         self.mode = kwargs.get('mode',None)
 
     @property
+    def coverage_weight(self):
+        """ Hack to subsume CoverageTactician into ConditionTactician """
+        sel = self.viable_fields
+        weight = self.hour_angle
+        weight[~sel] = np.inf
+        weight += 6. * 360. * self.fields['TILING'] # Was 6, 60
+        weight += self.slew**3 # slew**2
+        weight += 100. * (self.airmass - 1.)**3
+        return weight
+
+    @property
     def weight(self):
+        if self.mode == 'coverage':
+            return self.coverage_weight
+
         airmass = self.airmass
         sel = self.viable_fields
         weight = 2.0 * self.hour_angle
@@ -258,285 +283,8 @@ class ConditionTactician(Tactician):
 
         return weight
 
-class SMCNODTactician(Tactician):
-
-    @property
-    def weight(self):
-        sel = self.viable_fields
-        weight = 10000. * np.logical_not(np.in1d(self.fields['HEX'], obztak.utils.constants.HEX_SMCNOD)).astype(float)
-        weight[~sel] = np.inf
-        weight += 360. * self.fields['TILING']
-        weight += slew
-        return weight
-
-
-class BlissTactician(Tactician):
-    CONDITIONS = odict([
-        (None,    [1.0, 1.4]),
-        ('bliss', [1.0, 1.4]),
-        #('good',  [1.0, 1.4]),
-        #('poor',  [1.0, 1.2]),
-    ])
-
-    def __init__(self, *args, **kwargs):
-        super(BlissTactician,self).__init__(*args,**kwargs)
-        self.mode = kwargs.get('mode',None)
-
-    @property
-    def weight(self):
-        airmass = self.airmass
-        moon_angle = self.moon_angle
-
-        sel = self.viable_fields
-        weight = np.zeros(len(sel))
-
-        # Moon angle constraints
-        moon_limit = 30.
-        sel &= (moon_angle > moon_limit)
-
-        # Moon band constraints
-        if (self.moon.phase >= 80) and (self.moon.alt > -0.04):
-            # Moon is very bright; only do z
-            sel &= (np.char.count('z',self.fields['FILTER']) > 0)
-            # Allow i,z but prefer z
-            #sel &= (np.char.count('iz',self.fields['FILTER']) > 0)
-            #weight += 1e2 * (np.char.count('i',self.fields['FILTER']) > 0)
-        elif (self.moon.phase >= 45) and (self.moon.alt > -0.04):
-            # Moon is more than half full; do i,z
-            sel &= (np.char.count('iz',self.fields['FILTER']) > 0)
-        else:
-            # Moon is faint or down; do g,r (unless none available)
-            sel &= (np.char.count('gr',self.fields['FILTER']) > 0)
-            #weight += 1e8 * (np.char.count('iz',self.fields['FILTER']) > 0)
-        if (self.sun.alt > -0.28):
-            # No g-band if Sun altitude > -16 deg
-            sel &= ~(np.char.count('g',self.fields['FILTER']) > 0)
-
-
-        # Airmass cut
-        airmass_min, airmass_max = self.CONDITIONS[self.mode]
-        sel &= ((airmass > airmass_min) & (airmass < airmass_max))
-
-        # Don't allow the same field to be scheduled in different bands
-        # less than 10 hours apart
-        if len(self.completed_fields):
-            dates = np.array(map(ephem.Date,self.completed_fields['DATE']))
-            recent = self.completed_fields[(self.date - dates) < 10*ephem.hour]
-
-            # Don't allow the same fields twice on one night
-            sel &= ~np.in1d(self.fields.field_id,recent.field_id)
-
-            # Higher weight for duplicate HEXs
-            weight += 500.0 * np.in1d(self.fields['HEX'],recent['HEX'])
-            #weight += 1e9 * np.in1d(self.fields.field_id,recent.field_id)
-
-        # Set the weights for each field. Lower weight means more favorable.
-
-        # Higher weight for rising fields (higher hour angle)
-        # HA [min,max] = [-53,54] (for airmass 1.4)
-        #weight += 5.0 * self.hour_angle
-        weight += 1.0 * self.hour_angle
-        #weight += 0.1 * self.hour_angle
-
-        # Higher weight for larger slews
-        # slew = 10 deg -> weight = 1e2
-        #weight += self.slew**2
-        #weight += self.slew
-        weight += 1e3 * self.slew
-
-        # Higher weight for higher airmass
-        # airmass = 1.4 -> weight = 6.4
-        weight += 100. * (airmass - 1.)**3
-
-        # Higher weight for fields close to the moon (when up)
-        # angle = 50 -> weight = 6.4
-        if (self.moon.alt > -0.04):
-            #weight += 100 * (35./moon_angle)**3
-            #weight += 10 * (35./moon_angle)**3
-            weight += 1 * (35./moon_angle)**3
-
-        # Try hard to do the first tiling
-        weight += 1e6 * (self.fields['TILING'] - 1)
-
-        # Prioritize Planet 9 Region late in the survey/night
-        #ra_zenith, dec_zenith = np.degrees(self.observatory.radec_of(0,'90'))
-        #if ra_zenith > 270:
-        #    weight += 1e6 * (self.fields['PRIORITY'] - 1)
-        #    # Allow i,z exposures at high penalty
-        #    #sel &= (np.char.count('iz',self.fields['FILTER']) > 0)
-        #    #weight += 1e8 * (np.char.count('iz',self.fields['FILTER']) > 0)
-
-        # Set infinite weight to all disallowed fields
-        weight[~sel] = np.inf
-
-        return weight
-
-    def select_index(self):
-        weight = self.weight
-        index = np.array([np.argmin(weight)],dtype=int)
-        if np.any(~np.isfinite(weight[index])):
-        #if True:
-            msg = "Infinite weight selected"
-            print(msg)
-            import obztak.utils.ortho, pylab as plt
-            airmass_min, airmass_max = self.CONDITIONS[self.mode]
-            bmap = obztak.utils.ortho.plotFields(self.completed_fields[-1],self.fields,self.completed_fields,options_basemap=dict(airmass=airmass_max))
-            import pdb; pdb.set_trace()
-            raise ValueError(msg)
-
-        return index
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description=__doc__)
     args = parser.parse_args()
-
-
-
-#        if mode == 'airmass':
-#            airmass_effective = copy.copy(airmass)
-#            # Do not observe fields that are unavailable
-#            airmass_effective[np.logical_not(cut)] = np.inf
-#            # Priorize coverage over multiple tilings
-#            airmass_effective += self.target_fields['TILING']
-#            index_select = np.argmin(airmass_effective)
-#        elif mode == 'ra':
-#            # Different selection
-#            #ra_effective = copy.copy(self.target_fields['RA'])
-#            ra_effective = copy.copy(self.target_fields['RA']) - ra_zenith
-#            ra_effective[ra_effective > 180.] = ra_effective[ra_effective > 180.] - 360.
-#            ra_effective[np.logical_not(cut)] = np.inf
-#            ra_effective += 360. * self.target_fields['TILING']
-#            index_select = np.argmin(ra_effective)
-#        elif mode == 'slew':
-#            #ra_effective = copy.copy(self.target_fields['RA'])
-#            ra_effective = copy.copy(self.target_fields['RA']) - ra_zenith
-#            ra_effective[ra_effective > 180.] = ra_effective[ra_effective > 180.] - 360.
-#            ra_effective[np.logical_not(cut)] = np.inf
-#            ra_effective += 360. * self.target_fields['TILING']
-#            ra_effective += slew**2
-#            #ra_effective += 2. * slew
-#            index_select = np.argmin(ra_effective)
-#        elif mode == 'balance':
-#            """
-#            ra_effective = copy.copy(self.target_fields['RA']) - ra_zenith
-#            ra_effective[ra_effective > 180.] = ra_effective[ra_effective > 180.] - 360.
-#            ra_effective[np.logical_not(cut)] = np.inf
-#            ra_effective += 360. * self.target_fields['TILING']
-#            #ra_effective += 720. * self.target_fields['TILING']
-#            ra_effective += slew**2
-#            ra_effective += 100. * (airmass - 1.)**3
-#            weight = ra_effective
-#            index_select = np.argmin(weight)
-#            weight = hour_angle_degree
-#            """
-#            weight = copy.copy(hour_angle_degree)
-#            weight[np.logical_not(cut)] = np.inf
-#            weight += 3. * 360. * self.target_fields['TILING']
-#            weight += slew**3 # slew**2
-#            weight += 100. * (airmass - 1.)**3
-#            index_select = np.argmin(weight)
-#        elif mode == 'balance2':
-#            weight = copy.copy(hour_angle_degree)
-#            weight[np.logical_not(cut)] = np.inf
-#            weight += 360. * self.target_fields['TILING']
-#            weight += slew_ra**2
-#            weight += slew_dec
-#            weight += 100. * (airmass - 1.)**3
-#            index_select = np.argmin(weight)
-#        elif mode == 'balance3':
-#            logging.debug("Slew: %s"%slew)
-#            weight = copy.copy(hour_angle_degree)
-#            weight[np.logical_not(cut)] = np.inf
-#            weight += 3. * 360. * self.target_fields['TILING']
-#            """
-#            x_slew, y_slew = zip(*[[0., 0.],
-#                                   [2.5, 10.],
-#                                   [5., 30.],
-#                                   [10., 150.],
-#                                   [20., 250.],
-#                                   [50., 500.],
-#                                   [180., 5000.]])
-#            """
-#            x_slew, y_slew = zip(*[[0., 0.],
-#                                   [2.5, 10.],
-#                                   [5., 30.],
-#                                   [10., 500.], #
-#                                   [20., 1000.], # 500
-#                                   [50., 5000.], # 1000
-#                                   [180., 5000.]])
-#            weight += np.interp(slew, x_slew, y_slew, left=np.inf, right=np.inf)
-#            weight += 100. * (airmass - 1.)**3
-#            index_select = np.argmin(weight)
-#        elif mode == 'airmass2':
-#            weight = 200. * (airmass - airmass_next)
-#            weight[np.logical_not(cut)] = np.inf
-#            weight += 360. * self.target_fields['TILING']
-#            weight += 100. * (airmass - 1.)**3
-#            weight += slew**2
-#            index_select = np.argmin(weight)
-#        elif mode in ('coverage','good'):
-#            weight = copy.copy(hour_angle_degree)
-#            #weight[np.logical_not(cut)] = 9999.
-#            weight[np.logical_not(cut)] = np.inf
-#            weight += 6. * 360. * self.target_fields['TILING'] # Was 6, 60
-#            weight += slew**3 # slew**2
-#            weight += 100. * (airmass - 1.)**3
-#            index_select = np.argmin(weight)
-#        elif mode == 'coverage2':
-#            weight = copy.copy(hour_angle_degree)
-#            weight *= 2.
-#            weight[np.logical_not(cut)] = np.inf
-#            weight += 6. * 360. * self.target_fields['TILING']
-#            weight += slew**3 # slew**2
-#            weight += 100. * (airmass - 1.)**3
-#            index_select = np.argmin(weight)
-#        elif mode == 'coverage3':
-#            weight = copy.copy(hour_angle_degree)
-#            weight *= 0.5
-#            weight[np.logical_not(cut)] = np.inf
-#            weight += 6. * 360. * self.target_fields['TILING']
-#            weight += slew**3 # slew**2
-#            weight += 100. * (airmass - 1.)**3
-#            index_select = np.argmin(weight)
-#        elif mode == 'lowairmass':
-#            weight = 2.0 * copy.copy(hour_angle_degree)
-#            #if len(self.scheduled_fields) == 0:
-#            #    weight += 200. * obztak.utils.projector.angsep(self.target_fields['RA'],
-#            #                                                     self.target_fields['DEC'],
-#            #                                                     90., -70.)
-#            weight[np.logical_not(cut)] = np.inf
-#            weight += 3. * 360. * self.target_fields['TILING']
-#            weight += slew**3 # slew**2
-#            #weight += 2000. * (airmass - 1.)**3 # 200
-#            weight += 5000. * (airmass > 1.5)
-#            index_select = np.argmin(weight)
-#
-#            """
-#            weight = copy.copy(hour_angle_degree)
-#            weight[np.logical_not(cut)] = np.inf
-#            weight += 3. * 360. * self.target_fields['TILING']
-#            weight += slew**3 # slew**2
-#            weight += 1000. * (airmass - 1.)**3
-#            index_select = np.argmin(weight)
-#            """
-#        elif mode in CONDITIONS.keys():
-#            weight = 2.0 * copy.copy(hour_angle_degree)
-#            weight[np.logical_not(cut)] = np.inf
-#            weight += 3. * 360. * self.target_fields['TILING']
-#            weight += slew**3
-#            airmass_min, airmass_max = CONDITIONS[mode]
-#            airmass_sel = ((airmass < airmass_min) | (airmass > airmass_max))
-#            # ADW: This should probably also be in there
-#            weight += 100. * (airmass - 1.)**3
-#            weight += 5000. * airmass_sel
-#            index_select = np.argmin(weight)
-#        elif mode == 'smcnod':
-#            weight = 10000. * np.logical_not(np.in1d(self.target_fields['HEX'], obztak.utils.constants.HEX_SMCNOD)).astype(float)
-#            weight[np.logical_not(cut)] = np.inf
-#            weight += 360. * self.target_fields['TILING']
-#            weight += slew
-#            index_select = np.argmin(weight)
-#        else:
-#            msg = "Unrecognized mode: %s"%mode
-#            raise Exception(msg)
