@@ -52,7 +52,7 @@ class Survey(object):
 
     nights = nights_2016A + nights_2017A
 
-    def prepare_windows(self, nights, horizon=-14., standards=True, outfile=None):
+    def prepare_windows(self, nights, horizon=-14., standards=False, outfile=None):
         """Create a list of observation windows consisting of start-stop
         times for all dates of observation.
 
@@ -87,13 +87,13 @@ class Survey(object):
                 window = [time_setting, time_rising]
             elif mode == 'first':
                 # Don't do midpoint standards
-                #if standards:
-                #    time_midpoint = time_midpoint - STANDARDS
+                if standards:
+                    time_midpoint = time_midpoint - STANDARDS
                 window = [time_setting, time_midpoint]
             elif mode == 'second':
                 # Don't do midpoint standards
-                #if standards:
-                #    time_midpoint = time_midpoint + STANDARDS
+                if standards:
+                    time_midpoint = time_midpoint + STANDARDS
                 window = [time_midpoint, time_rising]
             else:
                 msg = "Unrecognized mode: '%s'"%mode
