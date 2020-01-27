@@ -36,8 +36,8 @@ DECAM = 1.1  # DECam radius
 BANDS = ['u','g','r','i','z','Y']
 #BANDS = ['VR']
 
-#SkymapCls,suffix = DECamMcBride,'_mbt'
-SkymapCls,suffix = MaglitesSkymap,'_ort'
+SkymapCls,suffix = DECamMcBride,'_mbt'
+#SkymapCls,suffix = MaglitesSkymap,'_ort'
 
 # COALESCE(qc_teff,'NaN')
 QUERY ="""
@@ -82,24 +82,30 @@ def ang2disc(nside, lon, lat, radius, inclusive=False, fact=4, nest=False):
     vec = ang2vec(lon,lat)
     return hp.query_disc(nside,vec,radius,inclusive,fact,nest)
 
-db = Database()
-db.connect()
-data = db.query2recarray(QUERY)
-if os.path.exists(args.outfile): os.remove(args.outfile)
-print("Writing %s..."%args.outfile)
-fitsio.write(args.outfile,data)
+args.db = True
+if args.db:
+    db = Database()
+    db.connect()
+    data = db.query2recarray(QUERY)
+    if os.path.exists(args.outfile): os.remove(args.outfile)
+    print("Writing %s..."%args.outfile)
+    fitsio.write(args.outfile,data)
 
 # Do we want to make maps?
 if not args.maps: sys.exit()
+
+data = fitsio.read(args.outfile)
 
 exposures = odict([(b,data[data['filter'] ==b]) for b in BANDS])
 sum_skymaps = odict([(b,np.zeros(hp.nside2npix(NSIDE))) for b in BANDS])
 max_skymaps = odict([(b,np.zeros(hp.nside2npix(NSIDE))) for b in BANDS])
 
 for b,exp in exposures.items():
+    print "%s-band..."%band
     nan = np.isnan(exp['teff'])
     median = np.median(exp[~nan]['teff'])
-    print "Median teff for %s-band: %s"%(b,median)
+    print "  Median teff: %s"%(median)
+    print "  Fraction without teff: %i%%"%(100*nan.sum()/float(len(nan)))
     if not nan.sum(): continue
 
     ## Set the teff to a random value from the distribution
@@ -107,12 +113,10 @@ for b,exp in exposures.items():
     #teff = exp['teff'][np.where(~nan)[0][idx]]
     #exp['teff'][nan] = teff
                   
-
-
 for (band,_max),(band,_sum) in zip(max_skymaps.items(),sum_skymaps.items()):
     print band
     d2 = exposures[band]
-    d2 = d2[d2['teff'] >= 0.2]
+    d2 = d2[ (d2['teff'] >= 0.3) ]
     vec = ang2vec(d2['ra'],d2['dec'])
     rad = np.radians(DECAM)
     for i,(v,d) in enumerate(zip(vec,d2)):

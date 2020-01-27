@@ -12,6 +12,7 @@ import numpy as np
 from obztak.field import FieldArray, SISPI_DICT, SEP
 from obztak.survey import Survey
 from obztak.scheduler import Scheduler
+from obztak.tactician import Tactician, ConditionTactician, CoverageTactician
 
 from obztak.utils import constants
 from obztak.utils.constants import SMASH_POLE,CCD_X,CCD_Y,STANDARDS
@@ -372,7 +373,13 @@ def plot_progress(outfile=None,**kwargs):
 
     return fig,basemap
 
-if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser(description=__doc__)
-    args = parser.parse_args()
+class SMCNODTactician(Tactician):
+
+    @property
+    def weight(self):
+        sel = self.viable_fields
+        weight = 10000. * np.logical_not(np.in1d(self.fields['HEX'], obztak.utils.constants.HEX_SMCNOD)).astype(float)
+        weight[~sel] = np.inf
+        weight += 360. * self.fields['TILING']
+        weight += slew
+        return weight

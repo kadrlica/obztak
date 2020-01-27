@@ -120,9 +120,50 @@ class DelveSurvey(Survey):
         ['2020/01/31', 'second'], # phase=%, set=
         ]
 
+    # 2020A SCHEDULED (bliss-windows.csv is actually used)
+    nights_2020A = [
+        ['2020/02/05','full'  ],
+        ['2020/02/06','full'  ],
+        ['2020/02/07','full'  ],
+        ['2020/02/11','second'],
+        ['2020/02/12','full'  ],
+        ['2020/03/01','first' ],
+        ['2020/03/02','first' ],
+        ['2020/03/05','first' ],
+        ['2020/03/06','first' ],
+        ['2020/03/15','first' ],
+        ['2020/03/28','first' ],
+        ['2020/03/29','first' ],
+        ['2020/03/30','first' ],
+        ['2020/03/31','first' ],
+        ['2020/04/01','first' ],
+        ['2020/04/04','first' ],
+        ['2020/04/05','first' ],
+        ['2020/04/07','first' ],
+        ['2020/04/17','first' ],
+        ['2020/04/18','first' ],
+        ['2020/04/19','first' ],
+        ['2020/04/20','first' ],
+        ['2020/05/01','first' ],
+        ['2020/05/02','first' ],
+        ['2020/05/03','first' ],
+        ['2020/05/04','first' ],
+        ['2020/05/05','first' ],
+        ['2020/05/06','first' ],
+        ['2020/05/21','first' ],
+        ['2020/05/31','full'  ],
+        ['2020/06/01','full'  ],
+        ['2020/06/29','second'],
+        ['2020/06/30','second'],
+        ['2020/07/23','second'],
+        ['2020/07/27','second'],
+        ['2020/07/28','second'],
+        ['2020/07/29','second'],
+        ['2020/07/31','second'],
+     ]
     extra_nights = []
 
-    nights = nights_2019A + nights_2019B + extra_nights
+    nights = nights_2019A + nights_2019B + nights_2020A + extra_nights
 
     def prepare_fields(self, infile=None, outfile=None, plot=True, **kwargs):
         """ Create the list of fields to be targeted by this survey.
@@ -250,7 +291,7 @@ class DelveSurvey(Survey):
 
         fields['PRIORITY'][depth > teffmin*fields['TILING']*fields['EXPTIME']] = DONE
         # Avoid MagLiteS-II for now
-        fields['PRIORITY'][self.footprintMaglites2(fields['RA'],fields['DEC'])] = DONE
+        #fields['PRIORITY'][self.footprintMaglites2(fields['RA'],fields['DEC'])] = DONE
 
         if plot: self.plot_depth(fields,depth,'delve-wide-%s-gt%i.png')
 
@@ -569,10 +610,13 @@ class DelveFieldArray(FieldArray):
         to_char(to_timestamp(utc_beg), 'YYYY/MM/DD HH24:MI:SS.MS') AS DATE,
         COALESCE(airmass,-1) as AIRMASS, COALESCE(moonangl,-1) as MOONANGLE,
         COALESCE(ha, -1) as HOURANGLE, COALESCE(slewangl,-1) as SLEW, PROGRAM
-        FROM exposure where propid = '%(propid)s' and exptime > 89
+        --FROM exposure where propid = '%(propid)s' and exptime > 89
+        --2019B-1014: Felipe Olivares
+        FROM exposure where propid in ('%(propid)s','2019B-1014') and exptime > 89
         and discard = False and delivered = True and flavor = 'object'
         and object like '%(object_fmt)s%%'
         -- and id NOT IN (860597, 860598, 860599, 860600, 860601, 860602)
+        -- and COALESCE(qc_teff,-1) NOT BETWEEN 0 and 0.2
         ORDER BY utc_beg %(limit)s
         """%kwargs
         return query
@@ -597,6 +641,7 @@ class DelveTactician(Tactician):
         ('mc_good',  [1.8, 2.0]),
         ('mc_ok',    [1.4, 1.8]),
         ('mc_poor',  [1.0, 1.7]),
+        ('gw',       [1.0, 2.0]),
     ])
 
     def __init__(self, *args, **kwargs):
@@ -668,6 +713,8 @@ class DelveTactician(Tactician):
             return self.weight_mc()
         elif self.mode == 'wide':
             return self.weight_wide()
+        elif self.mode == 'gw':
+            return self.weight_gw()
         else:
             raise ValueError("Unrecognized mode: %s"%self.mode)
 
@@ -791,8 +838,8 @@ class DelveTactician(Tactician):
 
         # Higher weight for higher airmass
         # airmass = 1.4 -> weight = 6.4
-        #weight += 100. * (airmass - 1.)**3
-        weight += 1e3 * (airmass - 1.)**2
+        weight += 100. * (airmass - 1.)**3
+        #weight += 1e3 * (airmass - 1.)**2
 
         # Hack to target fields with RA < 100 & DEC > -30
         hack = (self.fields['RA'] < 100) & (self.fields['DEC'] > -30) &\
@@ -802,6 +849,75 @@ class DelveTactician(Tactician):
         ## Try hard to do high priority fields
         weight += 1e3 * (self.fields['PRIORITY'] - 1)
         weight += 1e4 * (self.fields['TILING'] > 3)
+
+        # Set infinite weight to all disallowed fields
+        weight[~sel] = np.inf
+
+        return weight
+
+    def weight_gw(self):
+        """ Calculate the field weight for the WIDE survey. """
+        import healpy as hp
+        airmass = self.airmass
+        moon_angle = self.moon_angle
+
+        # Reset the exposure time
+        self.fields['EXPTIME'] = 90
+
+        if hasattr(self.fields,'hpx'):
+            hpx = self.fields.hpx
+        else:
+            hpx = hp.ang2pix(32,self.fields['RA'],self.fields['DEC'],lonlat=True)
+            setattr(self.fields,'hpx',hpx)
+
+        gwpix = np.genfromtxt(fileio.get_datafile('GW150914_hpixels_32.tab'))
+
+        #sel = self.viable_fields
+        sel = np.in1d(hpx,gwpix)
+        sel &= self.fields['FILTER'] == 'g'
+
+        weight = np.zeros(len(sel))
+
+        # Sky brightness selection
+
+        # Airmass cut
+        airmass_min, airmass_max = self.CONDITIONS['gw']
+        sel &= ((airmass > airmass_min) & (airmass < airmass_max))
+
+        """
+        # Higher weight for fields close to the moon (when up)
+        # angle = 50 -> weight = 6.4
+        # Moon angle constraints (viable fields sets moon_angle > 20.)
+        if (self.moon.alt > -0.04) and (self.moon.phase >= 10):
+            #moon_limit = np.min(20 + self.moon.phase/2., 40)
+            moon_limit = 40
+            sel &= (moon_angle > moon_limit)
+
+            #weight += 100 * (35./moon_angle)**3
+            #weight += 10 * (35./moon_angle)**3
+            weight += 1 * (35./moon_angle)**3
+        """
+
+        # Higher weight for rising fields (higher hour angle)
+        # HA [min,max] = [-53,54] (for airmass 1.4)
+        #weight += 5.0 * self.hour_angle
+        #weight += 1.0 * self.hour_angle
+        #weight += 0.1 * self.hour_angle
+
+        # Higher weight for larger slews
+        # slew = 10 deg -> weight = 1e2
+        weight += self.slew**2
+        #weight += self.slew
+        #weight += 1e3 * self.slew
+
+        # Higher weight for higher airmass
+        # airmass = 1.4 -> weight = 6.4
+        weight += 1e3 * (airmass - 1.)**3
+        #weight += 1e3 * (airmass - 1.)**2
+
+        ## Try hard to do high priority fields
+        #weight += 1e3 * (self.fields['PRIORITY'] - 1)
+        #weight += 1e4 * (self.fields['TILING'] > 3)
 
         # Set infinite weight to all disallowed fields
         weight[~sel] = np.inf
