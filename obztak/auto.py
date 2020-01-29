@@ -105,7 +105,8 @@ class AutoObz(object):
         script = self.publish_script
         cmd = 'ssh sispi@observer2 "%s -v $PWD/autoobs.conf"'%(script)
         try:
-            subprocess.call(cmd, shell=True)
+            raise Exception("Not publishing")
+            #subprocess.call(cmd, shell=True)
         except:
             logging.warn("Publish failed.")
 

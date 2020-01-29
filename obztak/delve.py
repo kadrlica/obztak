@@ -616,7 +616,10 @@ class DelveFieldArray(FieldArray):
         and discard = False and delivered = True and flavor = 'object'
         and object like '%(object_fmt)s%%'
         -- and id NOT IN (860597, 860598, 860599, 860600, 860601, 860602)
-        -- and COALESCE(qc_teff,-1) NOT BETWEEN 0 and 0.2
+        and (
+             COALESCE(qc_teff,-1) NOT BETWEEN 0 and 0.1
+             OR to_timestamp(utc_beg) > (now() - interval '14 hours')
+        )
         ORDER BY utc_beg %(limit)s
         """%kwargs
         return query
@@ -626,7 +629,7 @@ class DelveScheduler(Scheduler):
     _defaults = odict(Scheduler._defaults.items() + [
         ('tactician','coverage'),
         ('windows',fileio.get_datafile("delve-windows-v2.csv.gz")),
-        ('targets',fileio.get_datafile("delve-target-fields-v11.csv.gz")),
+        ('targets',fileio.get_datafile("delve-target-fields-v12.csv.gz")),
     ])
 
     FieldType = DelveFieldArray
@@ -827,7 +830,7 @@ class DelveTactician(Tactician):
         # Higher weight for rising fields (higher hour angle)
         # HA [min,max] = [-53,54] (for airmass 1.4)
         #weight += 5.0 * self.hour_angle
-        #weight += 1.0 * self.hour_angle
+        weight += 1.0 * self.hour_angle
         #weight += 0.1 * self.hour_angle
 
         # Higher weight for larger slews
@@ -842,7 +845,7 @@ class DelveTactician(Tactician):
         #weight += 1e3 * (airmass - 1.)**2
 
         # Hack to target fields with RA < 100 & DEC > -30
-        hack = (self.fields['RA'] < 100) & (self.fields['DEC'] > -30) &\
+        hack = (self.fields['RA'] < 100) & (self.fields['DEC'] > -60) &\
             (self.fields['PRIORITY']>0) & (self.fields['PRIORITY']<4) 
         self.fields['PRIORITY'][hack] = 1
 
