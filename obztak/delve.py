@@ -844,11 +844,6 @@ class DelveTactician(Tactician):
         weight += 100. * (airmass - 1.)**3
         #weight += 1e3 * (airmass - 1.)**2
 
-        # Hack to target fields with RA < 100 & DEC > -30
-        hack = (self.fields['RA'] < 100) & (self.fields['DEC'] > -60) &\
-            (self.fields['PRIORITY']>0) & (self.fields['PRIORITY']<4) 
-        self.fields['PRIORITY'][hack] = 1
-
         ## Try hard to do high priority fields
         weight += 1e3 * (self.fields['PRIORITY'] - 1)
         weight += 1e4 * (self.fields['TILING'] > 3)
