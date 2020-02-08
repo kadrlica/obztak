@@ -733,7 +733,7 @@ class DelveTactician(Tactician):
         weight = np.zeros(len(sel))
 
         # Moon angle constraints
-        moon_limit = 30.
+        moon_limit = 30. + (self.moon.phase/5.)
         sel &= (moon_angle > moon_limit)
 
         # Sky brightness selection
