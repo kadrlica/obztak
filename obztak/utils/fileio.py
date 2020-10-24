@@ -7,8 +7,8 @@ from os.path import splitext, exists, join
 from collections import OrderedDict as odict
 import subprocess
 
-from matplotlib import mlab
 import numpy as np
+import pandas as pd
 import json
 import logging
 
@@ -37,23 +37,8 @@ def get_datafile(filename):
     else:
         return filepath
 
-class FormatFloatForce(mlab.FormatFormatStr): 
-    """
-    mlab not doing well...
-    """
-    def __init__(self,fmt=FLOAT_FMT): 
-        mlab.FormatFormatStr.__init__(self,fmt) 
-    def toval(self, x): 
-        return x 
-    def fromstr(self, s): 
-        return float(s) 
-
-def csv2rec(filename, **kwargs):
-    #mlab.csv2rec(infile)
-    #data = np.recfromcsv(filename,**kwargs)
-    #data.dtype.names = map(str.upper,data.dtype.names)
-    
-    import pandas as pd
+def read_csv(filename, **kwargs):
+    """Wrapper around pandas.read_csv"""
     from distutils.version import LooseVersion
     kwargs.setdefault('parse_dates',False)
     kwargs.setdefault('comment','#')
@@ -62,36 +47,27 @@ def csv2rec(filename, **kwargs):
     if LooseVersion(pd.__version__) > LooseVersion('0.9.0'):
         kwargs.setdefault('skip_blank_lines',True)
         #kwargs.setdefault('as_recarray',True)
-        return pd.read_csv(filename,**kwargs).to_records(index=False)
+        return pd.read_csv(filename,**kwargs)
     else:
         lines = open(filename,'r').readlines()
         comments = np.char.startswith(lines,'#')
         skiprows = np.argmin(comments)
         kwargs.setdefault('skiprows',skiprows)
-        data = pd.read_csv(filename,**kwargs).to_records(index=False)
-        return data
-        
-def rec2csv(filename,data,**kwargs):
-    """
-    Wrapper around numpy.savetxt
+        return pd.read_csv(filename,**kwargs)
 
-    Also see mlab.rec2csv (which is terrible...)
+def to_csv(filename,data,**kwargs):
+    """ Call to pandas.DataFrame.to_csv
     """
-    #formatd = dict()
-    #for name,(dtype,size) in data.dtype.fields.items():
-    #    if dtype.kind == 'f': formatd[name] = FormatFloatForce()
-    #formatd.update(kwargs.pop('formatd',dict()))
-    #
-    #mlab.rec2csv(data,out,formatd=formatd,**kwargs)        
-
-    import pandas as pd
     df = pd.DataFrame(data)
 
     kwargs.setdefault('float_format','%.4f')
     kwargs.setdefault('index',False)
     kwargs.setdefault('mode','w')
     kwargs.setdefault('na_rep','nan')
-    
+
+    if os.path.exists(filename):
+        os.remove(filename)
+
     basename,ext = os.path.splitext(filename)
     if ext == '.gz': filename = basename
 
@@ -102,6 +78,16 @@ def rec2csv(filename,data,**kwargs):
     if ext == '.gz':
         cmd = 'gzip %s'%filename
         subprocess.check_call(cmd,shell=True)
+
+def csv2rec(filename, **kwargs):
+    """Read DataFrame from csv and return recarray
+    """
+    return read_csv(filename, **kwargs).to_records(index=False)
+
+def rec2csv(filename,data,**kwargs):
+    """Convert to DataFrame and write to csv.
+    """
+    return to_csv(filename, data, **kwargs)
 
 def write_json(filename,data,**kwargs):
     kwargs.setdefault('indent',4)

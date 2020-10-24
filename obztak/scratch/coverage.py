@@ -7,9 +7,10 @@ from collections import OrderedDict as odict
 import warnings
 import datetime
 
-import healpy as hp
 import numpy as np
 import pylab as plt
+import pandas as pd
+import healpy as hp
 import fitsio
 
 from obztak.utils.database import Database
@@ -49,7 +50,7 @@ and flavor = 'object' and telra between 0 and 360 and teldec between -90 and 90
 and exptime >= 30
 and filter in (%s) and propid NOT LIKE '%%-9999'
 -- and propid = '2014B-0404' -- DECaLS
--- and date < current_date - interval '18 months'
+-- and (date < current_date - interval '18 months' or propid='2019A-0305')
 ORDER BY id;
 """%(",".join(["'%s'"%b for b in BANDS]))
 
@@ -87,6 +88,17 @@ if args.db:
     db = Database()
     db.connect()
     data = db.query2recarray(QUERY)
+
+    args.delve = True
+    if args.delve:
+        print("Reading DELVE QA values...")
+        delve = pd.read_csv('data/delve-qa-20201024.csv.gz')
+        df = pd.DataFrame(data)
+        print("Merging %i DELVE QA values..."%(len(delve)))
+        x = df.merge(delve,left_on='expnum',right_on='expnum',how='left')
+        sel = np.isnan(data['teff'])
+        data['teff'][sel] = x[sel]['teff_y']
+
     if os.path.exists(args.outfile): os.remove(args.outfile)
     print("Writing %s..."%args.outfile)
     fitsio.write(args.outfile,data)
@@ -100,7 +112,7 @@ exposures = odict([(b,data[data['filter'] ==b]) for b in BANDS])
 sum_skymaps = odict([(b,np.zeros(hp.nside2npix(NSIDE))) for b in BANDS])
 max_skymaps = odict([(b,np.zeros(hp.nside2npix(NSIDE))) for b in BANDS])
 
-for b,exp in exposures.items():
+for band,exp in exposures.items():
     print "%s-band..."%band
     nan = np.isnan(exp['teff'])
     median = np.median(exp[~nan]['teff'])
@@ -112,11 +124,12 @@ for b,exp in exposures.items():
     #idx = np.random.randint(len(nan)-nan.sum(),size=nan.sum())
     #teff = exp['teff'][np.where(~nan)[0][idx]]
     #exp['teff'][nan] = teff
-                  
+
 for (band,_max),(band,_sum) in zip(max_skymaps.items(),sum_skymaps.items()):
     print band
     d2 = exposures[band]
-    d2 = d2[ (d2['teff'] >= 0.3) ]
+    #d2 = d2[ (d2['teff'] >= 0.3) ]
+    d2 = d2[ (d2['teff'] >= 0.2) ]
     vec = ang2vec(d2['ra'],d2['dec'])
     rad = np.radians(DECAM)
     for i,(v,d) in enumerate(zip(vec,d2)):
