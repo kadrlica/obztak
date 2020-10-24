@@ -5,7 +5,7 @@
 [![Release](https://img.shields.io/github/release/kadrlica/obztak.svg)](../../releases)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](../../)
 
-Bizarro observation tactician for the Dark Energy Camera (DECam) at CTIO. Used for the **Mag**ellanic Satel**lite**s **S**urvey (MagLiteS) and the **BL**anco **I**maging of the **S**outhern **S**ky (BLISS), and the ***DE**Cam **L**ocal **V**olume Survey (DELVE).
+Bizarro observation tactician for the Dark Energy Camera (DECam) at CTIO. Used for the **Mag**ellanic Satel**lite**s **S**urvey (MagLiteS) and the **BL**anco **I**maging of the **S**outhern **S**ky (BLISS), and the **DE**Cam **L**ocal **V**olume Survey (DELVE).
 
 ### Installation
 
