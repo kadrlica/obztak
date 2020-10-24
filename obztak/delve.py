@@ -41,7 +41,7 @@ FWHM_MC   = 1.1 # arcsec
 class DelveSurvey(Survey):
     """ Survey sublcass for BLISS. """
 
-    # 2019A SCHEDULED (bliss-windows.csv is actually used)
+    # 2019A SCHEDULED
     nights_2019A = [
         ['2019/02/07', 'second'], # phase=%, set=
         ['2019/02/08', 'second'], # phase=%, set=
@@ -120,7 +120,7 @@ class DelveSurvey(Survey):
         ['2020/01/31', 'second'], # phase=%, set=
         ]
 
-    # 2020A SCHEDULED (bliss-windows.csv is actually used)
+    # 2020A SCHEDULED
     nights_2020A = [
         ['2020/02/05','full'  ],
         ['2020/02/06','full'  ],
@@ -132,38 +132,66 @@ class DelveSurvey(Survey):
         ['2020/03/05','first' ],
         ['2020/03/06','first' ],
         ['2020/03/15','first' ],
-        ['2020/03/28','first' ],
-        ['2020/03/29','first' ],
-        ['2020/03/30','first' ],
-        ['2020/03/31','first' ],
-        ['2020/04/01','first' ],
-        ['2020/04/04','first' ],
-        ['2020/04/05','first' ],
-        ['2020/04/07','first' ],
-        ['2020/04/17','first' ],
-        ['2020/04/18','first' ],
-        ['2020/04/19','first' ],
-        ['2020/04/20','first' ],
-        ['2020/05/01','first' ],
-        ['2020/05/02','first' ],
-        ['2020/05/03','first' ],
-        ['2020/05/04','first' ],
-        ['2020/05/05','first' ],
-        ['2020/05/06','first' ],
-        ['2020/05/21','first' ],
-        ['2020/05/31','full'  ],
-        ['2020/06/01','full'  ],
-        ['2020/06/29','second'],
-        ['2020/06/30','second'],
-        ['2020/07/23','second'],
-        ['2020/07/27','second'],
-        ['2020/07/28','second'],
-        ['2020/07/29','second'],
-        ['2020/07/31','second'],
+        #['2020/03/28','first' ],
+        #['2020/03/29','first' ],
+        #['2020/03/30','first' ],
+        #['2020/03/31','first' ],
+        #['2020/04/01','first' ],
+        #['2020/04/04','first' ],
+        #['2020/04/05','first' ],
+        #['2020/04/07','first' ],
+        #['2020/04/17','first' ],
+        #['2020/04/18','first' ],
+        #['2020/04/19','first' ],
+        #['2020/04/20','first' ],
+        #['2020/05/01','first' ],
+        #['2020/05/02','first' ],
+        #['2020/05/03','first' ],
+        #['2020/05/04','first' ],
+        #['2020/05/05','first' ],
+        #['2020/05/06','first' ],
+        #['2020/05/21','first' ],
+        #['2020/05/31','full'  ],
+        #['2020/06/01','full'  ],
+        #['2020/06/29','second'],
+        #['2020/06/30','second'],
+        #['2020/07/23','second'],
+        #['2020/07/27','second'],
+        #['2020/07/28','second'],
+        #['2020/07/29','second'],
+        #['2020/07/31','second'],
      ]
+
+    nights_2020B = [
+        ['2020/10/24','first' ],
+        ['2020/10/25','full'  ],
+        ['2020/11/04','full'  ],
+        ['2020/11/05','full'  ],
+        ['2020/11/06','full'  ],
+        ['2020/11/18','full'  ],
+        ['2020/11/19','full'  ],
+        ['2020/11/20','full'  ],
+        ['2020/11/21','full'  ],
+        ['2020/11/24','full'  ],
+        ['2020/11/25','full'  ],
+        ['2020/11/26','second'],
+        ['2020/12/05','full'  ],
+        ['2020/12/20','full'  ],
+        ['2021/01/02','first' ],
+        ['2021/01/03','first' ],
+        ['2021/01/04','first' ],
+        ['2021/01/06','second'],
+        ['2021/01/12','full'  ],
+        ['2021/01/15','full'  ],
+        ['2021/01/16','full'  ],
+        ['2021/01/21','first' ],
+        ['2021/01/22','first' ],
+        ['2021/01/23','first' ],
+    ]
+
     extra_nights = []
 
-    nights = nights_2019A + nights_2019B + nights_2020A + extra_nights
+    nights = nights_2019A + nights_2019B + nights_2020A + nights_2020B + extra_nights
 
     def prepare_fields(self, infile=None, outfile=None, plot=True, **kwargs):
         """ Create the list of fields to be targeted by this survey.
@@ -192,6 +220,10 @@ class DelveSurvey(Survey):
 
         fields = wide_fields + mc_fields + deep_fields
 
+        # blacklist
+        blacklist = ['5716-01-g','5716-01-i'] # flame nebula
+        fields['PRIORITY'][np.in1d(fields.unique_id,blacklist)] = DONE
+
         if plot:
             import pylab as plt
             import skymap.survey
@@ -218,13 +250,16 @@ class DelveSurvey(Survey):
             if not sys.flags.interactive:
                 plt.show(block=True)
 
-        if outfile: fields.write(outfile)
+        if outfile:
+            print("Writing %s..."%outfile)
+            fields.write(outfile)
 
         return fields
 
     @classmethod
     def update_covered_fields(cls, fields):
         """ Update the priority of covered fields. """
+        fields = copy.deepcopy(fields)
         frac, depth = cls.covered(fields)
         done = (fields['PRIORITY'] == DONE)
         print("Found %i exposures already done."%done.sum())
@@ -406,6 +441,11 @@ class DelveSurvey(Survey):
 
             fields = fields + f
 
+        exclude = [100001, 100002, 100003, 100004, 100007, 100008, 100012,
+                   100013, 100016, 100017, 100018, 100019]
+
+        fields = fields[~np.in1d(fields['HEX'],exclude)]
+
         nhexes = len(np.unique(fields['HEX']))
         logging.info("  Number of hexes: %d"%nhexes)
         logging.info("  Filters: %s"%BANDS)
@@ -521,7 +561,8 @@ class DelveSurvey(Survey):
         """
         import healpy as hp
         # These maps are SUM(teff * exptime)
-        dirname = '/Users/kadrlica/delve/observing/data'
+        #dirname = '/Users/kadrlica/delve/observing/data'
+        dirname = '/Users/kadrlica/delve/observing/v2/maps-20201024'
         basename = 'decam_sum_expmap_%s_n1024.fits.gz'
 
         sel = np.ones(len(fields),dtype=bool)
@@ -607,7 +648,8 @@ class DelveFieldArray(FieldArray):
         query ="""
         SELECT object, seqid, seqnum, telra as RA, teldec as dec,
         expTime, filter,
-        to_char(to_timestamp(utc_beg), 'YYYY/MM/DD HH24:MI:SS.MS') AS DATE,
+        --to_char(to_timestamp(utc_beg), 'YYYY/MM/DD HH24:MI:SS.MS') AS DATE,
+        to_char(date, 'YYYY/MM/DD HH24:MI:SS.MS') AS DATE,
         COALESCE(airmass,-1) as AIRMASS, COALESCE(moonangl,-1) as MOONANGLE,
         COALESCE(ha, -1) as HOURANGLE, COALESCE(slewangl,-1) as SLEW, PROGRAM
         --FROM exposure where propid = '%(propid)s' and exptime > 89
@@ -628,8 +670,8 @@ class DelveFieldArray(FieldArray):
 class DelveScheduler(Scheduler):
     _defaults = odict(Scheduler._defaults.items() + [
         ('tactician','coverage'),
-        ('windows',fileio.get_datafile("delve-windows-v2.csv.gz")),
-        ('targets',fileio.get_datafile("delve-target-fields-v12.csv.gz")),
+        ('windows',fileio.get_datafile("delve-windows-v3.csv.gz")),
+        ('targets',fileio.get_datafile("delve-target-fields-v15.csv.gz")),
     ])
 
     FieldType = DelveFieldArray
@@ -733,7 +775,7 @@ class DelveTactician(Tactician):
         weight = np.zeros(len(sel))
 
         # Moon angle constraints
-        moon_limit = 30. + (self.moon.phase/5.)
+        moon_limit = 30. # + (self.moon.phase/5.)
         sel &= (moon_angle > moon_limit)
 
         # Sky brightness selection
@@ -820,7 +862,7 @@ class DelveTactician(Tactician):
         # Moon angle constraints (viable fields sets moon_angle > 20.)
         if (self.moon.alt > -0.04) and (self.moon.phase >= 10):
             #moon_limit = np.min(20 + self.moon.phase/2., 40)
-            moon_limit = 40
+            moon_limit = 40. + (self.moon.phase/10.)
             sel &= (moon_angle > moon_limit)
 
             #weight += 100 * (35./moon_angle)**3
@@ -843,6 +885,11 @@ class DelveTactician(Tactician):
         # airmass = 1.4 -> weight = 6.4
         weight += 100. * (airmass - 1.)**3
         #weight += 1e3 * (airmass - 1.)**2
+
+        # Hack priority near edge of DES S82 (doesn't really work)
+        #x = (self.fields['RA'] >= 45) & (self.fields['RA'] <= 100) \
+        #    & (self.fields['DEC'] >= -20)
+        #self.fields['PRIORITY'][x] = np.minimum(self.fields['PRIORITY'][x],1)
 
         ## Try hard to do high priority fields
         weight += 1e3 * (self.fields['PRIORITY'] - 1)
