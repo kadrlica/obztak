@@ -9,10 +9,12 @@ Bizarro observation tactician for the Dark Energy Camera (DECam) at CTIO. Used f
 
 ### Installation
 
-Bizarro ObzTak is now distributed via `pip`:
+Bizarro ObzTak is distributed via `pip` (this may not be the most up-to-date version):
 ```
 pip install obztak
 ```
+
+If you are running for a pre-existing program, you may need to download the observation windows and target fields from a specific release [here](../../releases).
 
 ### Running
 
