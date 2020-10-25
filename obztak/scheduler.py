@@ -51,14 +51,19 @@ class Scheduler(object):
 
         self.create_seeing()
 
-    def create_seeing(self,**kwargs):
+    def create_seeing(self,filename=None,mode='qc'):
         import obztak.seeing
-        dirname ='/Users/kadrlica/delve/observing/data/'
-        basename = 'delve_sim_01.csv.gz'
-        filename = os.path.join(dirname,basename)
-        filename = None
-        self.seeing = obztak.seeing.DimmSeeing(filename=filename)
+        #dirname ='/Users/kadrlica/delve/observing/data/'
+        #basename = 'delve_sim_01.csv.gz'
+        #filename = os.path.join(dirname,basename)
+        if mode == 'dimm':
+            self.seeing = obztak.seeing.DimmSeeing(filename=filename)
+        elif mode == 'qc':
+            self.seeing = obztak.seeing.QcSeeing(filename=filename)
+        else:
+            self.seeing = obztak.seeing.QcSeeing(filename=filename)
 
+        return self.seeing
 
     def load_target_fields(self, target_fields=None):
         if target_fields is None:
@@ -189,6 +194,7 @@ class Scheduler(object):
         self.tactician.set_date(date)
         self.tactician.set_target_fields(self.target_fields[sel])
         self.tactician.set_completed_fields(self.completed_fields)
+        self.tactician.fwhm = self.fwhm
 
         field_select = self.tactician.select_fields()
 
@@ -234,9 +240,10 @@ class Scheduler(object):
         self.scheduled_fields = self.FieldType()
 
         # If no tstop, run for 90 minutes
-        timedelta = 90*ephem.minute
         if tstart is None: tstart = ephem.now()
-        if tstop is None: tstop = tstart + timedelta
+        if tstop is None:
+            timedelta = 90*ephem.minute
+            tstop = tstart + timedelta
 
         # Convert strings into dates
         if isinstance(tstart,basestring):
@@ -244,9 +251,8 @@ class Scheduler(object):
         if isinstance(tstop,basestring):
             tstop = ephem.Date(tstop)
 
-        msg  = "Run start: %s\n"%datestr(tstart,4)
+        msg  = "\nRun start: %s\n"%datestr(tstart,4)
         msg += "Run end: %s\n"%datestr(tstop,4)
-        msg += "Run time: %s minutes"%(timedelta/ephem.minute)
         logging.debug(msg)
 
         msg = "Previously completed fields: %i"%len(self.completed_fields)
@@ -293,7 +299,7 @@ class Scheduler(object):
                 else:
                     raise(e)
 
-            # Now update the time from the selected field
+            # Now update the time from the last selected field (note duplication in tactician.select_field)
             fieldtime = field_select[-1]['EXPTIME']*ephem.second + constants.OVERHEAD
             date = ephem.Date(field_select[-1]['DATE']) + fieldtime
 

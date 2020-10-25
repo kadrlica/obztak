@@ -41,7 +41,7 @@ SISPI_DICT = odict([
     ("object",  None),
     ("seqnum",  None), # 1-indexed
     ("seqtot",  2),
-    ("seqid",   None),
+    ("seqid",   ""),
     ("expTime", 90),
     ("RA",      None),
     ("dec",     None),
@@ -160,10 +160,12 @@ class FieldArray(np.recarray):
 
     def from_seqid(self, string):
         #date = string.lstrip(SEQID_PREFIX)
+        if SEP not in string: return
         date = string.split(SEP,1)[-1].strip()
         self['DATE'] = date
 
     def from_comment(self, string):
+        if SEP not in string: return
         integers = ['PRIORITY']
         floats   = ['AIRMASS','SLEW','MOONANGLE','HOURANGLE']
         values = dict([x.strip().split('=') for x in string.split(SEP,1)[-1].split(',')])
@@ -202,9 +204,45 @@ class FieldArray(np.recarray):
         return sispi
 
     @classmethod
-    def load_sispi(cls,sispi):
+    def check_sispi(cls, sdict, check_propid=False):
+        """Check that a dictionary is a valid sispi file
+
+        Parameters
+        ----------
+        sdict        : sispi exposure dictionary
+        check_propid : check that the propid matches this survey
+
+        Returns
+        -------
+        check : boolean of whether check passed
+        """
+        # Ignore null exposures
+        if sdict is None:
+            logging.warn("Null exposure; skipping...")
+            return False
+
+        # Ignore exposures with the wrong propid
+        propid = sdict.get('propid')
+        if check_propid and propid != cls.PROPID: 
+            logging.warn("Found exposure with propid=%s; skipping..."%propid)
+            return False
+
+        # Ignore exposures without RA,DEC columns
+        if (sdict.get('RA') is None) or (sdict.get('dec') is None):
+            logging.warn("RA,DEC not found; skipping...")
+            return False
+
+        return True
+        
+    @classmethod
+    def load_sispi(cls,sispi,check_propid=False):
         fields = cls()
+        # SISPI can do weird things...
+        if (sispi is None) or (not len(sispi)): return fields
         for i,s in enumerate(sispi):
+            # Check for some minimal exposure contents
+            if not cls.check_sispi(s,check_propid): continue
+            # SISPI can still do weird things...
             try:
                 f = cls(1)
                 for sispi_key,field_key in SISPI_MAP.items():
@@ -215,9 +253,10 @@ class FieldArray(np.recarray):
                 else: f.from_seqid(s['seqid'])
                 f.from_comment(s['comment'])
                 fields = fields + f
-            except (AttributeError,KeyError) as e: 
-                # Read non-obztak exposures without dying
+            #ADW: This is probably too inclusive...
+            except (AttributeError,KeyError,ValueError,TypeError) as e: 
                 logging.warn("Failed to load exposure\n%s"%s)
+                logging.info(str(e))
         return fields
 
     @classmethod
@@ -309,7 +348,7 @@ class FieldArray(np.recarray):
         return fields
 
     @classmethod
-    def read(cls, filename):
+    def load(cls, filename):
         base,ext = os.path.splitext(filename)
         if ext in ('.json'):
             sispi = fileio.read_json(filename)
@@ -322,6 +361,8 @@ class FieldArray(np.recarray):
         else:
             msg = "Unrecognized file extension: %s"%ext
             raise IOError(msg)
+
+    read = load
 
     def write(self, filename, **kwargs):
         base,ext = os.path.splitext(filename)

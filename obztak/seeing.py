@@ -27,6 +27,7 @@ WAVE = odict([
     ( 'z'  ,  1.036   ), # z (920nm) -> i (780nm)
     ( 'Y'  , 1.0523   ), # Y (990nm) -> i (780nm)
     ('dimm', 1/1.0916 ), # dimm (500 nm)->i (780nm)
+    ('VR'  , 0.9551   ), # VR (620 nm)->i (780nm)
 ])
 WAVE_DF = pd.DataFrame({'filter':WAVE.keys(),'trans':WAVE.values()})
 DECAMINST = 0.5 # DECam instrumental contribution to the PSF [arcsec]
@@ -41,9 +42,9 @@ def convert(fwhm_1,
 
     Parameters:
     -----------
-    fwhm_1   : observed fwhm [arcsec]
-    band_1   : observed band ['g','r','i','z','Y','dimm']
-    airmass_1: observed airmass
+    fwhm_1   : input fwhm [arcsec]
+    band_1   : input band ['g','r','i','z','Y','dimm']
+    airmass_1: input airmass
     inst_1   : instrumental contribution to the observed psf [arcsec]
 
     band_2    : output band ['g','r','i','z','Y','dimm']
@@ -87,7 +88,6 @@ class Seeing():
         self.df = self.read_file(filename)
         self.db = 'db-'+db
 
-
     def set_date(self, date):
         if date is None:
             #NOOP (consistent with Tactician)
@@ -98,7 +98,7 @@ class Seeing():
             self.date = dateutil.parser.parse(date)
 
 
-    def get_fwhm(self, timedelta='10m', band='i', airmass=1.0, inst=DECAMINST):
+    def get_fwhm(self, timedelta='15m', band='i', airmass=1.0, inst=DECAMINST):
         """Calculate the predict PSF FWHM (arcsec).
 
         Parameters:
@@ -127,16 +127,11 @@ class Seeing():
 
         if not len(self.data):
             # No data, use the mean and print a warning
-            logging.warn("No fwhm data available; using median fwhm")
+            logging.warn("No fwhm data available; using DECam median")
             xpred = xmu
-        elif not len(recent):
-            # Log of the i-band zenith fwhm from the previous exposure
-            xpred = np.log10(self.data[previous]['fwhm'])
-        elif not len(ancient):
-            # Median of the log of the observed atmospheric psf i-band zenith
-            xpred = np.log10(np.median(self.data[recent]['fwhm']))
-        else:
+        elif np.any(recent) and np.any(ancient):
             # Weighted median of recent and ancient exposures
+            logging.debug("Seeing from recent and ancient exposures")
             # Log of the observed atmospheric psf i-band zenith
             x = np.log10([np.median(self.data[recent]['fwhm']),
                           np.median(self.data[ancient]['fwhm'])])
@@ -145,11 +140,19 @@ class Seeing():
             # NB: These constants were derived for timedelta=5min
             # they may not hold for arbitrary time windows.
             xpred = xmu + 0.8 * (x[0] - xmu) + 0.14 * (x[1] - xmu)
+        elif np.any(recent):
+            # Median of the log of the observed atmospheric psf i-band zenith
+            logging.debug("Seeing from recent exposures")
+            xpred = np.log10(np.median(self.data[recent]['fwhm']))
+        else:
+            # Log of the i-band zenith fwhm from the previous exposure
+            logging.debug("Seeing from previous exposure")
+            xpred = np.log10(np.median(self.data[previous]['fwhm']))
 
         fwhm_pred = convert(10**xpred,
                             band_1='i' , airmass_1=1.0    , inst_1=0.0,
                             band_2=band, airmass_2=airmass, inst_2=inst)
-
+        #import pdb; pdb.set_trace()
         return fwhm_pred
 
 
@@ -220,15 +223,22 @@ class QcSeeing(Seeing):
         tmin = self.date - pd.Timedelta(timedelta)
         if self.df is None:
             # Don't want to create the DB each time?
-            db = Database()
-            db.connect()
-            query ="""
-            select date, qc_fwhm as fwhm, airmass, filter from exposure
-            where date > '%s' and date < '%s'
-            and filter != 'VR' and qc_fwhm is not NULL
-            """%(tmin, tmax)
-            logging.debug(query)
-            raw = db.query2rec(query)
+            try: 
+                db = Database()
+                db.connect()
+                query ="""
+                select date, qc_fwhm as fwhm, airmass, filter from exposure
+                where date > '%s' and date < '%s'
+                --and filter != 'VR' and qc_fwhm is not NULL
+                and qc_fwhm is not NULL and qc_fwhm > 0
+                """%(tmin, tmax)
+                logging.debug(query)
+                raw = db.query2rec(query)
+            except Exception as e:
+                logging.warn("Couldn't connect to database:\n%s"%str(e))
+                dtype=[('date', '<M8[ns]'), ('fwhm', '<f8'),
+                       ('airmass', '<f8'), ('filter', 'S4')]
+                raw = np.recarray(0,dtype=dtype)
         else:
             sel = (self.df.index > tmin) & (self.df.index < tmax)
             raw = self.df[sel].to_records()
