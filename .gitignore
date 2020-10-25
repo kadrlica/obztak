@@ -5,6 +5,7 @@
 
 ### Data & Test files
 obztak/data/*
+bin/*-slackd
 night_test
 field_test.json
 chunk_test.json
