@@ -658,6 +658,8 @@ class DelveFieldArray(FieldArray):
         and discard = False and delivered = True and flavor = 'object'
         and object like '%(object_fmt)s%%'
         -- and id NOT IN (860597, 860598, 860599, 860600, 860601, 860602)
+        -- Mirror compressed air on 20201025
+        -- and id NOT BETWEEN 948781 and 948795
         and (
              COALESCE(qc_teff,-1) NOT BETWEEN 0 and 0.1
              OR to_timestamp(utc_beg) > (now() - interval '14 hours')

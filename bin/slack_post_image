@@ -1,0 +1,20 @@
+#!/usr/bin/env python
+"""
+Post nightsum images to Slack
+"""
+__author__ = "Alex Drlica-Wagner"
+import logging
+
+from obztak.utils import slack
+from obztak.utils.parser import Parser
+parser = Parser(description=__doc__)
+parser.add_argument('filepaths',nargs="+",help="images to upload")
+parser.add_argument('-d','--debug',action='store_true',help="execute but don't post")
+parser.add_argument('-t','--token',type=str,help='slack api token')
+parser.add_argument('-c','--channels',type=str,help='comma separated list of slack channels')
+args = parser.parse_args()
+
+for filepath in args.filepaths:
+    logging.info("Uploading %s..."%filepath)
+    ret = slack.post_file(filepath,token=args.token,channels=args.channels)
+    logging.debug(ret)

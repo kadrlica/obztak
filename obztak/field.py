@@ -40,7 +40,7 @@ SEP = ':'
 SISPI_DICT = odict([
     ("object",  None),
     ("seqnum",  None), # 1-indexed
-    ("seqtot",  2),
+    ("seqtot",  1),
     ("seqid",   ""),
     ("expTime", 90),
     ("RA",      None),
@@ -128,7 +128,8 @@ class FieldArray(np.recarray):
 
     @property
     def seqnum(self):
-        return np.array([self.BANDS.index(f)+1 for f in self['FILTER']],dtype=int)
+        #return np.array([self.BANDS.index(f)+1 for f in self['FILTER']],dtype=int)
+        return np.ones(len(self['FILTER']),dtype=int)
 
     @property
     def propid(self):

@@ -61,7 +61,7 @@ def post_qcinv(token=None, channel=None, propid=None, timedelta=None, debug=Fals
         return df,None
 
     kwargs = dict(index=False, float_format='{:.2f}'.format, justify='right')
-    package = """Observing update from `delve-bot` @ {time} CST:
+    package = """Observing update @ {time} CST:
 ```
 {content} 
 ```""".format(content=df.fillna('').to_string(**kwargs),
