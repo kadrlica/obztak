@@ -57,9 +57,12 @@ class AutoObz(object):
             if exp is None: continue
             for k,v in SISPI_DICT.items():
                 exp.setdefault(k,v)
+            # Not great...
+            exp['RA'] = 0.0
+            exp['dec'] = 0.0
             exp['date'] = datetime.utcnow().strftime('%Y/%m/%d %H:%M:%S')
 
-        tmp = tempfile.NamedTemporaryFile(suffix='.json')
+        tmp = tempfile.NamedTemporaryFile(suffix='.json',delete=False)
         json.dump(in_progress, tmp)
         tmp.flush()
 
