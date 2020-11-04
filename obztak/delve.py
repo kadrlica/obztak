@@ -685,9 +685,6 @@ class DelveTactician(Tactician):
         ('wide',     [1.0, 1.4]),
         ('deep',     [1.0, 1.4]),
         ('mc',       [1.0, 2.0]),
-        ('mc_good',  [1.8, 2.0]),
-        ('mc_ok',    [1.4, 1.8]),
-        ('mc_poor',  [1.0, 1.7]),
         ('gw',       [1.0, 2.0]),
     ])
 
@@ -807,14 +804,22 @@ class DelveTactician(Tactician):
         moon_limit = 30.
         sel &= (moon_angle > moon_limit)
 
-        # Airmass restrictions
-        if self.fwhm < 0.9:
-            airmass_min, airmass_max = self.CONDITIONS['mc_good']
-        elif self.fwhm < 1.0:
-            airmass_min, airmass_max = self.CONDITIONS['mc_ok']
-        else:
-            airmass_min, airmass_max = self.CONDITIONS['mc_poor']
+        # General airmass restrictions
+        airmass_min, airmass_max = self.CONDITIONS['mc']
         sel &= ((airmass > airmass_min) & (airmass < airmass_max))
+
+        # Some tweaking for good and bad conditions
+        if self.fwhm < 0.9:
+            # Prefer fields near the pole
+            weight += 5e2 * (self.fields['DEC'] > -80)
+
+        if self.fwhm > 1.0:
+            weight += 5e3 * (airmass - 1.0)**3
+        else:
+            # Higher weight for higher airmass
+            # airmass = 1.4 -> weight = 6.4
+            # airmass = 2.0 -> weight = 500
+            weight += 5e2 * (airmass - 1.0)**3
 
         # Sky brightness selection
         sel &= self.skybright_select()
@@ -826,17 +831,16 @@ class DelveTactician(Tactician):
         #weight += 2.0 * self.hour_angle
 
         # Prioritize fields
-        weight += 3. * 360. * self.fields['PRIORITY']
-        weight += 1e4 * (self.fields['TILING'] > 3)
+        weight += 3. * 360. * self.fields['PRIORITY'] * (self.fields['TILING'] > 2)
+        weight += 1e4       * (self.fields['TILING'] > 3)
 
         # Slew weighting
-        weight += self.slew**3
+        # slew = 10 deg -> weight = 10^2
+        weight += 0.1 * self.slew**3
         # Try hard to do the same field
         weight += 1e5 * (self.slew != 0)
 
-        # Higher weight for higher airmass
-        # airmass = 1.4 -> weight = 6.4
-        weight += 500. * (airmass - 1.)**3
+
 
         # Set infinite weight to all disallowed fields
         weight[~sel] = np.inf
