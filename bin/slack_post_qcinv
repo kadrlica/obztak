@@ -1,0 +1,18 @@
+#!/usr/bin/env python
+"""
+Post qcInv to Slack
+"""
+__author__ = "Alex Drlica-Wagner"
+from obztak.utils import slack
+
+from obztak.utils.parser import Parser
+parser = Parser(description=__doc__)
+parser.add_argument('-d','--debug',action='store_true',help="execute without post")
+parser.add_argument('-t','--token',type=str,help='slack api token')
+parser.add_argument('-c','--channel',type=str,help='slack api channel')
+parser.add_argument('-p','--propid',type=str,default=None,help='ctio propid')
+parser.add_argument('-td','--timedelta',type=str,default='30m',help='timedelta')
+args = parser.parse_args()
+    
+df,pkg=slack.post_qcinv(token=args.token,channel=args.channel,propid=args.propid,
+                        timedelta=args.timedelta,debug=args.debug)

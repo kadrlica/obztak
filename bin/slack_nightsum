@@ -1,0 +1,16 @@
+#!/usr/bin/env python
+"""
+Post nightsum images to Slack
+"""
+__author__ = "Alex Drlica-Wagner"
+from obztak.utils.slack import slack_qcinv
+
+from obztak.utils.parser import Parser
+parser = Parser(description=__doc__)
+parser.add_argument('-d','--debug',action='store_true',help="execute but don't post")
+parser.add_argument('-t','--token',type=str,help='slack api token')
+parser.add_argument('-c','--channel',type=str,help='slack api channel')
+parser.add_argument('-p','--propid',type=str,help='ctio propid')
+parser.add_argument('-n','--nite',type=int)
+args = parser.parse_args()
+    
