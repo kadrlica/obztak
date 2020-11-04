@@ -285,7 +285,29 @@ class DECamBasemap(Basemap):
         #self.draw_polygon_radec(poly2['ra'],poly2['dec'],**kwargs)
         self.scatter(*self.proj(poly1['ra'],poly1['dec']))
         self.scatter(*self.proj(poly2['ra'],poly2['dec']))
-        
+
+    def draw_delve(self,**kwargs):
+        defaults=dict(color='red', lw=2)
+        setdefaults(kwargs,defaults)
+
+        deep = odict([
+            ('SextansB', (150.00,   5.33, 3.0)),
+            ('IC5152',   (330.67, -51.30, 3.0)),
+            ('NGC300',   ( 13.72, -37.68, 3.0)),
+            ('NGC55',    (  3.79, -39.22, 3.0)),
+        ])
+        for ra,dec,radius in deep.values():
+            # This doesn't deal with boundaries well
+            #self.tissot(ra, dec, radius, 100, fc='none',**kwargs)
+            x,y = self.proj(np.array([ra]), np.array([dec]))
+            self.scatter(x,y,facecolor='none',edgecolor='r',s=600)
+
+        x,y = self.proj(np.array([61.24]), np.array([-48.42]))
+        self.scatter(x,y,facecolor='none',edgecolor='b',s=600)
+
+        #self.tissot(RA_LMC,DEC_LMC,25,100,fc='none',**kwargs)
+        #self.tissot(RA_SMC,DEC_SMC,10,100,fc='none',**kwargs)
+
 
     def draw_airmass(self, observatory, airmass, npts=360, **kwargs):
         defaults = dict(color='green', lw=2)
@@ -564,42 +586,6 @@ class DECamFocalPlane(object):
         return corners
 
 ############################################################
-# Depricated module functions
-
-def drawDES(basemap, color='red'):
-    msg = "drawDES is depricated; use DECamBasemap.draw_des instead."
-    warnings.warn(msg)
-    basemap.draw_des(color=color)
-
-def drawSMASH(basemap, color='none', edgecolor='black', marker='h', s=50):
-    msg = "drawSMASH is depricated; use DECamBasemap.draw_smash instead."
-    warnings.warn(msg)
-    basemap.draw_smash(color=color, edgecolor=edgecolor, marker=marker, s=s)
-
-def drawMAGLITES(basemap, color='blue'):
-    msg = "drawMAGLITES is depricated; use DECamBasemap.draw_smash instead."
-    warnings.warn(msg)
-    basemap.draw_maglites(color=color)
-
-def drawAirmassContour(basemap, observatory, airmass, n=360, s=50):
-    msg = "drawAirmassContour is depricated; use DECamBasemap.draw_airmass instead."
-    warnings.warn(msg)
-    basemap.draw_airmass(observatory=observatory, airmass=airmass, n=n, s=s)
-
-def drawZenith(basemap, observatory):
-    """
-    Plot a to-scale representation of the focal plane size at the zenith.
-    """
-    msg = "drawZenith is depricated; use DECamBasemap.draw_zenith instead."
-    warnings.warn(msg)
-    basemap.draw_zenith(observatory)
-
-def drawMoon(basemap, date):
-    msg = "drawMoon is depricated; use DECamBasemap.draw_moon instead."
-    warnings.warn(msg)
-    basemap.draw_moon(date)
-
-############################################################
 
 def makePlot(date=None, name=None, figsize=(10.5,8.5), dpi=80, s=50, center=None, airmass=True, moon=True, des=True, smash=False, maglites=None, bliss=None, galaxy=True):
     """
@@ -609,37 +595,39 @@ def makePlot(date=None, name=None, figsize=(10.5,8.5), dpi=80, s=50, center=None
     if type(date) != ephem.Date:
         date = ephem.Date(date)
 
-    survey = get_survey()
-    if survey == 'maglites':
-        if maglites is None: maglites = True
-        if airmass is True: airmass = 2.0
-    if survey == 'bliss':
-        if bliss is None: bliss = True
-        if airmass is True: airmass = 1.4
-    if des:
-        if airmass is True: airmass = 1.4
 
     fig = plt.figure(name, figsize=figsize, dpi=dpi)
     plt.cla()
 
     proj_kwargs = dict()
     if center: proj_kwargs.update(lon_0=center[0], lat_0=center[1])
-    basemap = DECamOrtho(date=date, **proj_kwargs)
-    observatory = basemap.observatory
+    smap = DECamOrtho(date=date, **proj_kwargs)
+    observatory = smap.observatory
 
-    if des:      basemap.draw_des()
-    if smash:    basemap.draw_smash(s=s)
-    if maglites: basemap.draw_maglites()
-    if bliss:    basemap.draw_bliss()
+    survey = get_survey()
+    if survey=='des' or des:
+        smap.draw_des()
+        if airmass is True: airmass = 1.4
+    if survey=='smash' or smash:
+        smap.draw_smash(s=s)
+    if 'maglites' in survey or maglites:
+        smap.draw_maglites()
+        if airmass is True: airmass = 2.0
+    if survey=='bliss' or bliss:
+        smap.draw_bliss()
+        if airmass is True: airmass = 1.4
+    if survey=='delve' or delve:
+        smap.draw_delve()
+
     if airmass:
         airmass = 2.0 if isinstance(airmass,bool) else airmass
-        basemap.draw_airmass(observatory, airmass)
-    if moon:     basemap.draw_moon(date)
-    if galaxy:   basemap.draw_galaxy()
+        smap.draw_airmass(observatory, airmass)
+    if moon:     smap.draw_moon(date)
+    if galaxy:   smap.draw_galaxy()
 
     plt.title('%s UTC'%(datestring(date)))
 
-    return fig, basemap
+    return fig, smap
 
 def plotField(field, target_fields=None, completed_fields=None, options_basemap={}, **kwargs):
     """
