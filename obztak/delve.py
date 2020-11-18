@@ -382,7 +382,7 @@ class DelveSurvey(Survey):
         fields['PRIORITY'][depth > teffmin*fields['TILING']*fields['EXPTIME']] = DONE
 
         # Avoid MagLiteS-II for now
-        fields['PRIORITY'][self.footprintMaglites2(fields['RA'],fields['DEC'])] = DONE
+        #fields['PRIORITY'][self.footprintMaglites2(fields['RA'],fields['DEC'])] = DONE
 
         if plot: self.plot_depth(fields,depth,'delve-mc-%s-gt%i.png',proj='maglites')
 
