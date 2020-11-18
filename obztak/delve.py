@@ -765,12 +765,25 @@ class DelveTactician(Tactician):
         raise ValueError("No viable fields")
 
     def weight_deep(self):
-        """ Calculate the field weight for the WIDE survey. """
+        """ Calculate the field weight for the WIDE survey.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        weight : array of weights per field
+        """
         airmass = self.airmass
         moon_angle = self.moon_angle
 
         sel = self.viable_fields
         sel &= (self.fields['PROGRAM'] == 'delve-deep')
+
+        # DEC > -65 cut (play it safe...)
+        sel &= (self.fields['DEC'] > -60)
+
         weight = np.zeros(len(sel))
 
         # Moon angle constraints
@@ -793,6 +806,19 @@ class DelveTactician(Tactician):
         return weight
 
     def weight_mc(self):
+        """ Calculate the field weight for the MC surve.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        weight : array of weights per field
+        """
+        msg ="MC survey cannot be scheduled due to Blanco/DECam issues."
+        raise Exception(msg)
+
         airmass = self.airmass
         moon_angle = self.moon_angle
 
@@ -848,12 +874,25 @@ class DelveTactician(Tactician):
         return weight
 
     def weight_wide(self):
-        """ Calculate the field weight for the WIDE survey. """
+        """ Calculate the field weight for the WIDE survey.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        weight : array of weights per field
+        """
         airmass = self.airmass
         moon_angle = self.moon_angle
 
         sel = self.viable_fields
         sel &= (self.fields['PROGRAM'] == 'delve-wide')
+
+        # DEC > -65 cut (play it safe...)
+        sel &= (self.fields['DEC'] > -60)
+
         weight = np.zeros(len(sel))
 
         # Sky brightness selection
