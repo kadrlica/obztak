@@ -287,7 +287,7 @@ class DECamBasemap(Basemap):
         self.scatter(*self.proj(poly2['ra'],poly2['dec']))
 
     def draw_delve(self,**kwargs):
-        defaults=dict(color='red', lw=2)
+        defaults=dict(color='blue', lw=2)
         setdefaults(kwargs,defaults)
 
         deep = odict([
@@ -300,10 +300,14 @@ class DECamBasemap(Basemap):
             # This doesn't deal with boundaries well
             #self.tissot(ra, dec, radius, 100, fc='none',**kwargs)
             x,y = self.proj(np.array([ra]), np.array([dec]))
-            self.scatter(x,y,facecolor='none',edgecolor='r',s=600)
+            self.scatter(x,y,facecolor='none',edgecolor=kwargs['color'],s=400)
 
-        x,y = self.proj(np.array([61.24]), np.array([-48.42]))
-        self.scatter(x,y,facecolor='none',edgecolor='b',s=600)
+        filename = fileio.get_datafile('delve-mc.txt')
+        self.draw_polygon(filename,**kwargs)
+
+        # EDFS
+        #x,y = self.proj(np.array([61.24]), np.array([-48.42]))
+        #self.scatter(x,y,facecolor='none',edgecolor='b',s=600)
 
         #self.tissot(RA_LMC,DEC_LMC,25,100,fc='none',**kwargs)
         #self.tissot(RA_SMC,DEC_SMC,10,100,fc='none',**kwargs)
