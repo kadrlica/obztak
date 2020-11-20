@@ -661,7 +661,7 @@ class DelveFieldArray(FieldArray):
         -- Mirror compressed air on 20201025
         -- and id NOT BETWEEN 948781 and 948795
         and (
-             COALESCE(qc_teff,-1) NOT BETWEEN 0 and 0.1
+             COALESCE(qc_teff,-1) NOT BETWEEN 0 and 0.2
              OR to_timestamp(utc_beg) > (now() - interval '14 hours')
         )
         ORDER BY utc_beg %(limit)s
@@ -726,6 +726,9 @@ class DelveTactician(Tactician):
         elif (self.moon.phase >= 40) and (self.moon.alt > 0.0):
             # Moon is more than half full; do r,i
             sel &= (np.char.count('ri',self.fields['FILTER']) > 0)
+        elif (self.moon.phase >= 20) and (self.moon.alt > 0.0):
+            # Moon is more than half full; do r,i
+            sel &= (np.char.count('gri',self.fields['FILTER']) > 0)
         else:
             # Moon is faint or down; do g,r (unless none available)
             sel &= (np.char.count('gr',self.fields['FILTER']) > 0)
