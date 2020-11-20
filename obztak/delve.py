@@ -723,15 +723,15 @@ class DelveTactician(Tactician):
             #sel &= (np.char.count('iz',self.fields['FILTER']) > 0)
             #weight += 1e2 * (np.char.count('i',self.fields['FILTER']) > 0)
         #elif (self.moon.phase >= 45) and (self.moon.alt > 0.175):
-        elif (self.moon.phase >= 40) and (self.moon.alt > 0.0):
+        elif (self.moon.phase >= 30) and (self.moon.alt > 0.0):
             # Moon is more than half full; do r,i
             sel &= (np.char.count('ri',self.fields['FILTER']) > 0)
-        elif (self.moon.phase >= 20) and (self.moon.alt > 0.0):
-            # Moon is more than half full; do r,i
-            sel &= (np.char.count('gri',self.fields['FILTER']) > 0)
+        #elif (self.moon.phase >= 20) and (self.moon.alt > 0.0):
+        #    # Moon is more than half full; do r,i
+        #    sel &= (np.char.count('gri',self.fields['FILTER']) > 0)
         else:
             # Moon is faint or down; do g,r (unless none available)
-            sel &= (np.char.count('gr',self.fields['FILTER']) > 0)
+            sel &= (np.char.count('gri',self.fields['FILTER']) > 0)
             #weight += 1e8 * (np.char.count('iz',self.fields['FILTER']) > 0)
         return sel
 
