@@ -682,7 +682,7 @@ class DelveScheduler(Scheduler):
 class DelveTactician(Tactician):
     CONDITIONS = odict([
         (None,       [1.0, 2.0]),
-        ('wide',     [1.0, 1.4]),
+        ('wide',     [1.0, 1.5]),
         ('deep',     [1.0, 1.4]),
         ('mc',       [1.0, 2.0]),
         ('gw',       [1.0, 2.0]),
@@ -726,12 +726,10 @@ class DelveTactician(Tactician):
         elif (self.moon.phase >= 30) and (self.moon.alt > 0.0):
             # Moon is more than half full; do r,i
             sel &= (np.char.count('ri',self.fields['FILTER']) > 0)
-        #elif (self.moon.phase >= 20) and (self.moon.alt > 0.0):
-        #    # Moon is more than half full; do r,i
-        #    sel &= (np.char.count('gri',self.fields['FILTER']) > 0)
         else:
-            # Moon is faint or down; do g,r (unless none available)
+            # Moon is faint or down; do g,r,i
             sel &= (np.char.count('gri',self.fields['FILTER']) > 0)
+            # Alternatively, only red bands if others unavailable
             #weight += 1e8 * (np.char.count('iz',self.fields['FILTER']) > 0)
         return sel
 
