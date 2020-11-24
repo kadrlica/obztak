@@ -817,14 +817,15 @@ class DelveTactician(Tactician):
         -------
         weight : array of weights per field
         """
-        msg ="MC survey cannot be scheduled due to Blanco/DECam issues."
-        raise Exception(msg)
-
         airmass = self.airmass
         moon_angle = self.moon_angle
 
         sel = self.viable_fields
         sel &= (self.fields['PROGRAM'] == 'delve-mc')
+
+        # DEC > -65 cut (play it safe...)
+        sel &= (self.fields['DEC'] > -60)
+
         weight = np.zeros(len(sel))
 
         # Moon angle constraints
@@ -866,8 +867,6 @@ class DelveTactician(Tactician):
         weight += 0.1 * self.slew**3
         # Try hard to do the same field
         weight += 1e5 * (self.slew != 0)
-
-
 
         # Set infinite weight to all disallowed fields
         weight[~sel] = np.inf
