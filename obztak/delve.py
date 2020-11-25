@@ -891,7 +891,7 @@ class DelveTactician(Tactician):
         sel &= (self.fields['PROGRAM'] == 'delve-wide')
 
         # DEC > -65 cut (play it safe...)
-        sel &= (self.fields['DEC'] > -60)
+        sel &= (self.fields['DEC'] > -45)
 
         weight = np.zeros(len(sel))
 
