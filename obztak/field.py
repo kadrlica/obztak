@@ -12,7 +12,7 @@ import numpy as np
 from obztak import __version__
 from obztak.utils import constants
 from obztak.utils import fileio
-from obztak.utils.date import setdefaults
+from obztak.utils.date import setdefaults, datestr
 
 # Default field array values
 DEFAULTS = odict([
@@ -162,7 +162,10 @@ class FieldArray(np.recarray):
     def from_seqid(self, string):
         #date = string.lstrip(SEQID_PREFIX)
         if SEP not in string: return
-        date = string.split(SEP,1)[-1].strip()
+        date = str(string.split(SEP,1)[-1].strip())
+        # Check that it is a valid date...
+        try: datestr(date)
+        except: return
         self['DATE'] = date
 
     def from_comment(self, string):
