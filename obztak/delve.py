@@ -823,8 +823,8 @@ class DelveTactician(Tactician):
         sel = self.viable_fields
         sel &= (self.fields['PROGRAM'] == 'delve-mc')
 
-        # DEC > -65 cut (play it safe...)
-        sel &= (self.fields['DEC'] > -60)
+        # DEC cut for LN2 lines
+        #sel &= (self.fields['DEC'] > -60)
 
         weight = np.zeros(len(sel))
 
@@ -890,8 +890,8 @@ class DelveTactician(Tactician):
         sel = self.viable_fields
         sel &= (self.fields['PROGRAM'] == 'delve-wide')
 
-        # DEC > -65 cut (play it safe...)
-        sel &= (self.fields['DEC'] > -45)
+        # DEC cut for LN2 lines
+        #sel &= (self.fields['DEC'] > -45)
 
         weight = np.zeros(len(sel))
 
