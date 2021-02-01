@@ -291,10 +291,10 @@ class DECamBasemap(Basemap):
         setdefaults(kwargs,defaults)
 
         deep = odict([
-            ('SextansB', (150.00,   5.33, 3.0)),
-            ('IC5152',   (330.67, -51.30, 3.0)),
-            ('NGC300',   ( 13.72, -37.68, 3.0)),
-            ('NGC55',    (  3.79, -39.22, 3.0)),
+            ('SextansB', (150.00,   5.33, 2.5)),
+            ('IC5152',   (330.67, -51.30, 3.5)),
+            ('NGC300',   ( 13.72, -37.68, 3.5)),
+            ('NGC55',    (  3.79, -39.22, 3.5)),
         ])
         for ra,dec,radius in deep.values():
             # This doesn't deal with boundaries well
