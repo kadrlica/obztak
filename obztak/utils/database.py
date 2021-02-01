@@ -88,7 +88,10 @@ class Database(object):
         import platform
         if dbname is None:
             hostname = platform.node()
+            # Only from ctio machines
             if hostname in ('observer2.ctio.noao.edu','observer3.ctio.noao.edu'):
+            # Any machine on ctio network
+            #if hostname.endswith('.ctio.noao.edu'):
                 return 'db-ctio'
             else:
                 return 'db-fnal'
