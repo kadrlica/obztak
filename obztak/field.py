@@ -353,14 +353,21 @@ class FieldArray(np.recarray):
 
     @classmethod
     def load(cls, filename):
-        base,ext = os.path.splitext(filename)
+
+        # Strip a .gz extension
+        base,ext = os.path.splitext(filename.rstrip('.gz'))
+
         if ext in ('.json'):
             sispi = fileio.read_json(filename)
             return cls().load_sispi(sispi)
-        elif ext in ('.csv','.txt','.gz'):
+        elif ext in ('.csv','.txt'):
             #dtype = DTYPES.items()
             #recarray = fileio.csv2rec(filename,dtype=dtype)
             recarray = fileio.csv2rec(filename)
+            return cls().load_recarray(recarray)
+        elif ext in ('.fits'):
+            import fitsio
+            recarray = fitsio.read(filename)
             return cls().load_recarray(recarray)
         else:
             msg = "Unrecognized file extension: %s"%ext
