@@ -174,24 +174,63 @@ class DelveSurvey(Survey):
         ['2020/11/21','full'  ],
         ['2020/11/24','full'  ],
         ['2020/11/25','full'  ],
-        ['2020/11/26','second'],
-        ['2020/12/05','full'  ],
-        ['2020/12/20','full'  ],
-        ['2021/01/02','first' ],
-        ['2021/01/03','first' ],
-        ['2021/01/04','first' ],
-        ['2021/01/06','second'],
-        ['2021/01/12','full'  ],
-        ['2021/01/15','full'  ],
-        ['2021/01/16','full'  ],
+        #['2020/11/26','second'],
+        #['2020/12/05','full'  ],
+        #['2020/12/20','full'  ],
+        #['2021/01/02','first' ],
+        #['2021/01/03','first' ],
+        #['2021/01/04','first' ],
+        #['2021/01/06','second'],
+        #['2021/01/12','full'  ],
+        #['2021/01/15','full'  ],
+        #['2021/01/16','full'  ],
         ['2021/01/21','first' ],
         ['2021/01/22','first' ],
         ['2021/01/23','first' ],
     ]
 
+    nights_2021A = [
+        ['2021/02/01','first'  ],
+        ['2021/02/02','first'  ],
+        ['2021/02/03','first'  ],
+        ['2021/02/04','first'  ],
+        ['2021/02/05','first'  ],
+        ['2021/02/18','first'  ],
+        ['2021/02/19','first'  ],
+        ['2021/02/20','first'  ],
+        ['2021/02/21','first'  ],
+        ['2021/02/22','first'  ],
+        ['2021/03/02','full'   ],
+        ['2021/03/03','full'   ],
+        ['2021/03/13','second' ],
+        ['2021/03/14','second' ],
+        ['2021/03/15','second' ],
+        ['2021/03/16','second' ],
+        ['2021/03/17','second' ],
+        ['2021/03/22','full'   ],
+        ['2021/04/19','first'  ],
+        ['2021/04/22','full'   ],
+        ['2021/05/03','second' ],
+        ['2021/05/20','second' ],
+        ['2021/05/22','second' ],
+        ['2021/05/31','second' ],
+        ['2021/06/15','first'  ],
+        ['2021/07/15','full'   ],
+        ['2021/07/16','full'   ],
+        ['2021/07/17','full'   ],
+        ['2021/07/18','full'   ],
+        ['2021/07/19','second' ],
+        ['2021/07/20','second' ],
+        ['2021/07/28','second' ],
+        ['2021/07/29','second' ],
+        ['2021/07/30','second' ],
+        ['2021/07/31','second' ],
+
+    ]
+
     extra_nights = []
 
-    nights = nights_2019A + nights_2019B + nights_2020A + nights_2020B + extra_nights
+    nights = nights_2019A + nights_2019B + nights_2020A + nights_2020B + nights_2021A + extra_nights
 
     def prepare_fields(self, infile=None, outfile=None, plot=True, **kwargs):
         """ Create the list of fields to be targeted by this survey.
@@ -439,8 +478,14 @@ class DelveSurvey(Survey):
             if num in [000,100,200]:
                 f['PRIORITY'] *= DONE
 
+            # Remove last 3 exposures due to DES coverage
+            if num in [100,200,300]:
+                f['PRIORITY'][(f['TILING'] > 12) & (f['FILTER']=='g')] = -99
+                f['PRIORITY'][(f['TILING'] >  7) & (f['FILTER']=='i')] = -99
+
             fields = fields + f
 
+        # Remove periphery of Sextans B
         exclude = [100001, 100002, 100003, 100004, 100007, 100008, 100012,
                    100013, 100016, 100017, 100018, 100019]
 
@@ -460,58 +505,6 @@ class DelveSurvey(Survey):
         fields.write(outfile,clobber=True)
 
         return fields
-
-    def create_deep_fields2(self, data, plot=False):
-        """ DEPRECATED: Create the deep field observations """
-
-        logging.info("Creating DEEP fields...")
-        BANDS = ['g','i']
-        EXPTIME = [300,300]
-        TILINGS = [15,10]
-
-        d = data[data['PASS'] == 1]
-        sel = self.footprintDEEP(d['RA'],d['DEC'])
-        data = np.copy(d[sel])
-
-        nhexes = len(np.unique(data['TILEID']))
-        ntilings = np.sum(TILINGS)
-        nbands = len(BANDS)
-
-        nfields = np.sum( np.sum(sel) * np.array(TILINGS))
-
-        logging.info("  Number of hexes: %d"%nhexes)
-        logging.info("  Filters: %s"%BANDS)
-        logging.info("  Exposure time: %s"%EXPTIME)
-        logging.info("  Tilings: %s"%TILINGS)
-
-        tilings = np.array(range(1,TILINGS[0]+1)+range(1,TILINGS[1]+1))
-        filters = np.repeat(BANDS,TILINGS)
-        exptimes = np.repeat(EXPTIME,TILINGS)
-
-        fields = FieldArray(nfields)
-        fields['PROGRAM'] = PROGRAM+'-deep'
-        fields['HEX'] = np.repeat(data['TILEID'],ntilings)
-        fields['RA'] = np.repeat(data['RA'],ntilings)
-        fields['DEC'] = np.repeat(data['DEC'],ntilings)
-
-        fields['EXPTIME'] = np.tile(exptimes,nhexes)
-        fields['TILING'] = np.tile(tilings,nhexes)
-        fields['FILTER'] = np.tile(filters,nhexes)
-        fields['PRIORITY'] = fields['TILING']
-
-        frac, depth = self.covered(fields)
-        fields['PRIORITY'][depth > fields['TILING']*fields['EXPTIME']] = DONE
-
-        if plot: self.plot_depth(fields,depth,'delve-deep-%s-gt%i.png')
-
-        logging.info("Number of target fields: %d"%len(fields))
-
-        outfile = 'delve-deep-fields.fits.fz'
-        logging.info("Writing %s..."%outfile)
-        fields.write(outfile,clobber=True)
-
-        return fields
-
 
     @staticmethod
     def footprintDEEP(ra,dec):
@@ -546,7 +539,7 @@ class DelveSurvey(Survey):
         return Maglites2Survey.footprint(ra,dec)
 
     @staticmethod
-    def covered(fields, percent=67.):
+    def covered(fields, percent=75., dirname=None, basename=None):
         """
         Determine which fields haven't been previously covered by DECam
 
@@ -561,9 +554,8 @@ class DelveSurvey(Survey):
         """
         import healpy as hp
         # These maps are SUM(teff * exptime)
-        #dirname = '/Users/kadrlica/delve/observing/data'
-        dirname = '/Users/kadrlica/delve/observing/v2/maps-20201024'
-        basename = 'decam_sum_expmap_%s_n1024.fits.gz'
+        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20210201'
+        if not basename: basename = 'decam_sum_expmap_%s_n1024.fits.gz'
 
         sel = np.ones(len(fields),dtype=bool)
         frac  = np.zeros(len(fields),dtype=float)
@@ -661,7 +653,8 @@ class DelveFieldArray(FieldArray):
         -- Mirror compressed air on 20201025
         -- and id NOT BETWEEN 948781 and 948795
         and (
-             COALESCE(qc_teff,-1) NOT BETWEEN 0 and 0.2
+             (COALESCE(qc_teff,-1) NOT BETWEEN 0 and 0.2
+             AND COALESCE(qc_fwhm,1) BETWEEN 0.5 and 1.5)
              OR to_timestamp(utc_beg) > (now() - interval '14 hours')
         )
         ORDER BY utc_beg %(limit)s
@@ -672,8 +665,8 @@ class DelveFieldArray(FieldArray):
 class DelveScheduler(Scheduler):
     _defaults = odict(Scheduler._defaults.items() + [
         ('tactician','coverage'),
-        ('windows',fileio.get_datafile("delve-windows-v3.csv.gz")),
-        ('targets',fileio.get_datafile("delve-target-fields-v15.csv.gz")),
+        ('windows',fileio.get_datafile("delve-windows-v5.csv.gz")),
+        ('targets',fileio.get_datafile("delve-target-fields-v16.csv.gz")),
     ])
 
     FieldType = DelveFieldArray
@@ -824,7 +817,7 @@ class DelveTactician(Tactician):
         sel &= (self.fields['PROGRAM'] == 'delve-mc')
 
         # DEC > -65 cut (play it safe...)
-        sel &= (self.fields['DEC'] > -60)
+        #sel &= (self.fields['DEC'] > -60)
 
         weight = np.zeros(len(sel))
 
@@ -891,7 +884,7 @@ class DelveTactician(Tactician):
         sel &= (self.fields['PROGRAM'] == 'delve-wide')
 
         # DEC > -65 cut (play it safe...)
-        sel &= (self.fields['DEC'] > -45)
+        #sel &= (self.fields['DEC'] > -45)
 
         weight = np.zeros(len(sel))
 
