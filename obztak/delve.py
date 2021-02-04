@@ -259,9 +259,12 @@ class DelveSurvey(Survey):
 
         fields = wide_fields + mc_fields + deep_fields
 
+        mask = bright_stars(fields['RA'],fields['DEC'])
+        fields['PRIORITY'][mask] = DONE
+
         # blacklist
-        blacklist = ['5716-01-g','5716-01-i'] # flame nebula
-        fields['PRIORITY'][np.in1d(fields.unique_id,blacklist)] = DONE
+        #blacklist = ['5716-01-g','5716-01-i'] # flame nebula
+        #fields['PRIORITY'][np.in1d(fields.unique_id,blacklist)] = DONE
 
         if plot:
             import pylab as plt
@@ -537,6 +540,18 @@ class DelveSurvey(Survey):
     def footprintMaglites2(ra,dec):
         from obztak.maglites2 import Maglites2Survey
         return Maglites2Survey.footprint(ra,dec)
+
+    @staticmethod
+    def bright_stars(ra,dec):
+        """ Load bright star list """
+        ra,dec = np.copy(ra), np.copy(dec)
+        sel = np.zeros(len(ra),dtype=bool)
+        filename = fileio.get_datafile('famous-bright-stars.csv')
+        targets = fileio.read_csv(filename).to_records()
+        for t in targets:
+            sel |= (angsep(t['ra'],t['dec'],ra,dec) < t['radius'])
+        return sel
+
 
     @staticmethod
     def covered(fields, percent=75., dirname=None, basename=None):
@@ -833,14 +848,14 @@ class DelveTactician(Tactician):
         if self.fwhm < 0.9:
             # Prefer fields near the pole
             weight += 5e2 * (self.fields['DEC'] > -80)
-
-        if self.fwhm > 1.0:
+        if self.fwhm > 1.1:
             weight += 5e3 * (airmass - 1.0)**3
         else:
             # Higher weight for higher airmass
             # airmass = 1.4 -> weight = 6.4
             # airmass = 2.0 -> weight = 500
-            weight += 5e2 * (airmass - 1.0)**3
+            #weight += 5e2 * (airmass - 1.0)**3
+            pass
 
         # Sky brightness selection
         sel &= self.skybright_select()
