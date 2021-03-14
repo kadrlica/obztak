@@ -259,12 +259,50 @@ class DelveSurvey(Survey):
 
         fields = wide_fields + mc_fields + deep_fields
 
-        mask = bright_stars(fields['RA'],fields['DEC'])
+        logging.info("Masking bright stars...")
+        mask = self.bright_stars(fields['RA'],fields['DEC'])
         fields['PRIORITY'][mask] = DONE
 
-        # blacklist
-        #blacklist = ['5716-01-g','5716-01-i'] # flame nebula
-        #fields['PRIORITY'][np.in1d(fields.unique_id,blacklist)] = DONE
+        # Can't go lower
+        mask = fields['DEC'] < -89.0
+        fields['PRIORITY'][mask] = DONE
+
+        # Exclusion
+        exclude  = [#pole
+            '399-01-g','399-01-r','399-01-i',
+            '399-02-g','399-02-r','399-02-i',
+            '399-04-g','399-04-r','399-04-i',
+        ]
+        exclude += [ # Orion Nebula
+            '5696-01-i','5696-02-i','5696-03-i','5696-04-i',
+            '5760-01-i','5760-02-i','5760-03-i','5760-04-i',
+            '5761-01-i','5761-02-i','5761-03-i','5761-04-i',
+            '5780-01-i','5780-02-i','5780-03-i','5780-04-i',
+            '5781-01-i','5781-02-i','5781-03-i','5781-04-i',
+            '5782-01-i','5782-02-i','5782-03-i','5782-04-i',
+            '5783-01-i','5783-02-i','5783-03-i','5783-04-i',
+            '5798-01-i','5798-02-i','5798-03-i','5798-04-i',
+            '5799-01-i','5799-02-i','5799-03-i','5799-04-i',
+        ]
+        exclude += [# flame nebula
+            '5716-01-g','5716-01-i'
+        ]
+        exclude += [ # MC poles
+            '14110-01-g','14110-02-g','14110-03-g','14110-04-g',
+            '14110-01-r','14110-02-r','14110-03-r','14110-04-r',
+            '14110-01-i','14110-02-i','14110-03-i','14110-04-i',
+            '15464-01-i','15464-02-i','15464-03-i','15464-04-i',
+            '15465-01-i','15465-02-i','15465-03-i','15465-04-i',
+            '15484-03-i',
+        ]
+        exclude += [ # Other
+            '7246-01-r','7264-01-i',
+            '7246-01-i','7246-02-i','7246-02-i',
+            '12253-03-i','14238-03-i',
+            '14241-03-i','14255-03-i','14256-03-i','14257-03-i',
+            '14258-03-i','15465-04-g',
+        ]
+        fields['PRIORITY'][np.in1d(fields.unique_id,exclude)] = DONE
 
         if plot:
             import pylab as plt
@@ -362,13 +400,10 @@ class DelveSurvey(Survey):
 
         fields = fields[sel]
 
+        # Covered fields
         frac, depth = self.covered(fields)
-
-        teffmin = pd.DataFrame(fields).merge(TEFF_MIN,on='FILTER').to_records()['TEFF']
-
+        teffmin = pd.DataFrame(fields).merge(TEFF_MIN,on='FILTER',how='left').to_records()['TEFF']
         fields['PRIORITY'][depth > teffmin*fields['TILING']*fields['EXPTIME']] = DONE
-        # Avoid MagLiteS-II for now
-        #fields['PRIORITY'][self.footprintMaglites2(fields['RA'],fields['DEC'])] = DONE
 
         if plot: self.plot_depth(fields,depth,'delve-wide-%s-gt%i.png')
 
@@ -417,10 +452,9 @@ class DelveSurvey(Survey):
 
         fields = fields[sel]
 
+        # Covered fields
         frac, depth = self.covered(fields)
-
-        teffmin = pd.DataFrame(fields).merge(TEFF_MIN,on='FILTER').to_records()['TEFF']
-
+        teffmin = pd.DataFrame(fields).merge(TEFF_MIN,on='FILTER',how='left').to_records()['TEFF']
         fields['PRIORITY'][depth > teffmin*fields['TILING']*fields['EXPTIME']] = DONE
 
         # Avoid MagLiteS-II for now
@@ -565,12 +599,14 @@ class DelveSurvey(Survey):
 
         Returns:
         --------
-        sel, frac : selection of fields and coverage fraction
+        frac, depth : selection of fields and coverage fraction
         """
         import healpy as hp
         # These maps are SUM(teff * exptime)
-        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20210201'
+        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20210313'
         if not basename: basename = 'decam_sum_expmap_%s_n1024.fits.gz'
+
+        logging.info("Loading maps from: %s"%dirname)
 
         sel = np.ones(len(fields),dtype=bool)
         frac  = np.zeros(len(fields),dtype=float)
@@ -591,11 +627,15 @@ class DelveSurvey(Survey):
                 print '\r%s/%s'%(i+1,len(vec)),
                 sys.stdout.flush()
                 pix = hp.query_disc(nside,v,np.radians(constants.DECAM))
-                # Find the 33rd percentile sum of effective exposure time
-                # i.e., 67% of the pixels have a larger SUM(teff * exptime)
-                d.append( np.percentile(skymap[pix],100-percent))
-                # Find the detection fraction
-                f.append((skymap[pix] > d[-1]).sum()/float(len(pix)))
+
+                # Find effective exposure time that is achieved over
+                # the specified fraction of the exposure e.g., where
+                # 75% of the pixels have a larger SUM(teff * exptime)
+                d.append(np.percentile(skymap[pix],100-percent))
+
+                # Find the fraction covered at the achieved depth
+                # (I don't think this adds anything)
+                f.append((skymap[pix] >= d[-1]).sum()/float(len(pix)))
 
             print
             frac[idx] = np.array(f)
@@ -681,7 +721,7 @@ class DelveScheduler(Scheduler):
     _defaults = odict(Scheduler._defaults.items() + [
         ('tactician','coverage'),
         ('windows',fileio.get_datafile("delve-windows-v5.csv.gz")),
-        ('targets',fileio.get_datafile("delve-target-fields-v16.csv.gz")),
+        ('targets',fileio.get_datafile("delve-target-fields-20210313.csv.gz")),
     ])
 
     FieldType = DelveFieldArray
@@ -690,7 +730,7 @@ class DelveScheduler(Scheduler):
 class DelveTactician(Tactician):
     CONDITIONS = odict([
         (None,       [1.0, 2.0]),
-        ('wide',     [1.0, 1.5]),
+        ('wide',     [1.0, 1.4]),
         ('deep',     [1.0, 1.4]),
         ('mc',       [1.0, 2.0]),
         ('gw',       [1.0, 2.0]),
@@ -845,6 +885,7 @@ class DelveTactician(Tactician):
         sel &= ((airmass > airmass_min) & (airmass < airmass_max))
 
         # Some tweaking for good and bad conditions
+        #self.fwhm = 1.2
         if self.fwhm < 0.9:
             # Prefer fields near the pole
             weight += 5e2 * (self.fields['DEC'] > -80)
