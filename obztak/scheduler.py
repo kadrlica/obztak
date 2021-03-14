@@ -71,6 +71,7 @@ class Scheduler(object):
 
         if isinstance(target_fields,basestring):
             self.target_fields = self.FieldType.read(target_fields)
+            logging.info("Loading target fields:\n %s"%target_fields)
         else:
             self.target_fields = self.FieldType(target_fields)
         return self.target_fields
@@ -81,9 +82,9 @@ class Scheduler(object):
         """
         if windows is None:
             windows = self._defaults['windows']
-            logging.info("Setting default observing windows:\n %s"%windows)
 
         if isinstance(windows,basestring):
+            logging.info("Loading observing windows:\n %s"%windows)
             windows = fileio.csv2rec(windows)
 
         self.windows = []

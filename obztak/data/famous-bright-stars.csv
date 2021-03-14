@@ -1,0 +1,22 @@
+# Famous bright stars from Steve Kent & Alex Drlica-Wagner
+#
+# $Id: famous-bright-stars.txt 252 2020-08-17 15:47:07Z kadrlica $
+#
+id,ra,dec,radius,name
+99  , 6.5708  , -42.3061, 0.0,Alpha Phoenix
+472 , 24.4288 , -57.2367, 0.0,Achernar
+591 , 29.6925 , -61.5697, 0.0,Alpha Hydra
+1231, 59.5075 , -13.5086, 0.0,Gam Eri
+1492, 69.1900 , -62.0775, 0.0,R Doradus
+1956, 84.9121 , -34.0741, 1.1,Alpha Colombae (Phact)
+2326, 95.9879 , -52.6958, 1.5,Canopus
+3823, 78.63447, -8.20164, 1.3,Rigel
+3685, 138.2999, -69.7172, 1.1,Beta Car
+4186, 83.82208, -5.39111, 0.5,Orion Nebula
+4263, 85.42792, -1.91222, 0.5,Flame Nebula
+5423, 101.2872, -16.7161, 1.6,Sirius
+7790, 306.4121, -56.7350, 1.1,Alpha Pavo
+8425, 332.0583, -46.9611, 1.1,Alpha Grus (Alnair)
+8521, 335.6829, -45.9478, 0.0,pi.01 Grus
+8636, 340.6671, -46.8847, 1.1,Beta Grus
+0000, 86.93912, -9.66960, 1.5,Saiph

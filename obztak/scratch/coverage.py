@@ -16,6 +16,7 @@ import fitsio
 from obztak.utils.database import Database
 from obztak.utils.constants import COLORS
 from obztak.utils.ortho import DECamBasemap, DECamMcBride
+from obztak.utils import fileio
 from skymap.survey import MaglitesSkymap
 
 warnings.simplefilter('ignore', UserWarning)
@@ -28,6 +29,8 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('outfile',default=outfile)
 parser.add_argument('-m','--maps',action='store_true')
 parser.add_argument('-p','--plot',action='store_true')
+parser.add_argument('-q','--qa',default='data/delve-qa-20210302.csv.gz',type=str,
+                    help='qa file to update with')
 args = parser.parse_args()
 
 
@@ -43,7 +46,8 @@ SkymapCls,suffix = DECamMcBride,'_mbt'
 # COALESCE(qc_teff,'NaN')
 QUERY ="""
 SELECT id as expnum, telra as ra, teldec as dec, exptime, filter, propid,
-(CASE WHEN qc_teff is NULL THEN 'NaN' WHEN qc_teff=-1 THEN 'NAN' ELSE qc_teff END) as teff
+(CASE WHEN qc_teff is NULL THEN 'NaN' WHEN qc_teff=-1 THEN 'NAN' ELSE qc_teff END) as teff,
+(CASE WHEN qc_fwhm is NULL THEN 'NaN' WHEN qc_fwhm=-1 THEN 'NAN' ELSE qc_fwhm END) as fwhm
 FROM exposure WHERE
 aborted=False and exposed=True and digitized=True and built=True and delivered=True and discard=False
 and flavor = 'object' and telra between 0 and 360 and teldec between -90 and 90
@@ -64,24 +68,38 @@ and flavor = 'object' order by date
 
 print(QUERY)
 
-def phi2lon(phi): return np.degrees(phi)
-def lon2phi(lon): return np.radians(lon)
-
-def theta2lat(theta): return 90. - np.degrees(theta)
-def lat2theta(lat): return np.radians(90. - lat)
-
-def ang2vec(lon, lat):
-    theta = lat2theta(lat)
-    phi = lon2phi(lon)
-    vec = hp.ang2vec(theta, phi)
-    return vec
-
-def ang2disc(nside, lon, lat, radius, inclusive=False, fact=4, nest=False):
+def update_qa(data,filename):
     """
-    Wrap `query_disc` to use lon, lat, and radius in degrees.
+    Update qa properties based on other values.
+
+    Parameters
+    ----------
+    data : recarray from sispi
+    filename : qa data
+
+    Returns
+    -------
+    Non
     """
-    vec = ang2vec(lon,lat)
-    return hp.query_disc(nside,vec,radius,inclusive,fact,nest)
+    print("Reading QA values from %s..."%filename)
+    df = fileio.read_csv(filename)
+    print("Loaded %i QA values..."%(len(df)))
+
+    x = pd.DataFrame(data).merge(df,left_on='expnum',right_on='expnum',how='left')
+
+    if False:
+        # Update only exposures missing teff
+        sel = np.isnan(data['teff']) & ~np.isnan(x['teff_y'])
+    else:
+        # Update all exposures
+        sel = ~np.isnan(x['teff_y'])
+
+    print("Updating %i QA values..."%(sel.sum()))
+    data['teff'][sel] = x[sel]['teff_y']
+
+    if 'fwhm' in data.dtype.names and 'fwhm_y' in x.columns:
+        data['fwhm'][sel] = x[sel]['fwhm_y']
+
 
 args.db = True
 if args.db:
@@ -89,15 +107,8 @@ if args.db:
     db.connect()
     data = db.query2recarray(QUERY)
 
-    args.delve = True
-    if args.delve:
-        print("Reading DELVE QA values...")
-        delve = pd.read_csv('data/delve-qa-20201024.csv.gz')
-        df = pd.DataFrame(data)
-        print("Merging %i DELVE QA values..."%(len(delve)))
-        x = df.merge(delve,left_on='expnum',right_on='expnum',how='left')
-        sel = np.isnan(data['teff'])
-        data['teff'][sel] = x[sel]['teff_y']
+    if args.qa:
+        update_qa(data,args.qa)
 
     if os.path.exists(args.outfile): os.remove(args.outfile)
     print("Writing %s..."%args.outfile)
@@ -116,10 +127,11 @@ for band,exp in exposures.items():
     print "%s-band..."%band
     nan = np.isnan(exp['teff'])
     median = np.median(exp[~nan]['teff'])
-    print "  Median teff: %s"%(median)
+    print "  Median teff: %.2f"%(median)
     print "  Fraction without teff: %i%%"%(100*nan.sum()/float(len(nan)))
     if not nan.sum(): continue
 
+    ## DEPRECATED: Now using DELVE QA info.
     ## Set the teff to a random value from the distribution
     #idx = np.random.randint(len(nan)-nan.sum(),size=nan.sum())
     #teff = exp['teff'][np.where(~nan)[0][idx]]
@@ -128,9 +140,12 @@ for band,exp in exposures.items():
 for (band,_max),(band,_sum) in zip(max_skymaps.items(),sum_skymaps.items()):
     print band
     d2 = exposures[band]
-    #d2 = d2[ (d2['teff'] >= 0.3) ]
+    #d2 = d2[ (d2['teff'] >= 0.1) ]
     d2 = d2[ (d2['teff'] >= 0.2) ]
-    vec = ang2vec(d2['ra'],d2['dec'])
+    #d2 = d2[ (d2['teff'] >= 0.3) ]
+    d2 = d2[ (d2['teff']*d2['exptime'] > 18) ] # teff*Texp > 18s (0.2 * 90s)
+    d2 = d2[ (d2['fwhm'] < 2.0) ]
+    vec = hp.ang2vec(d2['ra'],d2['dec'],lonlat=True)
     rad = np.radians(DECAM)
     for i,(v,d) in enumerate(zip(vec,d2)):
         print '\r%s/%s'%(i+1,len(vec)),

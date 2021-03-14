@@ -85,3 +85,12 @@ CMAPS = odict([
     ('Y','Greys'),
     ('VR','Greys'),
 ])
+
+# Tiling colors
+TCOLORS = odict([
+    (0,'gray'),
+    (1,'turquoise'),
+    (2,'dodgerblue'),
+    (3,'blue'),
+    (4,'navy'),
+])
