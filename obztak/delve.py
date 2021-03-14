@@ -664,6 +664,7 @@ class DelveFieldArray(FieldArray):
         FROM exposure where propid in ('%(propid)s','2019B-1014') and exptime > 89
         and discard = False and delivered = True and flavor = 'object'
         and object like '%(object_fmt)s%%'
+        and id NOT IN (967215)
         -- and id NOT IN (860597, 860598, 860599, 860600, 860601, 860602)
         -- Mirror compressed air on 20201025
         -- and id NOT BETWEEN 948781 and 948795
@@ -681,7 +682,7 @@ class DelveScheduler(Scheduler):
     _defaults = odict(Scheduler._defaults.items() + [
         ('tactician','coverage'),
         ('windows',fileio.get_datafile("delve-windows-v5.csv.gz")),
-        ('targets',fileio.get_datafile("delve-target-fields-v16.csv.gz")),
+        ('targets',fileio.get_datafile("delve-target-fields-20210313.csv.gz")),
     ])
 
     FieldType = DelveFieldArray
@@ -690,7 +691,7 @@ class DelveScheduler(Scheduler):
 class DelveTactician(Tactician):
     CONDITIONS = odict([
         (None,       [1.0, 2.0]),
-        ('wide',     [1.0, 1.5]),
+        ('wide',     [1.0, 1.3]),
         ('deep',     [1.0, 1.4]),
         ('mc',       [1.0, 2.0]),
         ('gw',       [1.0, 2.0]),
@@ -925,7 +926,7 @@ class DelveTactician(Tactician):
         # Higher weight for rising fields (higher hour angle)
         # HA [min,max] = [-53,54] (for airmass 1.4)
         #weight += 5.0 * self.hour_angle
-        weight += 1.0 * self.hour_angle
+        #weight += 1.0 * self.hour_angle
         #weight += 0.1 * self.hour_angle
 
         # Higher weight for larger slews
