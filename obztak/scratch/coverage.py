@@ -29,6 +29,8 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('outfile',default=outfile)
 parser.add_argument('-m','--maps',action='store_true')
 parser.add_argument('-p','--plot',action='store_true')
+parser.add_argument('-q','--qa',default='data/delve-qa-20210302.csv.gz',type=str,
+                    help='qa file to update with')
 args = parser.parse_args()
 
 
@@ -66,15 +68,31 @@ and flavor = 'object' order by date
 
 print(QUERY)
 
-def merge_qa(data,filename):
+def update_qa(data,filename):
     """
     Update qa properties based on other values.
+
+    Parameters
+    ----------
+    data : recarray from sispi
+    filename : qa data
+
+    Returns
+    -------
+    Non
     """
+    print("Reading QA values from %s..."%filename)
     df = fileio.read_csv(filename)
     print("Loaded %i QA values..."%(len(df)))
 
     x = pd.DataFrame(data).merge(df,left_on='expnum',right_on='expnum',how='left')
-    sel = np.isnan(data['teff']) & ~np.isnan(x['teff_y'])
+
+    if False:
+        # Update only exposures missing teff
+        sel = np.isnan(data['teff']) & ~np.isnan(x['teff_y'])
+    else:
+        # Update all exposures
+        sel = ~np.isnan(x['teff_y'])
 
     print("Updating %i QA values..."%(sel.sum()))
     data['teff'][sel] = x[sel]['teff_y']
@@ -89,10 +107,8 @@ if args.db:
     db.connect()
     data = db.query2recarray(QUERY)
 
-    args.delve = True
-    if args.delve:
-        print("Reading DELVE QA values...")
-        merge_qa(data,'data/delve-qa-20210127.csv.gz')
+    if args.qa:
+        update_qa(data,args.qa)
 
     if os.path.exists(args.outfile): os.remove(args.outfile)
     print("Writing %s..."%args.outfile)
