@@ -93,4 +93,5 @@ TCOLORS = odict([
     (2,'dodgerblue'),
     (3,'blue'),
     (4,'navy'),
+    (9,'black'),
 ])
