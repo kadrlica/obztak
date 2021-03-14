@@ -29,7 +29,7 @@ from obztak.utils.date import datestring,nite2utc,utc2nite,get_nite,setdefaults,
 from obztak.ctio import CTIO
 from obztak.utils.constants import RA_LMC,DEC_LMC,RADIUS_LMC
 from obztak.utils.constants import RA_SMC,DEC_SMC,RADIUS_SMC
-from obztak.utils.constants import COLORS, CMAPS
+from obztak.utils.constants import COLORS, CMAPS, TCOLORS
 from obztak.utils.constants import FIGSIZE, SCALE, DPI
 
 # ADW: This is bad...
@@ -583,7 +583,8 @@ class DECamFocalPlane(object):
         x,y = basemap.proj(corners[:,:,0],corners[:,:,1])
 
         # Remove CCDs that cross the map boundary
-        x[(np.ptp(x,axis=1) > np.pi)] = np.nan
+        with np.errstate(invalid='ignore'):
+            x[(np.ptp(x,axis=1) > np.pi)] = np.nan
 
         corners[:,:,0] = x
         corners[:,:,1] = y
@@ -839,63 +840,143 @@ def plot_coverage(fields,nitestr,outfile=None,**kwargs):
     None
     """
     from obztak import factory
+    bands = ['g','r','i','z']
+    defaults = dict(edgecolor='none', alpha=0.2, vmin=-1, vmax=2)
+    setdefaults(kwargs,defaults)
 
     filename = factory.scheduler_factory()._defaults['targets']
 
     target = factory.field_factory().read(filename)
     target = target[~np.in1d(target.unique_id,fields.unique_id)]
 
-    fig,ax = plt.subplots(2,2,figsize=(16,9))
-    plt.subplots_adjust(wspace=0.01,hspace=0.02,left=0.01,right=0.99,
-                        bottom=0.01,top=0.99)
-    defaults = dict(edgecolor='none', alpha=0.2, vmin=-1, vmax=2)
-    setdefaults(kwargs,defaults)
-    kwargs['s'] = 12 # roughly scaled to image
+    for pro in ['mbt','ort']:
+        if pro == 'mbt':
+            fig,ax = plt.subplots(2,2,figsize=(16,9))
+            plt.subplots_adjust(wspace=0.01,hspace=0.02,left=0.01,right=0.99,
+                                bottom=0.01,top=0.99)
+            kwargs['s'] = 12 # roughly scaled to image
+            def create_skymap(): return DECamMcBride()
+        else:
+            fig,ax = plt.subplots(2,2,figsize=(12,12))
+            plt.subplots_adjust(wspace=0.01,hspace=0.05,left=0.01,right=0.99,
+                                bottom=0.01,top=0.97)
+            kwargs['s'] = 45 # scaled to image
+            def create_skymap(): return DECamOrtho(date='2016/2/11 03:00',lon_0=0,lat_0=-90)
 
+        for i,b in enumerate(bands):
+            plt.sca(ax.flat[i])
+
+            f = fields[fields['FILTER'] == b]
+            t = target[target['FILTER'] == b]
+
+            bmap = create_skymap()
+            bmap.draw_des()
+            bmap.draw_galaxy(10)
+
+            proj = bmap.proj(t['RA'],t['DEC'])
+            bmap.scatter(*proj, c='0.7', **kwargs)
+
+            proj = bmap.proj(f['RA'],f['DEC'])
+            bmap.scatter(*proj, c=f['TILING'], cmap=CMAPS[b], **kwargs)
+            plt.gca().set_title('DECam %s-band'%b)
+
+        plt.suptitle('Coverage (%s)'%nitestr,fontsize=16)
+        plt.savefig('nightsum_summary_%s_%s.png'%(nitestr,pro))
+
+
+def plot_completion(fields,tonight,nitestr,outfile=None,**kwargs):
+    """ Plot the BLISS survey coverage
+
+    Parameters:
+    -----------
+    fields  : all completed fields
+    tonight : fields that were completed tonight
+    outfile : the output file to write to
+    kwargs  : plotting keyword arguments
+
+    Returns:
+    --------
+    None
+    """
+    from obztak import factory
     bands = ['g','r','i','z']
-    for i,b in enumerate(bands):
-        plt.sca(ax.flat[i])
+    tiles = [1,2,3,4,9]
+    DONE  = -1
+    defaults = dict(alpha=1.0,rasterized=True,lw=0.75)
+    setdefaults(kwargs,defaults)
 
-        f = fields[fields['FILTER'] == b]
-        t = target[target['FILTER'] == b]
+    filename = factory.scheduler_factory()._defaults['targets']
 
-        bmap = DECamMcBride()
+    targets = factory.field_factory().read(filename)
+    targets['PRIORITY'][np.in1d(targets.unique_id,fields.unique_id)] = DONE
+
+    for pro in ['mbt','ort']:
+        if pro == 'mbt':
+            fig,ax = plt.subplots(2,2,figsize=(16,9))
+            plt.subplots_adjust(wspace=0.01,hspace=0.02,left=0.01,right=0.99,
+                                bottom=0.01,top=0.99)
+            kwargs['s'] = 12 # roughly scaled to image
+            def create_skymap(): return DECamMcBride()
+        else:
+            fig,ax = plt.subplots(2,2,figsize=(12,12))
+            plt.subplots_adjust(wspace=0.01,hspace=0.05,left=0.01,right=0.99,
+                                bottom=0.01,top=0.97)
+            kwargs['s'] = 45 # scaled to image
+            def create_skymap(): return DECamOrtho(date='2016/2/11 03:00',lon_0=0,lat_0=-90)
+
+        for i,b in enumerate(bands):
+            plt.sca(ax.flat[i])
+
+            bmap = create_skymap()
+            bmap.draw_des()
+            bmap.draw_galaxy(10)
+
+            t = targets[targets['FILTER'] == b]
+            n = tonight[tonight['FILTER'] == b]
+
+            # Exposures done
+            for tile in tiles:
+                if tile == 1:
+                    todo = (t['TILING'] == tile) & (t['PRIORITY'] >= 0)
+                    proj = bmap.proj(t[todo]['RA'],t[todo]['DEC'])
+                    bmap.scatter(*proj, c=TCOLORS[0], edgecolor='none', **kwargs)
+
+                done = (t['TILING'] == tile) & (t['PRIORITY'] == DONE)
+                proj = bmap.proj(t[done]['RA'],t[done]['DEC'])
+                bmap.scatter(*proj, c=TCOLORS[tile], edgecolor='none', **kwargs)
+
+            # Exposures done tonight
+            for tile in tiles:
+                sel = (n['TILING']==tile)
+                proj = bmap.proj(n[sel]['RA'],n[sel]['DEC'])
+                bmap.scatter(*proj, c=TCOLORS[tile], edgecolor='orangered', **kwargs)
+
+            plt.gca().set_title('DECam %s-band'%b)
+
+        # Plot legend
+        plt.sca(ax.flat[0])
+        for tile,color in TCOLORS.items():
+            plt.plot(np.nan,np.nan,'o',mfc=color,mec='none',label="Tile %s"%tile)
+        plt.plot(np.nan,np.nan,'o',mfc='none',mec='orangered',label='Tonight')
+        plt.legend(loc='center',bbox_to_anchor=(1.0,0.0))
+
+        plt.suptitle('Completion (%s)'%nitestr,fontsize=16)
+        plt.savefig('nightsum_complete_%s_%s.png'%(nitestr,pro),dpi=200)
+
+def plot_focal_planes(fields,nightstr):
+    fig,axes = plt.subplots(1,2,figsize=(12,5))
+    for i,d in enumerate(['2017/02/08 07:00:00','2017/02/08 19:00:00']):
+        plt.sca(axes[i])
+        bmap = DECamOrtho(date=d)
+        for b in np.unique(fields['FILTER']):
+            f = fields[fields['FILTER']==b]
+            bmap.draw_focal_planes(f['RA'],f['DEC'],color=COLORS[b],alpha=0.3)
+        bmap.draw_bliss()
+        bmap.draw_galaxy()
         bmap.draw_des()
-        bmap.draw_galaxy(10)
-
-        proj = bmap.proj(t['RA'],t['DEC'])
-        bmap.scatter(*proj, c='0.7', **kwargs)
-
-        proj = bmap.proj(f['RA'],f['DEC'])
-        bmap.scatter(*proj, c=f['TILING'], cmap=CMAPS[b], **kwargs)
-        plt.gca().set_title('DECam %s-band'%b)
 
     plt.suptitle('Coverage (%s)'%nitestr,fontsize=16)
-    plt.savefig('nightsum_summary_%s_mbt.png'%nitestr)
-
-    kwargs['s'] = 45 # scaled to image
-    fig,ax = plt.subplots(2,2,figsize=(12,12))
-    plt.subplots_adjust(wspace=0.01,hspace=0.05,left=0.01,right=0.99,
-                        bottom=0.01,top=0.97)
-    for i,b in enumerate(bands):
-        plt.sca(ax.flat[i])
-
-        f = fields[fields['FILTER'] == b]
-        t = target[target['FILTER'] == b]
-
-        bmap = DECamOrtho(date='2016/2/11 03:00', lon_0=0, lat_0=-90)
-        bmap.draw_des()
-        bmap.draw_galaxy(10)
-
-        proj = bmap.proj(t['RA'],t['DEC'])
-        bmap.scatter(*proj, c='0.7', **kwargs)
-
-        proj = bmap.proj(f['RA'],f['DEC'])
-        bmap.scatter(*proj, c=f['TILING'], cmap=CMAPS[b], **kwargs)
-        plt.gca().set_title('DECam %s-band'%b)
-        
-    plt.suptitle('Coverage (%s)'%nitestr,fontsize=16)
-    plt.savefig('nightsum_summary_%s_ort.png'%nitestr)
+    plt.savefig('nightsum_summary_%s.png'%nitestr)
 
 def plot_psf(new,old,nbins=35):
     kwargs = dict(normed=True)
@@ -978,29 +1059,21 @@ def plot_nightsum(fields,nitestr,date):
         logging.warn("No new exposures...")
         return
 
-    ##########################
-
-    plot_coverage(fields,nitestr)
-
-    ##########################
-
-    fig,axes = plt.subplots(1,2,figsize=(12,5))
-    for i,d in enumerate(['2017/02/08 07:00:00','2017/02/08 19:00:00']):
-        plt.sca(axes[i])
-        bmap = DECamOrtho(date=d)
-        for b in np.unique(fields['FILTER']):
-            f = fields[fields['FILTER']==b]
-            bmap.draw_focal_planes(f['RA'],f['DEC'],color=COLORS[b],alpha=0.3)
-        bmap.draw_bliss()
-        bmap.draw_galaxy()
-        bmap.draw_des()
-
-    plt.suptitle('Coverage (%s)'%nitestr,fontsize=16)
-    plt.savefig('nightsum_summary_%s.png'%nitestr)
-
     new_sel = (np.array(map(utc2nite,fields['DATE'])) == nitestr)
     new_fields = fields[new_sel]
     old_fields = fields[~new_sel]
+
+    ##########################
+    #print("Plotting coverage...")
+    #plot_coverage(fields,nitestr)
+
+    ##########################
+    #print("Plotting focal planes...")
+    #plot_focal_planes(fields,nitestr)
+
+    ##########################
+    print("Plotting completion...")
+    plot_completion(fields,new_fields,nitestr)
 
     ##########################
 
