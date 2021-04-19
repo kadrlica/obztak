@@ -150,26 +150,27 @@ class FieldArray(np.recarray):
             hex,tiling = map(int,string.split('-')[:2])
             self['HEX'] = hex
             self['TILING'] = tiling
+            return True
         except ValueError:
             logging.warn("Unparsed unique ID: '%s'"%string)
             self['HEX'] = -1
             self['TILING'] = -1
+            return False
 
     def from_object(self,string):
-        #self.from_unique_id(string.lstrip(OBJECT_PREFIX))
-        self.from_unique_id(string.split(SEP,1)[-1].strip())
+        return self.from_unique_id(string.split(SEP,1)[-1].strip())
 
     def from_seqid(self, string):
-        #date = string.lstrip(SEQID_PREFIX)
-        if SEP not in string: return
+        if SEP not in string: return False
         date = str(string.split(SEP,1)[-1].strip())
         # Check that it is a valid date...
         try: datestr(date)
-        except: return
+        except: return False
         self['DATE'] = date
+        return True
 
     def from_comment(self, string):
-        if SEP not in string: return
+        if SEP not in string: return False
         integers = ['PRIORITY']
         floats   = ['AIRMASS','SLEW','MOONANGLE','HOURANGLE']
         values = dict([x.strip().split('=') for x in string.split(SEP,1)[-1].split(',')])
@@ -183,6 +184,7 @@ class FieldArray(np.recarray):
             else:
                 msg = "Unrecognized comment field: %s"%key
                 logging.warning(msg)
+        return True
 
     def to_recarray(self):
         return self.view(np.recarray)
@@ -214,7 +216,7 @@ class FieldArray(np.recarray):
         Parameters
         ----------
         sdict        : sispi exposure dictionary
-        check_propid : check that the propid matches this survey
+        check_propid : require that the propid matches this survey
 
         Returns
         -------
@@ -252,9 +254,10 @@ class FieldArray(np.recarray):
                 for sispi_key,field_key in SISPI_MAP.items():
                     f[field_key] = s[sispi_key]
                 f.from_object(s['object'])
-                # Parse scheduled date if date is not present
-                if 'date' in s: f['DATE'] = s['date']
-                else: f.from_seqid(s['seqid'])
+                # Try to parse scheduled date if date is not present
+                if 'date' in s: f['DATE'] = s['date'] # ADW: is 'date' a valid key?
+                elif f.from_seqid(s['seqid']): pass
+                else: raise(ValueError("Failed to load date"))
                 f.from_comment(s['comment'])
                 fields = fields + f
             #ADW: This is probably too inclusive...
@@ -359,7 +362,7 @@ class FieldArray(np.recarray):
 
         if ext in ('.json'):
             sispi = fileio.read_json(filename)
-            return cls().load_sispi(sispi)
+            return cls().load_sispi(sispi,check_propid=True)
         elif ext in ('.csv','.txt'):
             #dtype = DTYPES.items()
             #recarray = fileio.csv2rec(filename,dtype=dtype)
