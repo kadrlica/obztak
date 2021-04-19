@@ -253,7 +253,7 @@ class Scheduler(object):
             tstop = ephem.Date(tstop)
 
         msg  = "\nRun start: %s\n"%datestr(tstart,4)
-        msg += "Run end: %s\n"%datestr(tstop,4)
+        msg +=   "Run stop : %s\n"%datestr(tstop,4)
         logging.debug(msg)
 
         msg = "Previously completed fields: %i"%len(self.completed_fields)
