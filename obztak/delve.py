@@ -603,7 +603,7 @@ class DelveSurvey(Survey):
         """
         import healpy as hp
         # These maps are SUM(teff * exptime)
-        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20210419'
+        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20210422'
         if not basename: basename = 'decam_sum_expmap_%s_n1024.fits.gz'
 
         logging.info("Loading maps from: %s"%dirname)
@@ -722,7 +722,7 @@ class DelveScheduler(Scheduler):
     _defaults = odict(Scheduler._defaults.items() + [
         ('tactician','coverage'),
         ('windows',fileio.get_datafile("delve-windows-v5.csv.gz")),
-        ('targets',fileio.get_datafile("delve-target-fields-20210419.csv.gz")),
+        ('targets',fileio.get_datafile("delve-target-fields-20210422.csv.gz")),
     ])
 
     FieldType = DelveFieldArray
@@ -731,7 +731,7 @@ class DelveScheduler(Scheduler):
 class DelveTactician(Tactician):
     CONDITIONS = odict([
         (None,       [1.0, 2.0]),
-        ('wide',     [1.0, 1.2]),
+        ('wide',     [1.0, 1.3]),
         ('deep',     [1.0, 1.4]),
         ('mc',       [1.0, 2.0]),
         ('gw',       [1.0, 2.0]),
