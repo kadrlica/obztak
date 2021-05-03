@@ -305,6 +305,14 @@ class DECamBasemap(Basemap):
         filename = fileio.get_datafile('delve-mc.txt')
         self.draw_polygon(filename,**kwargs)
 
+        # DELVE-z
+        #self.draw_polygon_radec([240,240,270,260,240],
+        #                        [-20,-5 ,-5 ,-20,-20],
+        #                        c='b',lw=2)
+        #self.draw_polygon_radec([280,290,310,340,340,310,280],
+        #                        [-30,-15,-15,-15,-30,-30,-30],
+        #                        c='b',lw=2)
+
         # EDFS
         #x,y = self.proj(np.array([61.24]), np.array([-48.42]))
         #self.scatter(x,y,facecolor='none',edgecolor='b',s=600)
