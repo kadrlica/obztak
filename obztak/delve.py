@@ -603,7 +603,7 @@ class DelveSurvey(Survey):
         """
         import healpy as hp
         # These maps are SUM(teff * exptime)
-        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20210502'
+        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20210520'
         if not basename: basename = 'decam_sum_expmap_%s_n1024.fits.gz'
 
         logging.info("Loading maps from: %s"%dirname)
@@ -722,7 +722,7 @@ class DelveScheduler(Scheduler):
     _defaults = odict(Scheduler._defaults.items() + [
         ('tactician','coverage'),
         ('windows',fileio.get_datafile("delve-windows-v5.csv.gz")),
-        ('targets',fileio.get_datafile("delve-target-fields-20210502.csv.gz")),
+        ('targets',fileio.get_datafile("delve-target-fields-20210520.csv.gz")),
     ])
 
     FieldType = DelveFieldArray
@@ -943,6 +943,9 @@ class DelveTactician(Tactician):
         # DEC cut for LN2 lines
         #sel &= (self.fields['DEC'] > -45)
 
+        #glon,glat = cel2gal(self.fields['RA'],self.fields['DEC'])
+        #sel &= (glon >= 180)
+
         weight = np.zeros(len(sel))
 
         # Sky brightness selection
@@ -951,7 +954,7 @@ class DelveTactician(Tactician):
         # Airmass cut
         airmass_min, airmass_max = self.CONDITIONS['wide']
         #sel &= ((airmass > airmass_min) & (airmass < airmass_max))
-
+        #self.fwhm = 1.0
         if self.fwhm < 0.9:
             sel &= ((airmass > airmass_min) & (airmass < 1.8))
         elif self.fwhm < 1.0:
