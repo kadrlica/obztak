@@ -33,6 +33,8 @@ db  = DelveFieldArray.load_database()
 delve = np.in1d(new.unique_id,db.unique_id)
 
 print("Comparing to old and new target fields...")
+print(args.old)
+print(args.new)
 if len(old) != len(new): print("Different number of fields")
 
 ### New fields (not done before, now done)
