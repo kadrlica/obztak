@@ -43,81 +43,81 @@ class DelveSurvey(Survey):
 
     # 2019A SCHEDULED
     nights_2019A = [
-        ['2019/02/07', 'second'], # phase=%, set=
-        ['2019/02/08', 'second'], # phase=%, set=
-        ['2019/02/09', 'second'], # phase=%, set=
-        ['2019/02/12', 'full  '], # phase=%, set=
-        ['2019/02/13', 'full  '], # phase=%, set=
-        ['2019/02/14', 'second'], # phase=%, set=
-        ['2019/02/15', 'full  '], # phase=%, set=
-        ['2019/02/24', 'second'], # phase=%, set=
-        ['2019/02/25', 'second'], # phase=%, set=
-        ['2019/02/26', 'second'], # phase=%, set=
-        ['2019/02/27', 'second'], # phase=%, set=
-        ['2019/02/28', 'second'], # phase=%, set=
-        ['2019/03/01', 'second'], # phase=%, set=
-        ['2019/05/12', 'full  '], # phase=%, set=
-        ['2019/05/13', 'full  '], # phase=%, set=
-        ['2019/05/28', 'second'], # phase=%, set=
-        ['2019/05/29', 'second'], # phase=%, set=
-        ['2019/05/30', 'second'], # phase=%, set=
-        ['2019/05/31', 'second'], # phase=%, set=
-        ['2019/06/01', 'second'], # phase=%, set=
-        ['2019/06/02', 'second'], # phase=%, set=
-        ['2019/06/03', 'second'], # phase=%, set=
-        ['2019/06/04', 'second'], # phase=%, set=
-        ['2019/06/05', 'full  '], # phase=%, set=
-        ['2019/06/06', 'full  '], # phase=%, set=
-        ['2019/06/07', 'full  '], # phase=%, set=
-        ['2019/06/08', 'full  '], # phase=%, set=
-        ['2019/06/09', 'full  '], # phase=%, set=
-        ['2019/06/23', 'second'], # phase=%, set=
-        ['2019/06/24', 'second'], # phase=%, set=
-        ['2019/06/25', 'second'], # phase=%, set=
-        ['2019/06/26', 'second'], # phase=%, set=
-        ['2019/06/27', 'second'], # phase=%, set=
-        ['2019/06/28', 'second'], # phase=%, set=
+        ['2019/02/07', 'second'],
+        ['2019/02/08', 'second'],
+        ['2019/02/09', 'second'],
+        ['2019/02/12', 'full  '],
+        ['2019/02/13', 'full  '],
+        ['2019/02/14', 'second'],
+        ['2019/02/15', 'full  '],
+        ['2019/02/24', 'second'],
+        ['2019/02/25', 'second'],
+        ['2019/02/26', 'second'],
+        ['2019/02/27', 'second'],
+        ['2019/02/28', 'second'],
+        ['2019/03/01', 'second'],
+        ['2019/05/12', 'full  '],
+        ['2019/05/13', 'full  '],
+        ['2019/05/28', 'second'],
+        ['2019/05/29', 'second'],
+        ['2019/05/30', 'second'],
+        ['2019/05/31', 'second'],
+        ['2019/06/01', 'second'],
+        ['2019/06/02', 'second'],
+        ['2019/06/03', 'second'],
+        ['2019/06/04', 'second'],
+        ['2019/06/05', 'full  '],
+        ['2019/06/06', 'full  '],
+        ['2019/06/07', 'full  '],
+        ['2019/06/08', 'full  '],
+        ['2019/06/09', 'full  '],
+        ['2019/06/23', 'second'],
+        ['2019/06/24', 'second'],
+        ['2019/06/25', 'second'],
+        ['2019/06/26', 'second'],
+        ['2019/06/27', 'second'],
+        ['2019/06/28', 'second'],
         ]
 
     nights_2019B = [
-        ['2019/08/07', 'first'], # phase=%, set=
-        ['2019/08/08', 'full'], # phase=%, set=
-        ['2019/08/09', 'full'], # phase=%, set=
-        ['2019/08/10', 'full'], # phase=%, set=
-        ['2019/08/20', 'first'], # phase=%, set=
-        ['2019/08/21', 'first'], # phase=%, set=
-        ['2019/08/30', 'first'], # phase=%, set=
-        ['2019/09/06', 'first'], # phase=%, set=
-        ['2019/09/07', 'first'], # phase=%, set=
-        ['2019/09/08', 'first'], # phase=%, set=
-        ['2019/09/09', 'first'], # phase=%, set=
-        ['2019/10/07', 'first'], # phase=%, set=
-        ['2019/10/08', 'first'], # phase=%, set=
-        ['2019/10/09', 'first'], # phase=%, set=
-        ['2019/11/04', 'second'], # phase=%, set=
-        ['2019/11/05', 'second'], # phase=%, set=
-        ['2019/11/06', 'second'], # phase=%, set=
-        ['2019/11/16', 'second'], # phase=%, set=
-        ['2019/11/17', 'second'], # phase=%, set=
-        ['2019/11/18', 'second'], # phase=%, set=
-        ['2019/12/01', 'second'], # phase=%, set=
-        ['2019/12/02', 'second'], # phase=%, set=
-        ['2019/12/03', 'second'], # phase=%, set=
-        ['2019/12/04', 'second'], # phase=%, set=
-        ['2019/12/05', 'second'], # phase=%, set=
-        ['2019/12/06', 'second'], # phase=%, set=
-        ['2019/12/07', 'second'], # phase=%, set=
-        ['2019/12/20', 'second'], # phase=%, set=
-        ['2019/12/21', 'full'], # phase=%, set=
-        ['2019/12/22', 'first'], # phase=%, set=
-        ['2019/12/23', 'full'], # phase=%, set=
-        ['2020/01/20', 'second'], # phase=%, set=
-        ['2020/01/21', 'second'], # phase=%, set=
-        ['2020/01/27', 'second'], # phase=%, set=
-        ['2020/01/28', 'second'], # phase=%, set=
-        ['2020/01/29', 'second'], # phase=%, set=
-        ['2020/01/30', 'second'], # phase=%, set=
-        ['2020/01/31', 'second'], # phase=%, set=
+        ['2019/08/07', 'first'],
+        ['2019/08/08', 'full'],
+        ['2019/08/09', 'full'],
+        ['2019/08/10', 'full'],
+        ['2019/08/20', 'first'],
+        ['2019/08/21', 'first'],
+        ['2019/08/30', 'first'],
+        ['2019/09/06', 'first'],
+        ['2019/09/07', 'first'],
+        ['2019/09/08', 'first'],
+        ['2019/09/09', 'first'],
+        ['2019/10/07', 'first'],
+        ['2019/10/08', 'first'],
+        ['2019/10/09', 'first'],
+        ['2019/11/04', 'second'],
+        ['2019/11/05', 'second'],
+        ['2019/11/06', 'second'],
+        ['2019/11/16', 'second'],
+        ['2019/11/17', 'second'],
+        ['2019/11/18', 'second'],
+        ['2019/12/01', 'second'],
+        ['2019/12/02', 'second'],
+        ['2019/12/03', 'second'],
+        ['2019/12/04', 'second'],
+        ['2019/12/05', 'second'],
+        ['2019/12/06', 'second'],
+        ['2019/12/07', 'second'],
+        ['2019/12/20', 'second'],
+        ['2019/12/21', 'full'],
+        ['2019/12/22', 'first'],
+        ['2019/12/23', 'full'],
+        ['2020/01/20', 'second'],
+        ['2020/01/21', 'second'],
+        ['2020/01/27', 'second'],
+        ['2020/01/28', 'second'],
+        ['2020/01/29', 'second'],
+        ['2020/01/30', 'second'],
+        ['2020/01/31', 'second'],
         ]
 
     # 2020A SCHEDULED
@@ -225,12 +225,42 @@ class DelveSurvey(Survey):
         ['2021/07/29','second' ],
         ['2021/07/30','second' ],
         ['2021/07/31','second' ],
+    ]
 
+    nights_2021B = [
+        ['2021/08/15','full'  ],
+        ['2021/08/16','full'  ],
+        ['2021/08/17','full'  ],
+        ['2021/08/27','second'],
+        ['2021/08/28','second'],
+        ['2021/08/29','second'],
+        ['2021/09/13','first' ],
+        ['2021/09/14','full'  ],
+        ['2021/09/15','full'  ],
+        ['2021/09/24','first' ],
+        ['2021/09/25','first' ],
+        ['2021/09/26','full'  ],
+        ['2021/09/27','second'],
+        ['2021/10/25','second'],
+        ['2021/10/26','second'],
+        ['2021/10/27','second'],
+        ['2021/11/13','first' ],
+        ['2021/11/25','second'],
+        ['2021/11/26','second'],
+        ['2021/11/28','second'],
+        ['2021/11/29','second'],
+        ['2021/12/01','second'],
+        ['2021/12/02','second'],
+        ['2021/12/04','second'],
+        ['2022/01/08','first' ],
+        ['2022/01/09','first' ],
+        ['2022/01/10','first' ],
+        ['2022/01/11','first' ],
     ]
 
     extra_nights = []
 
-    nights = nights_2019A + nights_2019B + nights_2020A + nights_2020B + nights_2021A + extra_nights
+    nights = nights_2019A + nights_2019B + nights_2020A + nights_2020B + nights_2021A + nights_2021B + extra_nights
 
     def prepare_fields(self, infile=None, outfile=None, plot=True, **kwargs):
         """ Create the list of fields to be targeted by this survey.
@@ -511,9 +541,13 @@ class DelveSurvey(Survey):
             for (b,t) in zip(BANDS, TILINGS):
                 f = f[~((f['FILTER'] == b) & (f['TILING'] > t))]
 
-            # Not doing these deep fields
-            if num in [000,100,200]:
+            # Not doing these deep fields (for now)
+            if num in [000,200]:
                 f['PRIORITY'] *= DONE
+
+            # Downweight IC5152 relative to NGC55
+            if num in [100]:
+                f['PRIORITY'] += 20
 
             # Remove last 3 exposures due to DES coverage
             if num in [100,200,300]:
@@ -603,7 +637,7 @@ class DelveSurvey(Survey):
         """
         import healpy as hp
         # These maps are SUM(teff * exptime)
-        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20210531'
+        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20210715'
         if not basename: basename = 'decam_sum_expmap_%s_n1024.fits.gz'
 
         logging.info("Loading maps from: %s"%dirname)
@@ -722,7 +756,7 @@ class DelveScheduler(Scheduler):
     _defaults = odict(Scheduler._defaults.items() + [
         ('tactician','coverage'),
         ('windows',fileio.get_datafile("delve-windows-v5.csv.gz")),
-        ('targets',fileio.get_datafile("delve-target-fields-20210531.csv.gz")),
+        ('targets',fileio.get_datafile("delve-target-fields-20210715.csv.gz")),
     ])
 
     FieldType = DelveFieldArray
@@ -830,9 +864,6 @@ class DelveTactician(Tactician):
 
         sel = self.viable_fields
         sel &= (self.fields['PROGRAM'] == 'delve-deep')
-
-        # DEC > -65 cut (play it safe...)
-        sel &= (self.fields['DEC'] > -60)
 
         weight = np.zeros(len(sel))
 
@@ -943,8 +974,10 @@ class DelveTactician(Tactician):
         # DEC cut for LN2 lines
         #sel &= (self.fields['DEC'] > -45)
 
+        # GLON, GLAT cuts
         #glon,glat = cel2gal(self.fields['RA'],self.fields['DEC'])
         #sel &= (glon >= 180)
+        #sel &= (glat > 0)
 
         weight = np.zeros(len(sel))
 
@@ -983,7 +1016,7 @@ class DelveTactician(Tactician):
         # Higher weight for rising fields (higher hour angle)
         # HA [min,max] = [-53,54] (for airmass 1.4)
         #weight += 5.0 * self.hour_angle
-        weight += 1.0 * self.hour_angle
+        #weight += 1.0 * self.hour_angle
         #weight += 0.1 * self.hour_angle
 
         # Higher weight for larger slews
