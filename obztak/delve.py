@@ -541,12 +541,12 @@ class DelveSurvey(Survey):
             for (b,t) in zip(BANDS, TILINGS):
                 f = f[~((f['FILTER'] == b) & (f['TILING'] > t))]
 
-            # Not doing these deep fields (for now)
-            if num in [000,200]:
+            # These fields are done
+            if num in [000,300]:
                 f['PRIORITY'] *= DONE
 
-            # Downweight IC5152 relative to NGC55
-            if num in [100]:
+            # Downweight NGC300 relative to IC5152
+            if num in [200]:
                 f['PRIORITY'] += 20
 
             # Remove last 3 exposures due to DES coverage
@@ -637,7 +637,7 @@ class DelveSurvey(Survey):
         """
         import healpy as hp
         # These maps are SUM(teff * exptime)
-        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20210715'
+        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20210720'
         if not basename: basename = 'decam_sum_expmap_%s_n1024.fits.gz'
 
         logging.info("Loading maps from: %s"%dirname)
@@ -756,7 +756,7 @@ class DelveScheduler(Scheduler):
     _defaults = odict(Scheduler._defaults.items() + [
         ('tactician','coverage'),
         ('windows',fileio.get_datafile("delve-windows-v5.csv.gz")),
-        ('targets',fileio.get_datafile("delve-target-fields-20210715.csv.gz")),
+        ('targets',fileio.get_datafile("delve-target-fields-20210720.csv.gz")),
     ])
 
     FieldType = DelveFieldArray
