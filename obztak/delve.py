@@ -33,6 +33,7 @@ DONE = -1
 
 TEFF_MIN_WIDE = pd.DataFrame(dict(FILTER=['g','i'],TEFF=[0.4,0.5]))
 TEFF_MIN_MC   = pd.DataFrame(dict(FILTER=['g','r','i'],TEFF=[0.3,0.3,0.45]))
+TEFF_MIN_EXTRA = pd.DataFrame(dict(FILTER=['z'],TEFF=[0.3]))
 
 # Seeing limits for DELVE survey components
 FWHM_DEEP = 0.9 # arcsec
@@ -286,8 +287,9 @@ class DelveSurvey(Survey):
         deep_fields = self.create_deep_fields(data)
         mc_fields   = self.create_mc_fields(data)
         wide_fields = self.create_wide_fields(data)
+        extra_fields = self.create_extra_fields(data)
 
-        fields = wide_fields + mc_fields + deep_fields
+        fields = wide_fields + mc_fields + deep_fields + extra_fields
 
         logging.info("Masking bright stars...")
         mask = self.bright_stars(fields['RA'],fields['DEC'])
@@ -386,14 +388,21 @@ class DelveSurvey(Survey):
         done_mc = mc & covered_mc
         print('Found %i MC exposures newly done.'%(done_mc & ~done).sum())
 
+        extra = np.char.endswith(fields['PROGRAM'],'-extra')
+        teff_min_extra = pd.DataFrame(fields).merge(TEFF_MIN_EXTRA,on='FILTER',how='left').to_records()['TEFF']
+        covered_extra = depth > teff_min_extra*fields['TILING']*fields['EXPTIME']
+        done_extra = extra & covered_extra
+        print('Found %i EXTRA exposures newly done.'%(done_extra & ~done).sum())
+
         fields['PRIORITY'][done_wide & ~done] = DONE
         fields['PRIORITY'][done_mc & ~done] = DONE
+        fields['PRIORITY'][done_extra & ~done] = DONE
 
         return fields
 
     def create_wide_fields(self, data, plot=False):
         """ Create the wide field observations """
-        logging.info("Creating DEEP fields...")
+        logging.info("Creating WIDE fields...")
         BANDS = ['g','i']
         EXPTIME = [90,90]
         TILINGS = [4,4]
@@ -577,6 +586,55 @@ class DelveSurvey(Survey):
 
         return fields
 
+    def create_extra_fields(self, data, plot=False):
+        """ Create the extra wide field observations """
+        logging.info("Creating EXTRA fields...")
+        BANDS = ['z']
+        EXPTIME = [90]
+        TILINGS = [4]
+        TEFF_MIN = TEFF_MIN_EXTRA
+
+        nhexes = len(np.unique(data['TILEID']))
+        nbands = len(BANDS)
+
+        nfields = len(data)*nbands
+
+        logging.info("  Number of hexes: %d"%nhexes)
+        logging.info("  Filters: %s"%BANDS)
+        logging.info("  Exposure time: %s"%EXPTIME)
+        logging.info("  Tilings: %s"%TILINGS)
+
+        fields = FieldArray(nfields)
+        fields['PROGRAM'] = PROGRAM+'-extra'
+        fields['HEX'] = np.repeat(data['TILEID'],nbands)
+        fields['TILING'] = np.repeat(data['PASS'],nbands)
+        fields['RA'] = np.repeat(data['RA'],nbands)
+        fields['DEC'] = np.repeat(data['DEC'],nbands)
+
+        fields['FILTER'] = np.tile(BANDS,len(data))
+        fields['EXPTIME'] = np.tile(EXPTIME,len(data))
+        fields['PRIORITY'] = fields['TILING']
+
+        sel = self.footprintEXTRA(fields['RA'],fields['DEC'])
+        sel &= (~self.footprintMilkyWay(fields['RA'],fields['DEC']))
+        sel &= (~self.footprintDES(fields['RA'],fields['DEC']))
+        fields = fields[sel]
+
+        # Covered fields
+        frac, depth = self.covered(fields)
+        teffmin = pd.DataFrame(fields).merge(TEFF_MIN,on='FILTER',how='left').to_records()['TEFF']
+        fields['PRIORITY'][depth > teffmin*fields['TILING']*fields['EXPTIME']] = DONE
+
+        if plot: self.plot_depth(fields,depth,'delve-extra-%s-gt%i.png')
+
+        logging.info("Number of target fields: %d"%len(fields))
+
+        outfile = 'delve-extra-fields.fits.fz'
+        logging.info("Writing %s..."%outfile)
+        fields.write(outfile,clobber=True)
+
+        return fields
+
     @staticmethod
     def footprintDEEP(ra,dec):
         """ Selecting exposures around the deep drilling fields """
@@ -610,6 +668,23 @@ class DelveSurvey(Survey):
         return Maglites2Survey.footprint(ra,dec)
 
     @staticmethod
+    def footprintEXTRA(ra,dec):
+        """ Select extra exposures outside nominal DELVE survey """
+        ra,dec = np.copy(ra), np.copy(dec)
+
+        # Between S82 and SPT
+        sel1  = (dec >= -30) & (dec <= -15)
+        sel1 &= ((ra >= 280) & (ra <= 360)) | (ra < 10)
+        # Close to the Galactic plane
+        sel2 = (dec >= -20) & (dec <= -5)
+        sel2 &= (ra >= 240) & (ra <= 280)
+
+        # Either of the two
+        sel = sel1 | sel2
+
+        return sel
+
+    @staticmethod
     def bright_stars(ra,dec):
         """ Load bright star list """
         ra,dec = np.copy(ra), np.copy(dec)
@@ -637,7 +712,7 @@ class DelveSurvey(Survey):
         """
         import healpy as hp
         # These maps are SUM(teff * exptime)
-        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20210720'
+        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20210722'
         if not basename: basename = 'decam_sum_expmap_%s_n1024.fits.gz'
 
         logging.info("Loading maps from: %s"%dirname)
@@ -756,7 +831,7 @@ class DelveScheduler(Scheduler):
     _defaults = odict(Scheduler._defaults.items() + [
         ('tactician','coverage'),
         ('windows',fileio.get_datafile("delve-windows-v5.csv.gz")),
-        ('targets',fileio.get_datafile("delve-target-fields-20210720.csv.gz")),
+        ('targets',fileio.get_datafile("delve-target-fields-20210722.csv.gz")),
     ])
 
     FieldType = DelveFieldArray
@@ -769,6 +844,7 @@ class DelveTactician(Tactician):
         ('deep',     [1.0, 1.4]),
         ('mc',       [1.0, 2.0]),
         ('gw',       [1.0, 2.0]),
+        ('extra',    [1.0, 1.3]),
     ])
 
     def __init__(self, *args, **kwargs):
@@ -818,6 +894,7 @@ class DelveTactician(Tactician):
 
     @property
     def weight(self):
+        """ Calculate the weight from set of programs. """
 
         if self.mode is None:
             # First priority is deep
@@ -843,6 +920,8 @@ class DelveTactician(Tactician):
             return self.weight_wide()
         elif self.mode == 'gw':
             return self.weight_gw()
+        elif self.mode == 'extra':
+            return self.weight_extra()
         else:
             raise ValueError("Unrecognized mode: %s"%self.mode)
 
@@ -1107,6 +1186,70 @@ class DelveTactician(Tactician):
         ## Try hard to do high priority fields
         #weight += 1e3 * (self.fields['PRIORITY'] - 1)
         #weight += 1e4 * (self.fields['TILING'] > 3)
+
+        # Set infinite weight to all disallowed fields
+        weight[~sel] = np.inf
+
+        return weight
+
+    def weight_extra(self):
+        """ Calculate the field weight for the z-band survey.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        weight : array of weights per field
+        """
+        airmass = self.airmass
+        moon_angle = self.moon_angle
+
+        sel = self.viable_fields
+        sel &= (self.fields['PROGRAM'] == 'delve-extra')
+
+        weight = np.zeros(len(sel))
+
+        # Sky brightness selection (always z-band for now)
+        #sel &= self.skybright_select()
+        sel &= self.fields['FILTER'] == 'z'
+
+        # Airmass cut
+        airmass_min, airmass_max = self.CONDITIONS['extra']
+        sel &= ((airmass > airmass_min) & (airmass < airmass_max))
+
+        # Higher weight for fields close to the moon (when up)
+        # angle = 50 -> weight = 6.4
+        # Moon angle constraints (viable fields sets moon_angle > 20.)
+        if (self.moon.alt > -0.04) and (self.moon.phase >= 80):
+            moon_limit = 40.0
+            sel &= (moon_angle > moon_limit)
+
+            #weight += 100 * (35./moon_angle)**3
+            #weight += 10 * (35./moon_angle)**3
+            weight += 1 * (35./moon_angle)**3
+
+        # Higher weight for rising fields (higher hour angle)
+        # HA [min,max] = [-53,54] (for airmass 1.4)
+        #weight += 5.0 * self.hour_angle
+        weight += 1.0 * self.hour_angle
+        #weight += 0.1 * self.hour_angle
+
+        # Higher weight for larger slews
+        # slew = 10 deg -> weight = 1e2
+        weight += self.slew**2
+        #weight += self.slew
+        #weight += 1e3 * self.slew
+
+        # Higher weight for higher airmass
+        # airmass = 1.4 -> weight = 6.4
+        weight += 100. * (airmass - 1.)**3
+        #weight += 1e3 * (airmass - 1.)**2
+
+        ## Try hard to do high priority fields
+        weight += 1e3 * (self.fields['PRIORITY'] - 1)
+        weight += 1e4 * (self.fields['TILING'] > 3)
 
         # Set infinite weight to all disallowed fields
         weight[~sel] = np.inf
