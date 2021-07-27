@@ -1217,13 +1217,13 @@ class DelveTactician(Tactician):
 
         # Airmass cut
         airmass_min, airmass_max = self.CONDITIONS['extra']
-        sel &= ((airmass > airmass_min) & (airmass < airmass_max))
+        sel &= ((airmass > airmass_min) & (airmass < 1.4))
 
         # Higher weight for fields close to the moon (when up)
         # angle = 50 -> weight = 6.4
         # Moon angle constraints (viable fields sets moon_angle > 20.)
         if (self.moon.alt > -0.04) and (self.moon.phase >= 80):
-            moon_limit = 40.0
+            moon_limit = 30.0
             sel &= (moon_angle > moon_limit)
 
             #weight += 100 * (35./moon_angle)**3
