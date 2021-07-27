@@ -360,11 +360,11 @@ class DECamBasemap(Basemap):
         x,y = self.proj(np.array([ra_moon]), np.array([dec_moon]))
         if np.isnan(x).all() or np.isnan(y).all(): return
      
-        self.scatter(x,y,color='%.2f'%(0.01*moon.phase),edgecolor='black',s=600)
+        self.scatter(x,y,color='%.2f'%(0.01*moon.phase),edgecolor='black',s=600,zorder=99)
         color = 'black' if moon.phase > 50. else 'white'
         #text = '%.2f'%(0.01 * moon.phase)
         text = '%2.0f%%'%(moon.phase)
-        plt.text(x, y, text, fontsize=10, ha='center', va='center', color=color)
+        plt.text(x, y, text, fontsize=10, ha='center', va='center', color=color,zorder=99)
 
     def draw_jethwa(self,filename=None,log=True,**kwargs):
         import healpy as hp

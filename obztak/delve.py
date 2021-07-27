@@ -951,7 +951,8 @@ class DelveTactician(Tactician):
         sel &= (moon_angle > moon_limit)
 
         # Sky brightness selection
-        sel &= self.skybright_select()
+        #sel &= self.skybright_select()
+        sel &= self.fields['FILTER'] == 'z'
 
         # Airmass cut
         airmass_min, airmass_max = self.CONDITIONS['deep']
@@ -1232,8 +1233,8 @@ class DelveTactician(Tactician):
 
         # Higher weight for rising fields (higher hour angle)
         # HA [min,max] = [-53,54] (for airmass 1.4)
-        #weight += 5.0 * self.hour_angle
-        weight += 1.0 * self.hour_angle
+        weight += 5.0 * self.hour_angle
+        #weight += 1.0 * self.hour_angle
         #weight += 0.1 * self.hour_angle
 
         # Higher weight for larger slews

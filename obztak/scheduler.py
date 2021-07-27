@@ -439,6 +439,7 @@ class Scheduler(object):
                 break
 
             if plot:
+                DeprecationWarning("Plot should be called in self.run")
                 field_select = scheduled_fields[-1:]
                 bmap = ortho.plotField(field_select,self.target_fields,self.completed_fields)
                 if (raw_input(' ...continue ([y]/n)').lower()=='n'):

@@ -230,7 +230,7 @@ class FieldArray(np.recarray):
         # Ignore exposures with the wrong propid
         # However, exposures being exposed have propid = None
         propid = sdict.get('propid')
-        if check_propid and ((propid is not None) and (propid != cls.PROPID)): 
+        if check_propid and ((propid is not None) and (propid != cls.PROPID)):
             logging.warn("Found exposure with propid=%s; skipping..."%propid)
             return False
 
