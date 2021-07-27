@@ -844,7 +844,7 @@ class DelveTactician(Tactician):
         ('deep',     [1.0, 1.4]),
         ('mc',       [1.0, 2.0]),
         ('gw',       [1.0, 2.0]),
-        ('extra',    [1.0, 1.4]),
+        ('extra',    [1.0, 1.3]),
     ])
 
     def __init__(self, *args, **kwargs):
@@ -1249,8 +1249,8 @@ class DelveTactician(Tactician):
         #weight += 1e3 * (airmass - 1.)**2
 
         ## Try hard to do high priority fields
-        weight += 1e3 * (self.fields['PRIORITY'] - 1)
-        weight += 1e4 * (self.fields['TILING'] > 3)
+        weight += 1e4 * (self.fields['PRIORITY'] - 1)
+        weight += 1e5 * (self.fields['TILING'] > 3)
 
         # Set infinite weight to all disallowed fields
         weight[~sel] = np.inf
