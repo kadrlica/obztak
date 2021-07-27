@@ -125,6 +125,11 @@ class Tactician(object):
             if (self.date-ephem.Date(previous_field['DATE'])) > 30*ephem.minute:
                 previous_field = None
 
+            # Exposure being exposed has RA,DEC = 0,0; problem!
+            # Could also require previous_field['PROGRAM'] == 'None'
+            elif (previous_field['RA'] == 0) and (previous_field['DEC'] == 0):
+                previous_field = None
+
         if previous_field:
             return angsep(previous_field['RA'],previous_field['DEC'],
                           self.fields['RA'], self.fields['DEC'])
@@ -134,6 +139,7 @@ class Tactician(object):
     @property
     def slew_time(self):
         """Estimate of the slew time (Alt/Az telescope)."""
+        DeprecationWarning("'slew_time' has been deprecated; use 'slew'")
         # Set previous field as last completed field
         previous_field = None
         if (self.completed_fields is not None) and len(self.completed_fields):

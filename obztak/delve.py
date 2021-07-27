@@ -1222,7 +1222,7 @@ class DelveTactician(Tactician):
         # Higher weight for fields close to the moon (when up)
         # angle = 50 -> weight = 6.4
         # Moon angle constraints (viable fields sets moon_angle > 20.)
-        if (self.moon.alt > -0.04) and (self.moon.phase >= 80):
+        if (self.moon.alt > -0.04) and (self.moon.phase >= 30):
             moon_limit = 30.0
             sel &= (moon_angle > moon_limit)
 
