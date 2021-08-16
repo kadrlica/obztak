@@ -808,7 +808,6 @@ class DelveFieldArray(FieldArray):
         to_char(date, 'YYYY/MM/DD HH24:MI:SS.MS') AS DATE,
         COALESCE(airmass,-1) as AIRMASS, COALESCE(moonangl,-1) as MOONANGLE,
         COALESCE(ha, -1) as HOURANGLE, COALESCE(slewangl,-1) as SLEW, PROGRAM
-        --FROM exposure where propid = '%(propid)s' and exptime > 89
         --2019B-1014: Felipe Olivares
         FROM exposure where propid in ('%(propid)s','2019B-1014') and exptime > 89
         and discard = False and delivered = True and flavor = 'object'
@@ -817,6 +816,8 @@ class DelveFieldArray(FieldArray):
         -- and id NOT IN (860597, 860598, 860599, 860600, 860601, 860602)
         -- Mirror compressed air on 20201025
         -- and id NOT BETWEEN 948781 and 948795
+        -- Cloudy nite with lots of qc_teff = nan
+        and NOT (id BETWEEN 1025565 and 1025876 and qc_teff is null)
         and (
              (COALESCE(qc_teff,-1) NOT BETWEEN 0 and 0.2
              AND COALESCE(qc_fwhm,1) BETWEEN 0.5 and 1.5)
