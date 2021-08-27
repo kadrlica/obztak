@@ -811,7 +811,8 @@ class DelveFieldArray(FieldArray):
         --2019B-1014: Felipe Olivares
         FROM exposure where propid in ('%(propid)s','2019B-1014') and exptime > 89
         and discard = False and delivered = True and flavor = 'object'
-        and object like '%(object_fmt)s%%'
+        and object LIKE '%(object_fmt)s%%'
+        and object NOT LIKE '%Peg4%'
         and id NOT IN (967215)
         -- and id NOT IN (860597, 860598, 860599, 860600, 860601, 860602)
         -- Mirror compressed air on 20201025
@@ -845,7 +846,7 @@ class DelveTactician(Tactician):
         ('deep',     [1.0, 1.4]),
         ('mc',       [1.0, 2.0]),
         ('gw',       [1.0, 2.0]),
-        ('extra',    [1.0, 1.3]),
+        ('extra',    [1.0, 1.4]),
     ])
 
     def __init__(self, *args, **kwargs):
@@ -1228,9 +1229,11 @@ class DelveTactician(Tactician):
             moon_limit = 30.0
             sel &= (moon_angle > moon_limit)
 
+            # Use a larger (smaller) weight to increase (decrease) the
+            # moon avoidance angle. 
             #weight += 100 * (35./moon_angle)**3
-            #weight += 10 * (35./moon_angle)**3
-            weight += 1 * (35./moon_angle)**3
+            weight += 10 * (35./moon_angle)**3
+            #weight += 1 * (35./moon_angle)**3
 
         # Higher weight for rising fields (higher hour angle)
         # HA [min,max] = [-53,54] (for airmass 1.4)
