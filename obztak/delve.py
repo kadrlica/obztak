@@ -812,7 +812,7 @@ class DelveFieldArray(FieldArray):
         FROM exposure where propid in ('%(propid)s','2019B-1014') and exptime > 89
         and discard = False and delivered = True and flavor = 'object'
         and object LIKE '%(object_fmt)s%%'
-        and object NOT LIKE '%Peg4%'
+        and object NOT LIKE '%%Peg4%%'
         and id NOT IN (967215)
         -- and id NOT IN (860597, 860598, 860599, 860600, 860601, 860602)
         -- Mirror compressed air on 20201025
