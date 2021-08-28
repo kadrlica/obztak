@@ -820,7 +820,7 @@ class DelveFieldArray(FieldArray):
         -- Cloudy nite with lots of qc_teff = nan
         and NOT (id BETWEEN 1025565 and 1025876 and qc_teff is null)
         and (
-             (COALESCE(qc_teff,-1) NOT BETWEEN 0 and 0.2
+             (COALESCE(qc_teff,-1) NOT BETWEEN 0 and 0.3
              AND COALESCE(qc_fwhm,1) BETWEEN 0.5 and 1.5)
              OR to_timestamp(utc_beg) > (now() - interval '14 hours')
         )
