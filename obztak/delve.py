@@ -877,15 +877,14 @@ class DelveTactician(Tactician):
             # i-band if Sun altitude > -16 deg
             sel &= (np.char.count('i',self.fields['FILTER']) > 0)
         # Moon band constraints (alt = 0.175 rad = 10 deg)
-        elif (self.moon.phase >= 50) and (self.moon.alt > 0.175):
+        elif (self.moon.phase >= 40) and (self.moon.alt > 0.175):
             # Moon is very bright; only do i
             sel &= (np.char.count('i',self.fields['FILTER']) > 0)
             # Allow i,z but prefer z
             #sel &= (np.char.count('iz',self.fields['FILTER']) > 0)
             #weight += 1e2 * (np.char.count('i',self.fields['FILTER']) > 0)
-        #elif (self.moon.phase >= 45) and (self.moon.alt > 0.175):
         elif (self.moon.phase >= 30) and (self.moon.alt > 0.0):
-            # Moon is more than half full; do r,i
+            # Moon is moderately full; do r,i
             sel &= (np.char.count('ri',self.fields['FILTER']) > 0)
         else:
             # Moon is faint or down; do g,r,i
