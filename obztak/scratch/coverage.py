@@ -137,14 +137,17 @@ for band,exp in exposures.items():
     #teff = exp['teff'][np.where(~nan)[0][idx]]
     #exp['teff'][nan] = teff
 
+teffmin = 0.25
 for (band,_max),(band,_sum) in zip(max_skymaps.items(),sum_skymaps.items()):
     print band
     d2 = exposures[band]
+    # teff*Texp > 18s (0.2 * 90s)
+
     #d2 = d2[ (d2['teff'] >= 0.1) ]
-    d2 = d2[ (d2['teff'] >= 0.2) ]
-    #d2 = d2[ (d2['teff'] >= 0.3) ]
-    d2 = d2[ (d2['teff']*d2['exptime'] > 18) ] # teff*Texp > 18s (0.2 * 90s)
-    d2 = d2[ (d2['fwhm'] < 2.0) ]
+    d2 = d2[ (d2['teff'] >= teffmin) ]
+    d2 = d2[ (d2['teff']*d2['exptime'] > teffmin*90.) ]
+
+    d2 = d2[ (d2['fwhm'] < 1.8) ]
     vec = hp.ang2vec(d2['ra'],d2['dec'],lonlat=True)
     rad = np.radians(DECAM)
     for i,(v,d) in enumerate(zip(vec,d2)):
