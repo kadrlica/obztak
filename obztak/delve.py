@@ -673,7 +673,7 @@ class DelveSurvey(Survey):
         ra,dec = np.copy(ra), np.copy(dec)
 
         # Between S82 and SPT
-        sel1  = (dec >= -30) & (dec <= -15)
+        sel1  = (dec >= -40) & (dec <= -15)
         sel1 &= ((ra >= 280) & (ra <= 360)) | (ra < 10)
         # Close to the Galactic plane
         sel2 = (dec >= -20) & (dec <= -5)
@@ -712,7 +712,7 @@ class DelveSurvey(Survey):
         """
         import healpy as hp
         # These maps are SUM(teff * exptime)
-        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20210815'
+        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20210914'
         if not basename: basename = 'decam_sum_expmap_%s_n1024.fits.gz'
 
         logging.info("Loading maps from: %s"%dirname)
@@ -832,8 +832,8 @@ class DelveFieldArray(FieldArray):
 class DelveScheduler(Scheduler):
     _defaults = odict(Scheduler._defaults.items() + [
         ('tactician','coverage'),
-        ('windows',fileio.get_datafile("delve-windows-20210815.csv.gz")),
-        ('targets',fileio.get_datafile("delve-target-fields-20210815.csv.gz")),
+        ('windows',fileio.get_datafile("delve-windows-20210914.csv.gz")),
+        ('targets',fileio.get_datafile("delve-target-fields-20210914.csv.gz")),
     ])
 
     FieldType = DelveFieldArray
@@ -1097,7 +1097,7 @@ class DelveTactician(Tactician):
         # Higher weight for rising fields (higher hour angle)
         # HA [min,max] = [-53,54] (for airmass 1.4)
         #weight += 5.0 * self.hour_angle
-        #weight += 1.0 * self.hour_angle
+        weight += 1.0 * self.hour_angle
         #weight += 0.1 * self.hour_angle
 
         # Higher weight for larger slews
@@ -1225,7 +1225,7 @@ class DelveTactician(Tactician):
         # angle = 50 -> weight = 6.4
         # Moon angle constraints (viable fields sets moon_angle > 20.)
         if (self.moon.alt > -0.04) and (self.moon.phase >= 30):
-            moon_limit = 30.0
+            moon_limit = 40.0
             sel &= (moon_angle > moon_limit)
 
             # Use a larger (smaller) weight to increase (decrease) the
