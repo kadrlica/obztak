@@ -846,7 +846,7 @@ class DelveTactician(Tactician):
         ('deep',     [1.0, 1.4]),
         ('mc',       [1.0, 2.0]),
         ('gw',       [1.0, 2.0]),
-        ('extra',    [1.0, 1.4]),
+        ('extra',    [1.0, 1.5]),
     ])
 
     def __init__(self, *args, **kwargs):
@@ -1073,7 +1073,7 @@ class DelveTactician(Tactician):
             sel &= ((airmass > airmass_min) & (airmass < 1.6))
         elif self.fwhm < 1.0:
             sel &= ((airmass > airmass_min) & (airmass < 1.5))
-        elif self.fwhm < 1.2:
+        elif self.fwhm < 1.1:
             sel &= ((airmass > airmass_min) & (airmass < 1.4))
         else:
             sel &= ((airmass > airmass_min) & (airmass < 1.3))
