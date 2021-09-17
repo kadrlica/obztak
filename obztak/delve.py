@@ -304,6 +304,7 @@ class DelveSurvey(Survey):
             '399-01-g','399-01-r','399-01-i',
             '399-02-g','399-02-r','399-02-i',
             '399-04-g','399-04-r','399-04-i',
+            '436-01-i','437-01-i'
         ]
         exclude += [ # Orion Nebula
             '5696-01-i','5696-02-i','5696-03-i','5696-04-i',
@@ -1236,14 +1237,14 @@ class DelveTactician(Tactician):
 
         # Higher weight for rising fields (higher hour angle)
         # HA [min,max] = [-53,54] (for airmass 1.4)
-        weight += 5.0 * self.hour_angle
-        #weight += 1.0 * self.hour_angle
+        #weight += 10.0 * self.hour_angle
+        weight += 1.0 * self.hour_angle
         #weight += 0.1 * self.hour_angle
 
         # Higher weight for larger slews
         # slew = 10 deg -> weight = 1e2
-        weight += self.slew**2
-        #weight += self.slew
+        #weight += self.slew**2
+        weight += self.slew
         #weight += 1e3 * self.slew
 
         # Higher weight for higher airmass
@@ -1252,8 +1253,8 @@ class DelveTactician(Tactician):
         #weight += 1e3 * (airmass - 1.)**2
 
         ## Try hard to do high priority fields
-        weight += 1e4 * (self.fields['PRIORITY'] - 1)
-        weight += 1e5 * (self.fields['TILING'] > 3)
+        weight += 1e1 * (self.fields['PRIORITY'] - 1)
+        #weight += 1e5 * (self.fields['TILING'] > 3)
 
         # Set infinite weight to all disallowed fields
         weight[~sel] = np.inf
