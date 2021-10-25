@@ -713,7 +713,7 @@ class DelveSurvey(Survey):
         """
         import healpy as hp
         # These maps are SUM(teff * exptime)
-        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20210914'
+        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20211014'
         if not basename: basename = 'decam_sum_expmap_%s_n1024.fits.gz'
 
         logging.info("Loading maps from: %s"%dirname)
@@ -821,7 +821,7 @@ class DelveFieldArray(FieldArray):
         -- Cloudy nite with lots of qc_teff = nan
         and NOT (id BETWEEN 1025565 and 1025876 and qc_teff is null)
         and (
-             (COALESCE(qc_teff,-1) NOT BETWEEN 0 and 0.3
+             (COALESCE(qc_teff,-1) NOT BETWEEN 0 and 0.2
              AND COALESCE(qc_fwhm,1) BETWEEN 0.5 and 1.5)
              OR to_timestamp(utc_beg) > (now() - interval '14 hours')
         )
@@ -1019,7 +1019,7 @@ class DelveTactician(Tactician):
         #sel &= (self.fields['PRIORITY'] == 3)
 
         # Get fields before they set
-        #weight += 2.0 * self.hour_angle
+        weight += 10.0 * self.hour_angle
 
         # Prioritize fields
         weight += 3. * 360. * self.fields['PRIORITY'] * (self.fields['TILING'] > 2)
@@ -1230,7 +1230,7 @@ class DelveTactician(Tactician):
             sel &= (moon_angle > moon_limit)
 
             # Use a larger (smaller) weight to increase (decrease) the
-            # moon avoidance angle. 
+            # moon avoidance angle.
             #weight += 100 * (35./moon_angle)**3
             weight += 10 * (35./moon_angle)**3
             #weight += 1 * (35./moon_angle)**3
