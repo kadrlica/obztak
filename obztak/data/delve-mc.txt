@@ -1,7 +1,7 @@
 # DELVE MC region
 # 25 deg around LMC
 # 15 deg around SMC
-#RA DEC
+#RA         DEC
 -1.79045e+2 -7.84577e+1
 -1.75558e+2 -7.88359e+1
 -1.68941e+2 -8.08523e+1
