@@ -698,7 +698,7 @@ class DelveSurvey(Survey):
 
 
     @staticmethod
-    def covered(fields, percent=75., dirname=None, basename=None):
+    def covered(fields, percent=85., dirname=None, basename=None):
         """
         Determine which fields haven't been previously covered by DECam
 
@@ -713,7 +713,7 @@ class DelveSurvey(Survey):
         """
         import healpy as hp
         # These maps are SUM(teff * exptime)
-        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20211014'
+        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20211025'
         if not basename: basename = 'decam_sum_expmap_%s_n1024.fits.gz'
 
         logging.info("Loading maps from: %s"%dirname)
@@ -834,7 +834,7 @@ class DelveScheduler(Scheduler):
     _defaults = odict(Scheduler._defaults.items() + [
         ('tactician','coverage'),
         ('windows',fileio.get_datafile("delve-windows-20210914.csv.gz")),
-        ('targets',fileio.get_datafile("delve-target-fields-20210914.csv.gz")),
+        ('targets',fileio.get_datafile("delve-target-fields-20211025.csv.gz")),
     ])
 
     FieldType = DelveFieldArray
