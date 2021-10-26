@@ -821,7 +821,7 @@ class DelveFieldArray(FieldArray):
         -- Cloudy nite with lots of qc_teff = nan
         and NOT (id BETWEEN 1025565 and 1025876 and qc_teff is null)
         and (
-             (COALESCE(qc_teff,-1) NOT BETWEEN 0 and 0.3
+             (COALESCE(qc_teff,-1) NOT BETWEEN 0 and 0.2
              AND COALESCE(qc_fwhm,1) BETWEEN 0.5 and 1.5)
              OR to_timestamp(utc_beg) > (now() - interval '14 hours')
         )
@@ -843,11 +843,11 @@ class DelveScheduler(Scheduler):
 class DelveTactician(Tactician):
     CONDITIONS = odict([
         (None,       [1.0, 2.0]),
-        ('wide',     [1.0, 1.3]),
+        ('wide',     [1.0, 1.8]),
         ('deep',     [1.0, 1.4]),
         ('mc',       [1.0, 2.0]),
         ('gw',       [1.0, 2.0]),
-        ('extra',    [1.0, 1.5]),
+        ('extra',    [1.0, 1.4]),
     ])
 
     def __init__(self, *args, **kwargs):
@@ -1068,17 +1068,19 @@ class DelveTactician(Tactician):
 
         # Airmass cut
         airmass_min, airmass_max = self.CONDITIONS['wide']
-        #sel &= ((airmass > airmass_min) & (airmass < airmass_max))
+
         #self.fwhm = 1.1
-        if self.fwhm < 0.9:
-            sel &= ((airmass > airmass_min) & (airmass < 1.6))
-        elif self.fwhm < 1.0:
+        if False:
+            sel &= ((airmass > airmass_min) & (airmass < airmass_max))
+        elif self.fwhm < 0.9:
+            sel &= ((airmass > airmass_min) & (airmass < 1.8))
+        elif self.fwhm < 1.2:
             sel &= ((airmass > airmass_min) & (airmass < 1.5))
-        elif self.fwhm < 1.1:
+        elif self.fwhm < 1.4:
             sel &= ((airmass > airmass_min) & (airmass < 1.4))
         else:
             sel &= ((airmass > airmass_min) & (airmass < 1.3))
-
+         
         if self.fwhm < 1.0:
             # Prefer fields near the pole
             weight += 5e2 * (self.fields['DEC'] > -60)
@@ -1238,7 +1240,7 @@ class DelveTactician(Tactician):
         # Higher weight for rising fields (higher hour angle)
         # HA [min,max] = [-53,54] (for airmass 1.4)
         #weight += 10.0 * self.hour_angle
-        weight += 1.0 * self.hour_angle
+        #weight += 0.5 * self.hour_angle
         #weight += 0.1 * self.hour_angle
 
         # Higher weight for larger slews
