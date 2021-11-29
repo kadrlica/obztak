@@ -713,7 +713,7 @@ class DelveSurvey(Survey):
         """
         import healpy as hp
         # These maps are SUM(teff * exptime)
-        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20211025'
+        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20211127'
         if not basename: basename = 'decam_sum_expmap_%s_n1024.fits.gz'
 
         logging.info("Loading maps from: %s"%dirname)
@@ -833,8 +833,8 @@ class DelveFieldArray(FieldArray):
 class DelveScheduler(Scheduler):
     _defaults = odict(Scheduler._defaults.items() + [
         ('tactician','coverage'),
-        ('windows',fileio.get_datafile("delve-windows-20210914.csv.gz")),
-        ('targets',fileio.get_datafile("delve-target-fields-20211025.csv.gz")),
+        ('windows',fileio.get_datafile("delve-windows-20211125.csv.gz")),
+        ('targets',fileio.get_datafile("delve-target-fields-20211128.csv.gz")),
     ])
 
     FieldType = DelveFieldArray
@@ -1019,7 +1019,7 @@ class DelveTactician(Tactician):
         #sel &= (self.fields['PRIORITY'] == 3)
 
         # Get fields before they set
-        weight += 10.0 * self.hour_angle
+        weight += 1.0 * self.hour_angle
 
         # Prioritize fields
         weight += 3. * 360. * self.fields['PRIORITY'] * (self.fields['TILING'] > 2)
@@ -1218,7 +1218,8 @@ class DelveTactician(Tactician):
 
         # Sky brightness selection (always z-band for now)
         #sel &= self.skybright_select()
-        sel &= self.fields['FILTER'] == 'z'
+        sel &= (self.fields['FILTER'] == 'z')
+        #sel &= (self.fields['DEC'] > -30)
 
         # Airmass cut
         airmass_min, airmass_max = self.CONDITIONS['extra']
@@ -1240,8 +1241,8 @@ class DelveTactician(Tactician):
         # Higher weight for rising fields (higher hour angle)
         # HA [min,max] = [-53,54] (for airmass 1.4)
         #weight += 10.0 * self.hour_angle
-        #weight += 0.5 * self.hour_angle
-        #weight += 0.1 * self.hour_angle
+        #weight += 1.0 * self.hour_angle
+        weight += 0.1 * self.hour_angle
 
         # Higher weight for larger slews
         # slew = 10 deg -> weight = 1e2
