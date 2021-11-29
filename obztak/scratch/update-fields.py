@@ -104,8 +104,12 @@ if False:
     smap.draw_fields(deros_i)
     smap.draw_des()
     #smap.draw_fields(update[done])
-    plt.title('DeROSTIAS TODO')
+    plt.title('DeROSITAS TODO')
 
-
-
-
+# Set missing DeROSITAS field priority
+if True:
+    import pandas as pd
+    uid = pd.read_csv('derositas/derositas-uid-20210615.csv')
+    sel = np.in1d(new.unique_id,uid)
+    new['PRIORITY'][sel] = 1
+    new.write(args.outfile)
