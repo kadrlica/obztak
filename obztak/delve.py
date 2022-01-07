@@ -33,7 +33,7 @@ DONE = -1
 
 TEFF_MIN_WIDE = pd.DataFrame(dict(FILTER=['g','i'],TEFF=[0.4,0.5]))
 TEFF_MIN_MC   = pd.DataFrame(dict(FILTER=['g','r','i'],TEFF=[0.3,0.3,0.45]))
-TEFF_MIN_EXTRA = pd.DataFrame(dict(FILTER=['z'],TEFF=[0.3]))
+TEFF_MIN_EXTRA = pd.DataFrame(dict(FILTER=['r','z'],TEFF=[0.3,0.3]))
 
 # Seeing limits for DELVE survey components
 FWHM_DEEP = 0.9 # arcsec
@@ -590,9 +590,9 @@ class DelveSurvey(Survey):
     def create_extra_fields(self, data, plot=False):
         """ Create the extra wide field observations """
         logging.info("Creating EXTRA fields...")
-        BANDS = ['z']
-        EXPTIME = [90]
-        TILINGS = [4]
+        BANDS = ['r','z']
+        EXPTIME = [90,90]
+        TILINGS = [4,4]
         TEFF_MIN = TEFF_MIN_EXTRA
 
         nhexes = len(np.unique(data['TILEID']))
@@ -616,9 +616,16 @@ class DelveSurvey(Survey):
         fields['EXPTIME'] = np.tile(EXPTIME,len(data))
         fields['PRIORITY'] = fields['TILING']
 
-        sel = self.footprintEXTRA(fields['RA'],fields['DEC'])
+        #sel = self.footprintEXTRA(fields['RA'],fields['DEC'])
+        #sel &= (~self.footprintMilkyWay(fields['RA'],fields['DEC']))
+        #sel &= (~self.footprintDES(fields['RA'],fields['DEC']))
+        #fields = fields[sel]
+
+        sel = self.footprintWIDE(fields['RA'],fields['DEC'])
         sel &= (~self.footprintMilkyWay(fields['RA'],fields['DEC']))
         sel &= (~self.footprintDES(fields['RA'],fields['DEC']))
+        sel &= (~self.footprintSMASH(fields['RA'],fields['DEC'],angsep=0.75*DECAM))
+        sel &= (~self.footprintMC(fields['RA'],fields['DEC']))
         fields = fields[sel]
 
         # Covered fields
@@ -713,7 +720,7 @@ class DelveSurvey(Survey):
         """
         import healpy as hp
         # These maps are SUM(teff * exptime)
-        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20211127'
+        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20220106'
         if not basename: basename = 'decam_sum_expmap_%s_n1024.fits.gz'
 
         logging.info("Loading maps from: %s"%dirname)
@@ -834,7 +841,7 @@ class DelveScheduler(Scheduler):
     _defaults = odict(Scheduler._defaults.items() + [
         ('tactician','coverage'),
         ('windows',fileio.get_datafile("delve-windows-20211125.csv.gz")),
-        ('targets',fileio.get_datafile("delve-target-fields-20211128.csv.gz")),
+        ('targets',fileio.get_datafile("delve-target-fields-20220106.csv.gz")),
     ])
 
     FieldType = DelveFieldArray
@@ -844,7 +851,7 @@ class DelveTactician(Tactician):
     CONDITIONS = odict([
         (None,       [1.0, 2.0]),
         ('wide',     [1.0, 1.8]),
-        ('deep',     [1.0, 1.4]),
+        ('deep',     [1.0, 1.5]),
         ('mc',       [1.0, 2.0]),
         ('gw',       [1.0, 2.0]),
         ('extra',    [1.0, 1.4]),
@@ -876,11 +883,11 @@ class DelveTactician(Tactician):
 
         if (self.sun.alt > -0.28):
             # i-band if Sun altitude > -16 deg
-            sel &= (np.char.count('i',self.fields['FILTER']) > 0)
+            sel &= (np.char.count('iz',self.fields['FILTER']) > 0)
         # Moon band constraints (alt = 0.175 rad = 10 deg)
         elif (self.moon.phase >= 40) and (self.moon.alt > 0.175):
             # Moon is very bright; only do i
-            sel &= (np.char.count('i',self.fields['FILTER']) > 0)
+            sel &= (np.char.count('iz',self.fields['FILTER']) > 0)
             # Allow i,z but prefer z
             #sel &= (np.char.count('iz',self.fields['FILTER']) > 0)
             #weight += 1e2 * (np.char.count('i',self.fields['FILTER']) > 0)
@@ -1216,9 +1223,11 @@ class DelveTactician(Tactician):
 
         weight = np.zeros(len(sel))
 
-        # Sky brightness selection (always z-band for now)
-        #sel &= self.skybright_select()
-        sel &= (self.fields['FILTER'] == 'z')
+        # Sky brightness selection
+        sel &= self.skybright_select()
+        # Select only one band
+        #sel &= (self.fields['FILTER'] == 'z')
+        # Select only one region
         #sel &= (self.fields['DEC'] > -30)
 
         # Airmass cut
