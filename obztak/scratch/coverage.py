@@ -19,7 +19,10 @@ from obztak.utils.ortho import DECamBasemap, DECamMcBride
 from obztak.utils import fileio
 from skymap.survey import MaglitesSkymap
 
+from astropy.utils.exceptions import AstropyDeprecationWarning
+
 warnings.simplefilter('ignore', UserWarning)
+warnings.simplefilter('ignore', AstropyDeprecationWarning)
 
 date = datetime.datetime.now().strftime('%Y%m%d')
 outfile = 'decam-exposures-%s.fits.gz'%date
