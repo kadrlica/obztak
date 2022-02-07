@@ -1009,8 +1009,11 @@ class DelveTactician(Tactician):
         #self.fwhm = 1.2
         if self.fwhm < 0.9:
             # Prefer fields near the pole
-            weight += 5e2 * (self.fields['DEC'] > -80)
-        if self.fwhm > 1.1:
+            weight += 5e2 * (self.fields['DEC'] > -70)
+        elif self.fwhm < 1.0:
+            # Prefer fields near the pole
+            weight += 1e2 * (self.fields['DEC'] > -60)
+        elif self.fwhm > 1.1:
             weight += 5e3 * (airmass - 1.0)**3
         else:
             # Higher weight for higher airmass
@@ -1026,11 +1029,12 @@ class DelveTactician(Tactician):
         #sel &= (self.fields['PRIORITY'] == 3)
 
         # Get fields before they set
-        weight += 1.0 * self.hour_angle
+        #weight += 1.0 * self.hour_angle
+        weight += 0.1 * self.hour_angle
 
         # Prioritize fields
         weight += 3. * 360. * self.fields['PRIORITY'] * (self.fields['TILING'] > 2)
-        weight += 1e4       * (self.fields['TILING'] > 3)
+        weight += 3e4       * (self.fields['TILING'] > 3)
 
         # Slew weighting
         # slew = 10 deg -> weight = 10^2
@@ -1251,7 +1255,7 @@ class DelveTactician(Tactician):
         # HA [min,max] = [-53,54] (for airmass 1.4)
         #weight += 10.0 * self.hour_angle
         #weight += 1.0 * self.hour_angle
-        weight += 0.1 * self.hour_angle
+        #weight += 0.1 * self.hour_angle
 
         # Higher weight for larger slews
         # slew = 10 deg -> weight = 1e2
