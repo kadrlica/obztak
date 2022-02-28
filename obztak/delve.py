@@ -1045,13 +1045,13 @@ class DelveTactician(Tactician):
 
         # Some tweaking for good and bad conditions
         #self.fwhm = 1.2
-        if self.fwhm < 0.9:
-            # Prefer fields near the pole
-            weight += 5e2 * (self.fields['DEC'] > -70)
-        elif self.fwhm < 1.0:
-            # Prefer fields near the pole
-            weight += 1e2 * (self.fields['DEC'] > -60)
-        elif self.fwhm > 1.1:
+        #if self.fwhm < 0.9:
+        #    # Prefer fields near the pole
+        #    weight += 5e2 * (self.fields['DEC'] > -70)
+        #elif self.fwhm < 1.0:
+        #    # Prefer fields near the pole
+        #    weight += 1e2 * (self.fields['DEC'] > -60)
+        if self.fwhm > 1.1:
             weight += 5e3 * (airmass - 1.0)**3
         else:
             # Higher weight for higher airmass
