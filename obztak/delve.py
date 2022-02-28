@@ -1058,7 +1058,8 @@ class DelveTactician(Tactician):
             pass
 
         # Sky brightness selection
-        sel &= self.skybright_select()
+        #sel &= self.skybright_select()
+        sel &= np.in1d(self.fields['FILTER'], ['g','r'])
 
         # Only a single tiling
         #sel &= (self.fields['PRIORITY'] == 3)
