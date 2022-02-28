@@ -50,7 +50,8 @@ SkymapCls,suffix = DECamMcBride,'_mbt'
 QUERY ="""
 SELECT id as expnum, telra as ra, teldec as dec, exptime, filter, propid,
 (CASE WHEN qc_teff is NULL THEN 'NaN' WHEN qc_teff=-1 THEN 'NAN' ELSE qc_teff END) as teff,
-(CASE WHEN qc_fwhm is NULL THEN 'NaN' WHEN qc_fwhm=-1 THEN 'NAN' ELSE qc_fwhm END) as fwhm
+(CASE WHEN qc_fwhm is NULL THEN 'NaN' WHEN qc_fwhm=-1 THEN 'NAN' ELSE qc_fwhm END) as fwhm,
+TO_CHAR(TO_TIMESTAMP(utc_beg), 'YYYY-MM-DD HH24:MI:SS') as datetime
 FROM exposure WHERE
 aborted=False and exposed=True and digitized=True and built=True and delivered=True and discard=False
 and flavor = 'object' and telra between 0 and 360 and teldec between -90 and 90
