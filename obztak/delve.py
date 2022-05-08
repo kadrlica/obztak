@@ -333,7 +333,8 @@ class DelveSurvey(Survey):
             '399-01-g','399-01-r','399-01-i',
             '399-02-g','399-02-r','399-02-i',
             '399-04-g','399-04-r','399-04-i',
-            '436-01-i','437-01-i'
+            '436-01-i','437-01-i',
+            '417-03-g','417-03-r','417-03-i',
         ]
         exclude += [ # Orion Nebula
             '5696-01-i','5696-02-i','5696-03-i','5696-04-i',
@@ -888,9 +889,9 @@ class DelveScheduler(Scheduler):
 class DelveTactician(Tactician):
     CONDITIONS = odict([
         (None,       [1.0, 2.0]),
-        ('wide',     [1.0, 1.8]),
+        ('wide',     [1.0, 1.6]),
         ('deep',     [1.0, 1.5]),
-        ('mc',       [1.0, 2.0]),
+        ('mc',       [1.0, 1.8]),
         ('gw',       [1.0, 2.0]),
         ('extra',    [1.0, 1.4]),
     ])
@@ -1031,7 +1032,7 @@ class DelveTactician(Tactician):
         sel &= (self.fields['PROGRAM'] == 'delve-mc')
 
         # DEC cut for LN2 lines
-        #sel &= (self.fields['DEC'] > -60)
+        #sel &= (self.fields['DEC'] > -75)
 
         weight = np.zeros(len(sel))
 
@@ -1058,8 +1059,8 @@ class DelveTactician(Tactician):
             pass
 
         # Sky brightness selection
-        #sel &= self.skybright_select()
-        sel &= np.in1d(self.fields['FILTER'], ['g','r'])
+        sel &= self.skybright_select()
+        #sel &= np.in1d(self.fields['FILTER'], ['g','r'])
 
         # Only a single tiling
         #sel &= (self.fields['PRIORITY'] == 3)
@@ -1268,6 +1269,7 @@ class DelveTactician(Tactician):
         #sel &= (self.fields['FILTER'] == 'z')
         # Select only one region
         sel &= (self.fields['DEC'] < 0)
+        sel &= (self.fields['RA'] > 120)
 
         # Airmass cut
         airmass_min, airmass_max = self.CONDITIONS['extra']
