@@ -938,6 +938,7 @@ def plot_completion(fields,tonight,nitestr,outfile=None,**kwargs):
             bmap = create_skymap()
             bmap.draw_des()
             bmap.draw_galaxy(10)
+            bmap.draw_delve(color='gray')
 
             t = targets[targets['FILTER'] == b]
             n = tonight[tonight['FILTER'] == b]
@@ -1044,9 +1045,9 @@ def plot_nightsum(fields,nitestr,date):
     and flavor = 'object'
     and qc_teff is not NULL
     and qc_fwhm is not NULL
-    and to_timestamp(utc_beg) %s
+    and date %s
     """
-    #new = db.query2recarray(query%(fields.PROPID,'>',datestr(date)))
+
     d = datestr(date)
     q = query%(fields.PROPID,"between (timestamp '%s') AND (timestamp '%s' + interval '12 hours')"%(d,d))
     logging.debug(q)
