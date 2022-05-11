@@ -191,7 +191,7 @@ class Database(object):
         query = """
         SELECT 
         id as expnum, telra as ra, teldec as dec, 
-        to_char(to_timestamp(utc_beg), 'HH24:MI') AS utc,
+        to_char(date, 'HH24:MI') AS utc,
         filter as fil, CAST(exptime AS INT) as time, airmass as secz,
         qc_fwhm as psf, qc_sky as sky, qc_cloud as cloud, qc_teff as teff,
         object

@@ -293,19 +293,21 @@ class FieldArray(np.recarray):
         """
         defaults = dict(propid=cls.SISPI_DICT['propid'], limit='',
                         object_fmt = cls.OBJECT_FMT%'')
+        #date_column = 'date' or 'to_timestamp(utc_beg)'
+        defaults['date_column'] = 'date'
         kwargs = setdefaults(kwargs,copy.deepcopy(defaults))
 
         # Should pull this out to be accessible (self.query())?
         query ="""
         SELECT object, seqid, seqnum, telra as RA, teldec as dec,
         expTime, filter,
-        to_char(to_timestamp(utc_beg), 'YYYY/MM/DD HH24:MI:SS.MS') AS DATE,
+        to_char(%(date_column)s, 'YYYY/MM/DD HH24:MI:SS.MS') AS DATE,
         COALESCE(airmass,-1) as AIRMASS, COALESCE(moonangl,-1) as MOONANGLE,
         COALESCE(ha, -1) as HOURANGLE, COALESCE(slewangl,-1) as SLEW
         FROM exposure where propid = '%(propid)s' and exptime > 89
         and discard = False and delivered = True and flavor = 'object'
         and object like '%(object_fmt)s%%'
-        ORDER BY utc_beg %(limit)s
+        ORDER BY %(date_column)s %(limit)s
         """%kwargs
         return query
 
