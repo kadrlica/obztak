@@ -295,6 +295,7 @@ class DECamBasemap(Basemap):
             ('IC5152',   (330.67, -51.30, 3.5)),
             ('NGC300',   ( 13.72, -37.68, 3.5)),
             ('NGC55',    (  3.79, -39.22, 3.5)),
+            ('Peg4',     ( 328.5,   26.5, 2.0)),
         ])
         for ra,dec,radius in deep.values():
             # This doesn't deal with boundaries well
