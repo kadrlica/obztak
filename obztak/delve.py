@@ -1151,9 +1151,9 @@ class DelveTactician(Tactician):
 
         # Higher weight for rising fields (higher hour angle)
         # HA [min,max] = [-53,54] (for airmass 1.4)
-        #weight += 5.0 * self.hour_angle
+        weight += 3.0 * self.hour_angle
         #weight += 1.0 * self.hour_angle
-        weight += 0.1 * self.hour_angle
+        #weight += 0.1 * self.hour_angle
 
         # Higher weight for larger slews
         # slew = 10 deg -> weight = 1e2
