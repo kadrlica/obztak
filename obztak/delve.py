@@ -1172,7 +1172,7 @@ class DelveTactician(Tactician):
         #self.fields['PRIORITY'][x] = np.minimum(self.fields['PRIORITY'][x],1)
 
         ## Try hard to do high priority fields
-        weight += 1e3 * (self.fields['PRIORITY'] - 1)
+        #weight += 1e3 * (self.fields['PRIORITY'] - 1)
         weight += 1e4 * (self.fields['TILING'] > 3)
 
         # Set infinite weight to all disallowed fields
