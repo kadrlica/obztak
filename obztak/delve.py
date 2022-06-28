@@ -350,6 +350,8 @@ class DelveSurvey(Survey):
         exclude += [# flame nebula
             '5716-01-g','5716-01-i'
         ]
+        exclude += [# rho ophiuchi nebula
+        ]
         exclude += [ # MC poles
             '14110-01-g','14110-02-g','14110-03-g','14110-04-g',
             '14110-01-r','14110-02-r','14110-03-r','14110-04-r',
@@ -585,9 +587,13 @@ class DelveSurvey(Survey):
             if num in [000,300]:
                 f['PRIORITY'] *= DONE
 
-            # Downweight NGC300 relative to IC5152
-            if num in [200]:
-                f['PRIORITY'] += 20
+            ## Downweight NGC300 relative to IC5152
+            #if num in [200]:
+            #    f['PRIORITY'] += 20
+
+            # Downweight remove IC5152
+            if num in [100]:
+                f['PRIORITY'] *= -1
 
             # Remove last 3 exposures due to DES coverage
             if num in [100,200,300]:
@@ -759,7 +765,7 @@ class DelveSurvey(Survey):
         """
         import healpy as hp
         # These maps are SUM(teff * exptime)
-        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20220205'
+        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20220627'
         if not basename: basename = 'decam_sum_expmap_%s_n1024.fits.gz'
 
         logging.info("Loading maps from: %s"%dirname)
@@ -881,7 +887,7 @@ class DelveScheduler(Scheduler):
     _defaults = odict(Scheduler._defaults.items() + [
         ('tactician','coverage'),
         ('windows',fileio.get_datafile("delve-windows-20220109.csv.gz")),
-        ('targets',fileio.get_datafile("delve-target-fields-20220205.csv.gz")),
+        ('targets',fileio.get_datafile("delve-target-fields-20220627.csv.gz")),
     ])
 
     FieldType = DelveFieldArray
