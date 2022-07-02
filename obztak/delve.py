@@ -281,10 +281,33 @@ class DelveSurvey(Survey):
         ['2022/07/29','second'],
         ['2022/07/31','second'],
     ]
+
+    nights_2022B = [
+        ['2022/08/05','first' ],
+        ['2022/08/07','second'],
+        ['2022/08/15','first' ],
+        ['2022/09/02','first' ],
+        ['2022/09/03','first' ],
+        ['2022/09/14','first' ],
+        ['2022/09/15','first' ],
+        ['2022/09/17','full'  ],
+        ['2022/09/18','full'  ],
+        ['2022/09/20','first' ],
+        ['2022/10/14','first' ],
+        ['2022/10/15','first' ],
+        ['2022/12/16','second'],
+        ['2022/12/17','second'],
+        ['2022/12/23','second'],
+        ['2022/12/28','second'],
+        ['2022/12/28','second'],
+        ['2023/01/21','second'],
+        ['2023/01/22','second'],
+    ]
+
     extra_nights = []
 
     nights = nights_2019A + nights_2019B + nights_2020A + nights_2020B + nights_2021A \
-             + nights_2021B + nights_2022A + extra_nights
+             + nights_2021B + nights_2022A + nights_2022B + extra_nights
 
     def prepare_fields(self, infile=None, outfile=None, plot=True, **kwargs):
         """ Create the list of fields to be targeted by this survey.
@@ -765,7 +788,7 @@ class DelveSurvey(Survey):
         """
         import healpy as hp
         # These maps are SUM(teff * exptime)
-        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20220627'
+        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20220701'
         if not basename: basename = 'decam_sum_expmap_%s_n1024.fits.gz'
 
         logging.info("Loading maps from: %s"%dirname)
@@ -942,7 +965,7 @@ class DelveTactician(Tactician):
             sel &= (np.char.count('ri',self.fields['FILTER']) > 0)
         else:
             # Moon is faint or down; do g,r,i
-            sel &= (np.char.count('gri',self.fields['FILTER']) > 0)
+            sel &= (np.char.count('gr',self.fields['FILTER']) > 0)
             # Alternatively, only red bands if others unavailable
             #weight += 1e8 * (np.char.count('iz',self.fields['FILTER']) > 0)
         return sel
@@ -1079,7 +1102,7 @@ class DelveTactician(Tactician):
         #weight += 1.0 * self.hour_angle
         weight += 0.1 * self.hour_angle
 
-        # Prioritize fields
+        # Prioritize early tiling fields
         #weight += 3. * 360. * self.fields['PRIORITY'] * (self.fields['TILING'] > 2)
         weight += 3e4       * (self.fields['TILING'] > 3)
 
@@ -1115,9 +1138,11 @@ class DelveTactician(Tactician):
         #sel &= (self.fields['DEC'] > -45)
 
         # GLON, GLAT cuts
-        #glon,glat = cel2gal(self.fields['RA'],self.fields['DEC'])
+        glon,glat = cel2gal(self.fields['RA'],self.fields['DEC'])
         #sel &= (glon >= 180)
         #sel &= (glat > 0)
+        # Remove bulge region
+        sel &= ~( ((glon < 30) | (glon > 330)) & (np.abs(glat) < 15) )
 
         weight = np.zeros(len(sel))
 
@@ -1130,18 +1155,20 @@ class DelveTactician(Tactician):
         #self.fwhm = 1.1
         if False:
             sel &= ((airmass > airmass_min) & (airmass < airmass_max))
-        elif self.fwhm < 0.9:
+        elif self.fwhm <= 0.9:
             sel &= ((airmass > airmass_min) & (airmass < 1.8))
-        elif self.fwhm < 1.2:
-            sel &= ((airmass > airmass_min) & (airmass < 1.5))
-        elif self.fwhm < 1.4:
+            weight += 5e3 * (airmass - 1.0)**3
+        elif self.fwhm <= 1.1:
+            sel &= ((airmass > airmass_min) & (airmass < 1.6))
+            weight += 1e2 * (airmass - 1.0)**3
+        elif self.fwhm <= 1.4:
             sel &= ((airmass > airmass_min) & (airmass < 1.4))
         else:
             sel &= ((airmass > airmass_min) & (airmass < 1.3))
          
-        #if self.fwhm < 1.0:
-        #    # Prefer fields near the pole
-        #    weight += 5e2 * (self.fields['DEC'] > -60)
+        if self.fwhm <= 1.1:
+            # Prefer fields near the pole
+            weight += 5e2 * ( (self.fields['DEC'] > -60) & (self.fields['RA'] > 270) )
 
         # Higher weight for fields close to the moon (when up)
         # angle = 50 -> weight = 6.4
