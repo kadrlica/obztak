@@ -614,8 +614,8 @@ def parser():
                         help='Include SMC Northern Overdensity fields.')
     parser.add_argument('-w','--windows',default='observation_windows.csv',
                         help='List of observation windows.')
-    parser.add_argument('--no-standards',action='store_false',dest='standards',
-                        help = "Don't include time for standard star observations.")
+    parser.add_argument('--standards',action='store_true',dest='standards',
+                        help = "Include time for standard star observations at the midpoint of half nights.")
     return parser
 
 
