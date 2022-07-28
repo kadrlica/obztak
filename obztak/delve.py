@@ -919,7 +919,7 @@ class DelveScheduler(Scheduler):
 class DelveTactician(Tactician):
     CONDITIONS = odict([
         (None,       [1.0, 2.0]),
-        ('wide',     [1.0, 1.6]),
+        ('wide',     [1.0, 2.0]),
         ('deep',     [1.0, 1.5]),
         ('mc',       [1.0, 1.8]),
         ('gw',       [1.0, 2.0]),
@@ -1134,8 +1134,8 @@ class DelveTactician(Tactician):
         sel = self.viable_fields
         sel &= (self.fields['PROGRAM'] == 'delve-wide')
 
-        # DEC cut for LN2 lines
-        #sel &= (self.fields['DEC'] > -45)
+        # DEC cut
+        #sel &= (self.fields['DEC'] < -60)
 
         # GLON, GLAT cuts
         glon,glat = cel2gal(self.fields['RA'],self.fields['DEC'])
@@ -1143,6 +1143,9 @@ class DelveTactician(Tactician):
         #sel &= (glat > 0)
         # Remove bulge region
         sel &= ~( ((glon < 30) | (glon > 330)) & (np.abs(glat) < 15) )
+
+        # Only one tiling
+        #sel &= (self.fields['TILING'] <= 2)
 
         weight = np.zeros(len(sel))
 
@@ -1156,7 +1159,7 @@ class DelveTactician(Tactician):
         if False:
             sel &= ((airmass > airmass_min) & (airmass < airmass_max))
         elif self.fwhm <= 0.9:
-            sel &= ((airmass > airmass_min) & (airmass < 1.8))
+            sel &= ((airmass > airmass_min) & (airmass < airmass_max))
             weight += 5e3 * (airmass - 1.0)**3
         elif self.fwhm <= 1.1:
             sel &= ((airmass > airmass_min) & (airmass < 1.6))
@@ -1305,9 +1308,17 @@ class DelveTactician(Tactician):
         sel &= self.skybright_select()
         # Select only one band
         #sel &= (self.fields['FILTER'] == 'z')
+
+        # GLON, GLAT cuts
+        glon,glat = cel2gal(self.fields['RA'],self.fields['DEC'])
+        #sel &= (glon >= 180)
+        #sel &= (glat > 0)
+        # Remove bulge region
+        sel &= ~( ((glon < 30) | (glon > 330)) & (np.abs(glat) < 15) )
+
         # Select only one region
-        sel &= (self.fields['DEC'] < 0)
-        sel &= (self.fields['RA'] > 120)
+        #sel &= (self.fields['DEC'] < 0)
+        #sel &= (self.fields['RA'] > 120)
 
         # Airmass cut
         airmass_min, airmass_max = self.CONDITIONS['extra']
@@ -1329,7 +1340,7 @@ class DelveTactician(Tactician):
         # Higher weight for rising fields (higher hour angle)
         # HA [min,max] = [-53,54] (for airmass 1.4)
         #weight += 10.0 * self.hour_angle
-        #weight += 1.0 * self.hour_angle
+        weight += 1.0 * self.hour_angle
         #weight += 0.1 * self.hour_angle
 
         # Higher weight for larger slews
@@ -1345,7 +1356,7 @@ class DelveTactician(Tactician):
 
         ## Try hard to do high priority fields
         weight += 1e1 * (self.fields['PRIORITY'] - 1)
-        #weight += 1e5 * (self.fields['TILING'] > 3)
+        weight += 1e5 * (self.fields['TILING'] > 2)
 
         # Set infinite weight to all disallowed fields
         weight[~sel] = np.inf
