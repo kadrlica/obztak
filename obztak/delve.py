@@ -290,16 +290,22 @@ class DelveSurvey(Survey):
         ['2022/09/03','first' ],
         ['2022/09/14','first' ],
         ['2022/09/15','first' ],
+        ['2022/09/16','first' ], # Ferguson
         ['2022/09/17','full'  ],
         ['2022/09/18','full'  ],
         ['2022/09/20','first' ],
+        ['2022/09/21','first' ], # Ferguson
+        ['2022/09/22','first' ], # Ferguson
+        ['2022/09/23','first' ], # Ferguson
         ['2022/10/14','first' ],
         ['2022/10/15','first' ],
+        ['2022/10/25','first' ], # Ferguson
+        ['2022/10/28','first' ], # Ferguson
         ['2022/12/16','second'],
         ['2022/12/17','second'],
         ['2022/12/23','second'],
         ['2022/12/28','second'],
-        ['2022/12/28','second'],
+        ['2022/12/29','second'],
         ['2023/01/21','second'],
         ['2023/01/22','second'],
     ]
@@ -614,7 +620,7 @@ class DelveSurvey(Survey):
             #if num in [200]:
             #    f['PRIORITY'] += 20
 
-            # Downweight remove IC5152
+            # Remove IC5152
             if num in [100]:
                 f['PRIORITY'] *= -1
 
@@ -788,7 +794,7 @@ class DelveSurvey(Survey):
         """
         import healpy as hp
         # These maps are SUM(teff * exptime)
-        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20220701'
+        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20220804'
         if not basename: basename = 'decam_sum_expmap_%s_n1024.fits.gz'
 
         logging.info("Loading maps from: %s"%dirname)
@@ -909,8 +915,8 @@ class DelveFieldArray(FieldArray):
 class DelveScheduler(Scheduler):
     _defaults = odict(Scheduler._defaults.items() + [
         ('tactician','coverage'),
-        ('windows',fileio.get_datafile("delve-windows-20220109.csv.gz")),
-        ('targets',fileio.get_datafile("delve-target-fields-20220627.csv.gz")),
+        ('windows',fileio.get_datafile("delve-windows-20220804.csv.gz")),
+        ('targets',fileio.get_datafile("delve-target-fields-20220804.csv.gz")),
     ])
 
     FieldType = DelveFieldArray
@@ -1138,11 +1144,12 @@ class DelveTactician(Tactician):
         #sel &= (self.fields['DEC'] < -60)
 
         # GLON, GLAT cuts
-        glon,glat = cel2gal(self.fields['RA'],self.fields['DEC'])
+        #glon,glat = cel2gal(self.fields['RA'],self.fields['DEC'])
+        # Remove southern galactic cap
         #sel &= (glon >= 180)
         #sel &= (glat > 0)
         # Remove bulge region
-        sel &= ~( ((glon < 30) | (glon > 330)) & (np.abs(glat) < 15) )
+        #sel &= ~( ((glon < 30) | (glon > 330)) & (np.abs(glat) < 15) )
 
         # Only one tiling
         #sel &= (self.fields['TILING'] <= 2)
