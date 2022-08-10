@@ -1314,7 +1314,7 @@ class DelveTactician(Tactician):
         # Sky brightness selection
         sel &= self.skybright_select()
         # Select only one band
-        #sel &= (self.fields['FILTER'] == 'z')
+        sel &= (self.fields['FILTER'] == 'z')
 
         # GLON, GLAT cuts
         glon,glat = cel2gal(self.fields['RA'],self.fields['DEC'])
