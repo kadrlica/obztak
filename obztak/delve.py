@@ -1176,7 +1176,7 @@ class DelveTactician(Tactician):
         else:
             sel &= ((airmass > airmass_min) & (airmass < 1.3))
          
-        if self.fwhm <= 1.1:
+        if self.fwhm <= 1.2:
             # Prefer fields near the pole
             weight += 5e2 * ( (self.fields['DEC'] > -60) & (self.fields['RA'] > 270) )
 
@@ -1215,7 +1215,7 @@ class DelveTactician(Tactician):
         #self.fields['PRIORITY'][x] = np.minimum(self.fields['PRIORITY'][x],1)
 
         ## Try hard to do high priority fields
-        #weight += 1e3 * (self.fields['PRIORITY'] - 1)
+        weight += 1e3 * (self.fields['PRIORITY'] - 1)
         weight += 1e4 * (self.fields['TILING'] > 3)
 
         # Set infinite weight to all disallowed fields
