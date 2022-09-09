@@ -204,6 +204,40 @@ class Database(object):
          
         return pd.DataFrame(self.query2rec(query))
 
+    def duplicates(self, timedelta=None, propid=None):
+        """Get qc information for duplicate exposures.
+
+        Parameters:
+        -----------
+        timedelta : time interval to query.
+        propid    : proposal id to select on.
+
+        Returns:
+        --------
+        df        : pd.DataFrame with query results
+        """
+        if timedelta is None: timedelta = '12h'
+        propid = '' if propid is None else "and propid = '%s'"%propid
+
+        query = """
+        SELECT id as expnum, telra as ra, teldec as dec,
+        to_char(date, 'HH24:MI') AS utc,
+        filter as fil, CAST(exptime AS INT) as time, airmass as secz,
+        qc_fwhm as psf, qc_sky as sky, qc_cloud as cloud, qc_teff as teff,
+        e.object
+        FROM exposure e,
+          (SELECT object from exposure where
+           ( date > (now() - interval '{timedelta}') )
+           GROUP BY object having count(object)>1) AS t
+        WHERE t.object = e.object and e.flavor = 'object'
+        {propid}
+        AND ( e.date > (now() - interval '{timedelta}') )
+        ORDER BY object, id
+        """.format(timedelta=timedelta, propid=propid)
+
+        return pd.DataFrame(self.query2rec(query))
+
+
 if __name__ == "__main__":
     import argparse
     description = "python script"
