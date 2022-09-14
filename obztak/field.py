@@ -133,7 +133,7 @@ class FieldArray(np.recarray):
 
     @property
     def propid(self):
-        return np.repeat(PROPID,len(self))
+        return np.repeat(self.PROPID,len(self))
 
     @property
     def comment(self):
