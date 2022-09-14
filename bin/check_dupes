@@ -1,0 +1,27 @@
+#!/usr/bin/env python
+"""
+Query the database for duplicate exposures
+"""
+import logging
+import pandas as pd
+from obztak.utils.database import Database
+from obztak.utils.parser import Parser
+
+parser = Parser(description=__doc__)
+parser.add_argument('--db',default='fnal',choices=['ctio','fnal'],
+                    help='database to query for exposures')
+parser.add_argument('-t','--timedelta',default='12h',
+                    help='time to query')
+parser.add_argument('-p','--propid',default=None,
+                    help='propid for query')
+args = parser.parse_args()
+
+db = Database(dbname='db-'+args.db)
+db.connect()
+
+df = db.duplicates(timedelta=args.timedelta,propid=args.propid)
+#pd.set_option('max_colwidth',18)
+pd.set_option('display.width',None)
+kwargs = dict(index=False, float_format='{:.2f}'.format, justify='right')
+table = df.fillna('').to_string(**kwargs)
+logging.info(table)
