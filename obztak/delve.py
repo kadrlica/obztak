@@ -892,10 +892,14 @@ class DelveFieldArray(FieldArray):
         COALESCE(airmass,-1) as AIRMASS, COALESCE(moonangl,-1) as MOONANGLE,
         COALESCE(ha, -1) as HOURANGLE, COALESCE(slewangl,-1) as SLEW, PROGRAM
         --2019B-1014: Felipe Olivares
-        FROM exposure where propid in ('%(propid)s','2019B-1014') and exptime > 89
+        --2022B-780972: Peter Ferguson
+        FROM exposure where propid in ('%(propid)s','2019B-1014','2022B-780972')
+        and exptime > 89
         and discard = False and delivered = True and flavor = 'object'
         and object LIKE '%(object_fmt)s%%'
         and object NOT LIKE '%%Peg4%%'
+        and object NOT LIKE '%%LMi%%'
+        and object NOT LIKE '%%dr2_%%'
         and id NOT IN (967215)
         -- and id NOT IN (860597, 860598, 860599, 860600, 860601, 860602)
         -- Mirror compressed air on 20201025
@@ -929,7 +933,7 @@ class DelveTactician(Tactician):
         ('deep',     [1.0, 1.5]),
         ('mc',       [1.0, 1.8]),
         ('gw',       [1.0, 2.0]),
-        ('extra',    [1.0, 1.4]),
+        ('extra',    [1.0, 1.5]),
     ])
 
     def __init__(self, *args, **kwargs):
@@ -1006,6 +1010,8 @@ class DelveTactician(Tactician):
             return self.weight_gw()
         elif self.mode == 'extra':
             return self.weight_extra()
+        elif self.mode == 'delver':
+            return self.weight_delver()
         else:
             raise ValueError("Unrecognized mode: %s"%self.mode)
 
@@ -1140,9 +1146,6 @@ class DelveTactician(Tactician):
         sel = self.viable_fields
         sel &= (self.fields['PROGRAM'] == 'delve-wide')
 
-        # DEC cut
-        #sel &= (self.fields['DEC'] < -60)
-
         # GLON, GLAT cuts
         #glon,glat = cel2gal(self.fields['RA'],self.fields['DEC'])
         # Remove southern galactic cap
@@ -1151,8 +1154,11 @@ class DelveTactician(Tactician):
         # Remove bulge region
         #sel &= ~( ((glon < 30) | (glon > 330)) & (np.abs(glat) < 15) )
 
+        # DEC cut
+        #sel &= (self.fields['DEC'] < -60)
+
         # Only one tiling
-        #sel &= (self.fields['TILING'] <= 2)
+        #sel &= (self.fields['TILING'] <= 3)
 
         weight = np.zeros(len(sel))
 
@@ -1176,7 +1182,7 @@ class DelveTactician(Tactician):
         else:
             sel &= ((airmass > airmass_min) & (airmass < 1.3))
          
-        if self.fwhm <= 1.2:
+        if self.fwhm <= 1.1:
             # Prefer fields near the pole
             weight += 5e2 * ( (self.fields['DEC'] > -60) & (self.fields['RA'] > 270) )
 
@@ -1312,7 +1318,7 @@ class DelveTactician(Tactician):
         weight = np.zeros(len(sel))
 
         # Sky brightness selection
-        sel &= self.skybright_select()
+        #sel &= self.skybright_select()
         # Select only one band
         sel &= (self.fields['FILTER'] == 'z')
 
@@ -1364,6 +1370,85 @@ class DelveTactician(Tactician):
         ## Try hard to do high priority fields
         weight += 1e1 * (self.fields['PRIORITY'] - 1)
         weight += 1e5 * (self.fields['TILING'] > 2)
+
+        # Set infinite weight to all disallowed fields
+        weight[~sel] = np.inf
+
+        return weight
+
+    def weight_delver(self):
+        """ Calculate the field weight for the r-band survey.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        weight : array of weights per field
+        """
+        self.fields.PROPID = '2022B-780972'
+        self.fields.SISPI_DICT["propid"] = self.fields.PROPID
+
+        airmass = self.airmass
+        moon_angle = self.moon_angle
+
+        sel = self.viable_fields
+        sel &= (self.fields['PROGRAM'] == 'delve-extra')
+
+        weight = np.zeros(len(sel))
+
+        # Sky brightness selection
+        sel &= (self.fields['FILTER'] == 'r')
+
+        # GLON, GLAT cuts
+        #glon,glat = cel2gal(self.fields['RA'],self.fields['DEC'])
+        #sel &= (glon >= 180)
+        #sel &= (glat > 0)
+        # Remove bulge region
+        #sel &= ~( ((glon < 30) | (glon > 330)) & (np.abs(glat) < 15) )
+
+        # Select only one region
+        sel &= (self.fields['DEC'] < 0) & (self.fields['DEC'] > -44)
+        sel &= (self.fields['RA'] > 310)
+
+        # Airmass cut
+        airmass_min, airmass_max = self.CONDITIONS['extra']
+        sel &= ((airmass > airmass_min) & (airmass < airmass_max))
+
+        # Higher weight for fields close to the moon (when up)
+        # angle = 50 -> weight = 6.4
+        # Moon angle constraints (viable fields sets moon_angle > 20.)
+        if (self.moon.alt > -0.04) and (self.moon.phase >= 30):
+            moon_limit = 40.0
+            sel &= (moon_angle > moon_limit)
+
+            # Use a larger (smaller) weight to increase (decrease) the
+            # moon avoidance angle.
+            #weight += 100 * (35./moon_angle)**3
+            weight += 10 * (35./moon_angle)**3
+            #weight += 1 * (35./moon_angle)**3
+
+        # Higher weight for rising fields (higher hour angle)
+        # HA [min,max] = [-53,54] (for airmass 1.4)
+        #weight += 10.0 * self.hour_angle
+        weight += 1.0 * self.hour_angle
+        #weight += 0.1 * self.hour_angle
+
+        # Higher weight for larger slews
+        # slew = 10 deg -> weight = 1e2
+        #weight += self.slew**2
+        weight += self.slew
+        #weight += 1e3 * self.slew
+
+        # Higher weight for higher airmass
+        # airmass = 1.4 -> weight = 6.4
+        weight += 100. * (airmass - 1.)**3
+        #weight += 1e3 * (airmass - 1.)**2
+
+        ## Try hard to do high priority fields
+        weight += 1e1 * (self.fields['PRIORITY'] - 1)
+        weight += 1e5 * (self.fields['TILING'] > 1)
 
         # Set infinite weight to all disallowed fields
         weight[~sel] = np.inf
