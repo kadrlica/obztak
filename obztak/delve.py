@@ -1408,9 +1408,12 @@ class DelveTactician(Tactician):
         # Remove bulge region
         #sel &= ~( ((glon < 30) | (glon > 330)) & (np.abs(glat) < 15) )
 
-        # Select only one region
-        sel &= (self.fields['DEC'] < 0) & (self.fields['DEC'] > -44)
-        sel &= (self.fields['RA'] > 310)
+        # Select region between S82 and SPT
+        sel &= (self.fields['DEC'] < -10) & (self.fields['DEC'] > -45)
+        sel &= (self.fields['RA'] > 305)
+
+        # Only first tiling
+        #sel &= np.in1d(self.fields['TILING'],[1])
 
         # Airmass cut
         airmass_min, airmass_max = self.CONDITIONS['extra']
