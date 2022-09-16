@@ -102,6 +102,9 @@ class AutoObz(object):
         logging.info("Calling scheduler")
         subprocess.check_call(cmd, shell=True)
 
+        # Print the time
+        logging.info(datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S'))
+
     def publish(self):
         """Publish the current queue to the web"""
         logging.info("Publishing current queue...")
@@ -144,4 +147,5 @@ class AutoObz(object):
             new_sispi_script = self.make_script()
 
             # Publish the queue (even if no new script is created)
-            self.publish()
+            #self.publish()
+
