@@ -930,10 +930,10 @@ class DelveTactician(Tactician):
     CONDITIONS = odict([
         (None,       [1.0, 2.0]),
         ('wide',     [1.0, 2.0]),
-        ('deep',     [1.0, 1.5]),
+        ('deep',     [1.0, 1.4]),
         ('mc',       [1.0, 1.8]),
         ('gw',       [1.0, 2.0]),
-        ('extra',    [1.0, 1.5]),
+        ('extra',    [1.0, 1.4]),
     ])
 
     def __init__(self, *args, **kwargs):
