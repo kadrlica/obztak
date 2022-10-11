@@ -7,6 +7,7 @@ import numpy as np
 import ephem
 import time
 import logging
+from future.utils import string_types
 
 import obztak.utils.constants as constants
 from obztak.ctio import CTIO
@@ -15,6 +16,10 @@ def setdefaults(kwargs,defaults):
     for k,v in defaults.items():
         kwargs.setdefault(k,v)
     return kwargs
+
+def isstring(obj):
+    """Python 2/3 compatible string check"""
+    return isinstance(obj, (string_types, bytes))
 
 def datestring(date,precision=4):
     """
@@ -76,7 +81,7 @@ def nitestr(nite,sep=''):
     nitestr  : String representation of the nite
     """
     import dateutil.parser
-    if isinstance(nite,basestring):
+    if isinstance(nite, (string_types, bytes)):
         nite = dateutil.parser.parse(nite)
     nite = ephem.Date(nite)
     strtuple = nite.tuple()[:3]

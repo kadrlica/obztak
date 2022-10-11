@@ -15,6 +15,11 @@ import psycopg2
 import pandas as pd
 import numpy as np
 
+try:
+    from configparser import RawConfigParser
+except ImportError:
+    from ConfigParser import RawConfigParser
+
 def desc2dtype(desc):
     """ Covert from postgres type description to numpy dtype.
     Tries to conform to the type mapping on the psycopg2 documentation:
@@ -111,8 +116,7 @@ class Database(object):
         # ConfigParser throws "no section error" if file does not exist...
         # That's confusing, so 'open' to get a more understandable error
         open(filename) 
-        import ConfigParser
-        c = ConfigParser.RawConfigParser()
+        c = RawConfigParser()
         c.read(filename)
 
         d={}
@@ -139,7 +143,7 @@ class Database(object):
         self.cursor.execute(query)      
         try: 
             return self.cursor.fetchall()
-        except Exception, e:
+        except Exception as e:
             self.reset()
             raise(e)
         
@@ -204,6 +208,40 @@ class Database(object):
          
         return pd.DataFrame(self.query2rec(query))
 
+    def duplicates(self, timedelta=None, propid=None):
+        """Get qc information for duplicate exposures.
+
+        Parameters:
+        -----------
+        timedelta : time interval to query.
+        propid    : proposal id to select on.
+
+        Returns:
+        --------
+        df        : pd.DataFrame with query results
+        """
+        if timedelta is None: timedelta = '12h'
+        propid = '' if propid is None else "and propid = '%s'"%propid
+
+        query = """
+        SELECT id as expnum, telra as ra, teldec as dec,
+        to_char(date, 'HH24:MI') AS utc,
+        filter as fil, CAST(exptime AS INT) as time, airmass as secz,
+        qc_fwhm as psf, qc_sky as sky, qc_cloud as cloud, qc_teff as teff,
+        e.object
+        FROM exposure e,
+          (SELECT object from exposure where
+           ( date > (now() - interval '{timedelta}') )
+           GROUP BY object having count(object)>1) AS t
+        WHERE t.object = e.object and e.flavor = 'object'
+        {propid}
+        AND ( e.date > (now() - interval '{timedelta}') )
+        ORDER BY object, id
+        """.format(timedelta=timedelta, propid=propid)
+
+        return pd.DataFrame(self.query2rec(query))
+
+
 if __name__ == "__main__":
     import argparse
     description = "python script"
@@ -212,4 +250,4 @@ if __name__ == "__main__":
 
     db = Database()
     db.connect()
-    print db
+    print(db)

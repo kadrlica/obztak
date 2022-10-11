@@ -368,11 +368,11 @@ class BlissSurvey(Survey):
             vec = hp.ang2vec(np.radians(90.-dec[idx]),np.radians(ra[idx]))
             f = []
             for i,v in enumerate(vec):
-                print '\r%s/%s'%(i+1,len(vec)),
+                print('\r%s/%s'%(i+1,len(vec)),end="")
                 sys.stdout.flush()
                 pix = hp.query_disc(nside,v,np.radians(constants.DECAM))
                 f.append(skymap[pix].sum()/float(len(pix)))
-            print
+            print()
             frac[idx] = np.array(f)
             
         sel = (frac < 2/3.)
@@ -476,7 +476,7 @@ class AlfredoFieldArray(FieldArray):
 
 
 class BlissScheduler(Scheduler):
-    _defaults = odict(Scheduler._defaults.items() + [
+    _defaults = odict(list(Scheduler._defaults.items()) + [
         ('tactician','coverage'),
         ('windows',os.path.join(fileio.get_datadir(),"bliss-windows.csv.gz")),
         ('targets',os.path.join(fileio.get_datadir(),"bliss-target-fields.csv.gz")),

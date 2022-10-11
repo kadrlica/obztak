@@ -12,23 +12,26 @@ import numpy as np
 from obztak import __version__
 from obztak.utils import constants
 from obztak.utils import fileio
-from obztak.utils.date import setdefaults, datestr
+from obztak.utils.date import setdefaults, datestr, isstring
 
 # Default field array values
 DEFAULTS = odict([
     ('HEX',       dict(dtype=int,value=0)),
     ('RA',        dict(dtype=float,value=None)),
     ('DEC',       dict(dtype=float,value=None)),
-    ('FILTER',    dict(dtype='S1',value='')),
+    #('FILTER',    dict(dtype='S1',value='')),
+    ('FILTER',    dict(dtype=(np.str_,1),value='')),
     ('EXPTIME',   dict(dtype=float,value=90)),
     ('TILING',    dict(dtype=int,value=0)),
     ('PRIORITY',  dict(dtype=int,value=1)),
-    ('DATE',      dict(dtype='S30',value='')),
+    #('DATE',      dict(dtype='S30',value='')),
+    ('DATE',      dict(dtype=(np.str_,30),value='')),
     ('AIRMASS',   dict(dtype=float,value=-1.0)),
     ('SLEW',      dict(dtype=float,value=-1.0)),
     ('MOONANGLE', dict(dtype=float,value=-1.0)),
     ('HOURANGLE', dict(dtype=float,value=-1.0)),
-    ('PROGRAM',   dict(dtype='S30',value='')),
+    #('PROGRAM',   dict(dtype='S30',value='')),
+    ('PROGRAM',   dict(dtype=(np.str_,30),value='')),
 ])
 DTYPES = odict([(k,v['dtype']) for k,v in DEFAULTS.items()])
 VALUES = odict([(k,v['value']) for k,v in DEFAULTS.items()])
@@ -79,9 +82,9 @@ class FieldArray(np.recarray):
 
     def __new__(cls,shape=0):
         # Need to do it this way so that array can be resized...
-        dtype = DTYPES.items()
+        dtype = list(DTYPES.items())
         self = np.recarray(shape,dtype=dtype).view(cls)
-        values = VALUES.items()
+        values = list(VALUES.items())
         for k,v in values: self[k].fill(v)
         return self
     
@@ -99,7 +102,7 @@ class FieldArray(np.recarray):
         return np.concatenate([self,other]).view(self.__class__)
 
     def __getitem__(self,key):
-        if isinstance(key,basestring) and key == 'ID':
+        if isstring(key) and key == 'ID':
             return self.unique_id
         else:
             return super(FieldArray,self).__getitem__(key)
@@ -120,11 +123,13 @@ class FieldArray(np.recarray):
 
     @property
     def object(self):
-        return np.char.mod(self.OBJECT_FMT,self.unique_id).astype('S80')
+        #return np.char.mod(self.OBJECT_FMT,self.unique_id).astype('S80')
+        return np.char.mod(self.OBJECT_FMT,self.unique_id).astype((np.str_,80))
 
     @property
     def seqid(self):
-        return np.char.mod(self.SEQID_FMT,self).astype('S80')
+        #return np.char.mod(self.SEQID_FMT,self).astype('S80')
+        return np.char.mod(self.SEQID_FMT,self).astype((np.str_,80))
 
     @property
     def seqnum(self):
@@ -202,10 +207,10 @@ class FieldArray(np.recarray):
             # Fill default program
             if not sispi_dict['program']:
                 sispi_dict['program'] = self.SISPI_DICT['program']
-            sispi_dict['object'] = objects[i]
-            sispi_dict['seqnum'] = seqnums[i]
-            sispi_dict['seqid']  = seqids[i]
-            sispi_dict['comment'] = comments[i]
+            sispi_dict['object'] = str(objects[i])
+            sispi_dict['seqnum'] = int(seqnums[i])
+            sispi_dict['seqid']  = str(seqids[i])
+            sispi_dict['comment'] = str(comments[i])
             sispi.append(sispi_dict)
         return sispi
 
@@ -340,7 +345,7 @@ class FieldArray(np.recarray):
 
         logging.debug(query)
         data = database.execute(query)
-        names = map(str.upper,database.get_columns())
+        names = list(map(str.upper,database.get_columns()))
         objidx = names.index('OBJECT')
         if not len(data):
             logging.warn("No fields found in database.")

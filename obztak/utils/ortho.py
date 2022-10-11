@@ -295,7 +295,8 @@ class DECamBasemap(Basemap):
             ('IC5152',   (330.67, -51.30, 3.5)),
             ('NGC300',   ( 13.72, -37.68, 3.5)),
             ('NGC55',    (  3.79, -39.22, 3.5)),
-            ('Peg4',     ( 328.5,   26.5, 2.0)),
+            #('Peg4',     ( 328.5,   26.5, 2.0)),
+            #('LMi',     ( 164.266, 28.877, 2.0)),
         ])
         for ra,dec,radius in deep.values():
             # This doesn't deal with boundaries well
@@ -468,7 +469,7 @@ class DECamBasemap(Basemap):
         values = hpxmap[pix]
         #mask = ((values == healpy.UNSEEN) | (~np.isfinite(values)))
         #values = np.ma.array(values,mask=mask)
-        if self.projection is 'ortho':
+        if self.projection == 'ortho':
             im = self.pcolor(lon,lat,values,**kwargs)
         else:
             im = self.pcolormesh(lon,lat,values,**kwargs)
@@ -501,7 +502,7 @@ class DECamOrtho(DECamBasemap):
     def __init__(self,*args,**kwargs):
         self.observatory = CTIO()
         defaults = dict(projection='ortho',celestial=True,rsphere=1.0,
-                        lon_0=0,lat_0=self.observatory.lat)
+                        lon_0=0,lat_0=self.observatory.get_lat())
         setdefaults(kwargs,defaults)
 
         if 'date' in kwargs:
@@ -668,6 +669,7 @@ def plotField(field, target_fields=None, completed_fields=None, options_basemap=
     defaults = dict(marker='H',s=100,edgecolor='',vmin=-1,vmax=4,cmap=cmap)
     #defaults = dict(edgecolor='none', s=50, vmin=0, vmax=4, cmap='summer_r')
     #defaults = dict(edgecolor='none', s=50, vmin=0, vmax=4, cmap='gray_r')
+    defaults = dict(marker='H',s=100,edgecolor='none',vmin=-1,vmax=4,cmap=cmap)
     setdefaults(kwargs,defaults)
 
     msg="%s: id=%10s, "%(datestring(field['DATE'][0],0),field['ID'][0])
@@ -694,7 +696,7 @@ def plotField(field, target_fields=None, completed_fields=None, options_basemap=
         sel = completed_fields['FILTER']==band
         x,y = basemap.proj(completed_fields['RA'],completed_fields['DEC'])
         kw = dict(kwargs)
-        basemap.scatter(x[~sel], y[~sel], c='0.6', **kw)
+        basemap.scatter(x[~sel], y[~sel], facecolor='0.6', **kw)
         basemap.scatter(x[sel], y[sel], c=completed_fields['TILING'][sel], **kw)
 
     # Try to draw the colorbar
@@ -1063,7 +1065,7 @@ def plot_nightsum(fields,nitestr,date):
 
     for b in ['u','g','r','i','z','Y']:
         f = new[new['filter'] == b]
-        print ' %s-band:'%b, len(f)
+        print(' %s-band:'%b, len(f))
 
     if not len(new):
         logging.warn("No new exposures...")

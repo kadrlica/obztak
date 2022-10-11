@@ -42,6 +42,7 @@ def read_csv(filename, **kwargs):
     from distutils.version import LooseVersion
     kwargs.setdefault('parse_dates',False)
     kwargs.setdefault('comment','#')
+    kwargs.setdefault('encoding',None)
 
     #if int(pd.__version__.replace('.','')) > 90:
     if LooseVersion(pd.__version__) > LooseVersion('0.9.0'):
@@ -93,7 +94,7 @@ def write_json(filename,data,**kwargs):
     kwargs.setdefault('indent',4)
     json.encoder.FLOAT_REPR = lambda o: format(o, '.4f')
 
-    with open(filename,'wb') as out:
+    with open(filename,'w') as out:
         # It'd be nice to have a header
         #out.write(header())
         out.write(json.dumps(data,**kwargs))
