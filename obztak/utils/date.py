@@ -7,7 +7,8 @@ import numpy as np
 import ephem
 import time
 import logging
-from future.utils import string_types
+#from future.utils import string_types
+from six import string_types
 
 import obztak.utils.constants as constants
 from obztak.ctio import CTIO
