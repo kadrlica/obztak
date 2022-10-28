@@ -9,6 +9,7 @@ import importlib
 import logging
 
 from obztak import get_survey
+from obztak.utils.date import isstring
 
 MODULES = ['obztak.maglites','obztak.bliss','obztak.maglites2','obztak.delve']
 
@@ -63,7 +64,7 @@ def factory(cls, modules=None, **kwargs):
     """
     # Format modules into a list
     if modules is None: modules = [__name__]
-    elif isinstance(modules,basestring): modules = [modules]
+    elif isstring(modules): modules = [modules]
 
     # Import the requested modules
     for module in modules:

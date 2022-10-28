@@ -1,6 +1,8 @@
 import re
 import numpy as np
 import healpy as hp
+#from future.utils import string_types
+from six import string_types
 
 import obztak.utils.constants
 ############################################################
@@ -21,7 +23,7 @@ def angsep(lon1,lat1,lon2,lat2):
     """
     lon1,lat1 = np.radians([lon1,lat1])
     lon2,lat2 = np.radians([lon2,lat2])
-    
+
     sdlon = np.sin(lon2 - lon1)
     cdlon = np.cos(lon2 - lon1)
     slat1 = np.sin(lat1)
@@ -84,14 +86,14 @@ def celToGal(ra, dec):
     sin_dec = np.sin(dec)
     cos_dec = np.cos(dec)
 
-    ra = np.radians(ra)    
+    ra = np.radians(ra)
     ra_gp = np.radians(192.85948)
     de_gp = np.radians(27.12825)
 
     sin_ra_gp = np.sin(ra - ra_gp)
     cos_ra_gp = np.cos(ra - ra_gp)
 
-    lcp = np.radians(122.932)    
+    lcp = np.radians(122.932)
     sin_b = (np.sin(de_gp) * sin_dec) \
             + (np.cos(de_gp) * cos_dec * cos_ra_gp)
     lcpml = np.arctan2(cos_dec * sin_ra_gp,
@@ -115,7 +117,7 @@ def hms2dec(hms):
     MINUTE = 60.
     SECOND = 3600.
 
-    if isinstance(hms,basestring):
+    if isinstance(hms, (string_types, bytes)):
         hour,minute,second = np.array(hms.split(':')).astype(float)
         #hour,minute,second = np.array(re.split('[hms]',hms))[:3].astype(float)
     else:
@@ -221,7 +223,7 @@ class Projector:
             self.sphere_to_image_func = cartesianSphereToImage
             self.image_to_sphere_func = cartesianImageToSphere
         else:
-            print 'WARNING: %s not recognized'%(proj_type)
+            print('WARNING: %s not recognized'%(proj_type))
 
     def sphereToImage(self, lon, lat):
         lon_rotated, lat_rotated = self.rotator.rotate(lon, lat)

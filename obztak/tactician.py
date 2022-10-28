@@ -122,7 +122,7 @@ class Tactician(object):
             previous_field = self.completed_fields[-1]
 
             # Ignore if more than 30 minutes has elapsed
-            if (self.date-ephem.Date(previous_field['DATE'])) > 30*ephem.minute:
+            if (self.date-ephem.Date(previous_field['DATE'].astype(str))) > 30*ephem.minute:
                 previous_field = None
 
             # Exposure being exposed has RA,DEC = 0,0; problem!
@@ -146,7 +146,7 @@ class Tactician(object):
             previous_field = self.completed_fields[-1]
 
             # Ignore if more than 30 minutes has elapsed
-            if (self.date-ephem.Date(previous_field['DATE'])) > 30*ephem.minute:
+            if (self.date-ephem.Date(previous_field['DATE'].astype(str))) > 30*ephem.minute:
                 previous_field = None
 
         if previous_field:
@@ -224,7 +224,7 @@ class Tactician(object):
         #    timedelta += 30*ephem.second
 
         fields['AIRMASS']   = self.airmass[index]
-        fields['DATE']      = map(datestring,self.date+timedelta)
+        fields['DATE']      = list(map(datestring,self.date+timedelta))
         fields['SLEW']      = self.slew[index]
         fields['MOONANGLE'] = self.moon_angle[index]
         fields['HOURANGLE'] = self.hour_angle[index]

@@ -62,7 +62,7 @@ def main():
             timestamp = True
             if timestamp and not args.outfile:
                 # For files with timestamp label
-                datestr = chunk['DATE'][0]
+                datestr = chunk['DATE'][0].astype(str)
                 dirname = os.path.dirname(base)
                 basename = datestr.split(' ')[0].replace('/','')
                 base = os.path.join(dirname,basename)
@@ -74,7 +74,7 @@ def main():
 
         chunk.write(outfile)
         if args.write_protect:
-            os.chmod(outfile,0444)
+            os.chmod(outfile,0o444)
 
 if __name__ == "__main__":
     main()

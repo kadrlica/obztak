@@ -249,14 +249,13 @@ class Survey(object):
     @staticmethod
     def select_in_path(filename,ra,dec,polys=None,wrap=180.,radius=0.0):
         import matplotlib.path
-        from matplotlib import mlab
         ra,dec = np.copy(ra), np.copy(dec)
 
         try:
             data = np.genfromtxt(filename,names=['ra','dec','poly'])
         except ValueError:
             data = np.genfromtxt(filename,names=['ra','dec'])
-            data = mlab.rec_append_fields(data,'poly',np.zeros(len(data)))
+            data = fileio.rec_append_fields(data,'poly',np.zeros(len(data)))
 
         paths = []
         ra -= 360 * (ra > wrap)

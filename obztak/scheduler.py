@@ -21,7 +21,8 @@ from obztak.utils import fileio
 from obztak.ctio import CTIO
 from obztak.field import FieldArray
 from obztak.tactician import CoverageTactician
-from obztak.utils.date import get_nite, datestr, datestring, nitestring, utc2nite
+from obztak.utils.date import get_nite, isstring
+from obztak.utils.date import datestr, datestring, nitestring, utc2nite
 from obztak.factory import tactician_factory
 
 # For debugging (use the verbose command line argument)
@@ -69,7 +70,7 @@ class Scheduler(object):
         if target_fields is None:
             target_fields = self._defaults['targets']
 
-        if isinstance(target_fields,basestring):
+        if isstring(target_fields):
             self.target_fields = self.FieldType.read(target_fields)
             logging.info("Loading target fields:\n %s"%target_fields)
         else:
@@ -83,7 +84,7 @@ class Scheduler(object):
         if windows is None:
             windows = self._defaults['windows']
 
-        if isinstance(windows,basestring):
+        if isstring(windows):
             logging.info("Loading observing windows:\n %s"%windows)
             windows = fileio.csv2rec(windows)
 
@@ -136,7 +137,7 @@ class Scheduler(object):
             if completed_fields[0].lower()=='none':
                 self.completed_fields = self.FieldType()
                 return self.completed_fields
-        elif isinstance(completed_fields,basestring):
+        elif isstring(completed_fields):
             if completed_fields.lower()=='none':
                 self.completed_fields = self.FieldType()
                 return self.completed_fields
@@ -146,7 +147,7 @@ class Scheduler(object):
         if not completed_fields:
             return self.completed_fields
 
-        if isinstance(completed_fields,basestring):
+        if isstring(completed_fields):
             completed_fields = [completed_fields]
 
         if isinstance(completed_fields,list):
@@ -247,9 +248,9 @@ class Scheduler(object):
             tstop = tstart + timedelta
 
         # Convert strings into dates
-        if isinstance(tstart,basestring):
+        if isstring(tstart):
             tstart = ephem.Date(tstart)
-        if isinstance(tstop,basestring):
+        if isstring(tstop):
             tstop = ephem.Date(tstop)
 
         msg  = "\nRun start: %s\n"%datestr(tstart,4)
@@ -302,7 +303,7 @@ class Scheduler(object):
 
             # Now update the time from the last selected field (note duplication in tactician.select_field)
             fieldtime = field_select[-1]['EXPTIME']*ephem.second + constants.OVERHEAD
-            date = ephem.Date(field_select[-1]['DATE']) + fieldtime
+            date = ephem.Date(field_select[-1]['DATE'].astype(str)) + fieldtime
 
             self.completed_fields = self.completed_fields + field_select
             self.scheduled_fields = self.scheduled_fields + field_select
@@ -311,7 +312,12 @@ class Scheduler(object):
             msg+=", moon=%(PHASE).0f%%,%(ALT).0fdeg"
             for i,f in zip(field_select.unique_id,field_select):
                 params = dict([('ID',i)]+[(k,f[k]) for k in f.dtype.names])
-                params.update({'PHASE':self.tactician.moon.phase,"ALT":np.degrees(self.tactician.moon.alt)})
+                params.update({
+                    'PHASE':self.tactician.moon.phase,
+                    "ALT":np.degrees(self.tactician.moon.alt),
+                    'DATE':params['DATE'].astype(str),
+                    'FILTER':params['FILTER'].astype(str)
+                })
                 logging.info(msg%params)
 
             #if plot: self.plotField(date, field_select)
@@ -447,7 +453,7 @@ class Scheduler(object):
 
             chunks.append(scheduled_fields)
             fieldtime = chunks[-1]['EXPTIME'][-1]*ephem.second + constants.OVERHEAD
-            start = ephem.Date(chunks[-1]['DATE'][-1]) + fieldtime
+            start = ephem.Date(chunks[-1]['DATE'][-1].astype(str)) + fieldtime
             #start = end
 
         if plot: raw_input(' ...finish... ')

@@ -2,6 +2,8 @@
 """
 Code related to the DECam Dwarf Galaxy Survey.
 """
+from __future__ import print_function
+
 import os,sys
 import logging
 import copy
@@ -794,7 +796,7 @@ class DelveSurvey(Survey):
         """
         import healpy as hp
         # These maps are SUM(teff * exptime)
-        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20220804'
+        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20221025'
         if not basename: basename = 'decam_sum_expmap_%s_n1024.fits.gz'
 
         logging.info("Loading maps from: %s"%dirname)
@@ -815,7 +817,7 @@ class DelveSurvey(Survey):
 
             f,d = [],[]
             for i,v in enumerate(vec):
-                print '\r%s/%s'%(i+1,len(vec)),
+                print('\r%s/%s'%(i+1,len(vec)),end="")
                 sys.stdout.flush()
                 pix = hp.query_disc(nside,v,np.radians(constants.DECAM))
 
@@ -828,7 +830,7 @@ class DelveSurvey(Survey):
                 # (I don't think this adds anything)
                 f.append((skymap[pix] >= d[-1]).sum()/float(len(pix)))
 
-            print
+            print()
             frac[idx] = np.array(f)
             depth[idx] = np.array(d)
 
@@ -917,7 +919,7 @@ class DelveFieldArray(FieldArray):
 
 
 class DelveScheduler(Scheduler):
-    _defaults = odict(Scheduler._defaults.items() + [
+    _defaults = odict(list(Scheduler._defaults.items()) + [
         ('tactician','coverage'),
         ('windows',fileio.get_datafile("delve-windows-20220804.csv.gz")),
         ('targets',fileio.get_datafile("delve-target-fields-20220804.csv.gz")),
@@ -963,20 +965,20 @@ class DelveTactician(Tactician):
 
         if (self.sun.alt > -0.28):
             # i-band if Sun altitude > -16 deg
-            sel &= (np.char.count('iz',self.fields['FILTER']) > 0)
+            sel &= (np.char.count('iz',self.fields['FILTER'].astype(str)) > 0)
         # Moon band constraints (alt = 0.175 rad = 10 deg)
         elif (self.moon.phase >= 40) and (self.moon.alt > 0.175):
             # Moon is very bright; only do i
-            sel &= (np.char.count('iz',self.fields['FILTER']) > 0)
+            sel &= (np.char.count('iz',self.fields['FILTER'].astype(str)) > 0)
             # Allow i,z but prefer z
             #sel &= (np.char.count('iz',self.fields['FILTER']) > 0)
             #weight += 1e2 * (np.char.count('i',self.fields['FILTER']) > 0)
         elif (self.moon.phase >= 30) and (self.moon.alt > 0.0):
             # Moon is moderately full; do r,i
-            sel &= (np.char.count('ri',self.fields['FILTER']) > 0)
+            sel &= (np.char.count('ri',self.fields['FILTER'].astype(str)) > 0)
         else:
             # Moon is faint or down; do g,r,i
-            sel &= (np.char.count('gr',self.fields['FILTER']) > 0)
+            sel &= (np.char.count('gr',self.fields['FILTER'].astype(str)) > 0)
             # Alternatively, only red bands if others unavailable
             #weight += 1e8 * (np.char.count('iz',self.fields['FILTER']) > 0)
         return sel
@@ -1145,7 +1147,7 @@ class DelveTactician(Tactician):
         moon_angle = self.moon_angle
 
         sel = self.viable_fields
-        sel &= (self.fields['PROGRAM'] == 'delve-wide')
+        sel &= (self.fields['PROGRAM'].astype(str) == 'delve-wide')
 
         # GLON, GLAT cuts
         #glon,glat = cel2gal(self.fields['RA'],self.fields['DEC'])
@@ -1411,10 +1413,11 @@ class DelveTactician(Tactician):
 
         # Select region between S82 and SPT
         sel &= (self.fields['DEC'] < -10) & (self.fields['DEC'] > -45)
+        sel &= (self.fields['DEC'] < -25)
         sel &= (self.fields['RA'] > 305)
 
         # Only first tiling
-        #sel &= np.in1d(self.fields['TILING'],[1])
+        sel &= np.in1d(self.fields['TILING'],[2])
 
         # Airmass cut
         airmass_min, airmass_max = self.CONDITIONS['delver']

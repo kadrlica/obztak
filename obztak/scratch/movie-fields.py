@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Generic python script.
+Create movie of fields
 """
 __author__ = "Alex Drlica-Wagner"
 import os
@@ -72,7 +72,7 @@ fig,ax = plt.subplots(2,2,figsize=(16,9))
 plt.subplots_adjust(wspace=0.01,hspace=0.02,left=0.01,right=0.99,
                     bottom=0.01,top=0.99)
 
-kwargs = dict(edgecolor='none', alpha=0.2, vmin=-1, vmax=2, s=12)
+kwargs = dict(edgecolor='none', alpha=0.3, vmin=-1, vmax=2, s=12)
 bands = ['g','r','i','z']
 
 filenames = []
