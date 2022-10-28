@@ -14,12 +14,12 @@ import json
 import logging
 
 from obztak import __version__
+from obztak.utils import isstring
 from obztak.utils.constants import FLOAT_FMT
-from obztak.utils.date import isstring
 
 def get_username():
     import os,pwd
-    return pwd.getpwuid( os.getuid() )[ 0 ]
+    return pwd.getpwuid(os.getuid() )[ 0 ]
 
 def get_hostname():
     import platform

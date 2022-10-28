@@ -2,24 +2,16 @@
 """
 Date and time utilities.
 """
-
-import numpy as np
-import ephem
+import six
 import time
 import logging
-from six import string_types
 
+import ephem
+import numpy as np
+
+from obztak.utils import isstring, setdefaults
 import obztak.utils.constants as constants
 from obztak.ctio import CTIO
-
-def setdefaults(kwargs,defaults):
-    for k,v in defaults.items():
-        kwargs.setdefault(k,v)
-    return kwargs
-
-def isstring(obj):
-    """Python 2/3 compatible string check"""
-    return isinstance(obj, (string_types, bytes))
 
 def datestring(date,precision=4):
     """
@@ -81,7 +73,7 @@ def nitestr(nite,sep=''):
     nitestr  : String representation of the nite
     """
     import dateutil.parser
-    if isinstance(nite, (string_types, bytes)):
+    if isstring(nite):
         nite = dateutil.parser.parse(nite)
     nite = ephem.Date(nite)
     strtuple = nite.tuple()[:3]
