@@ -115,7 +115,7 @@ class Database(object):
 
         # ConfigParser throws "no section error" if file does not exist...
         # That's confusing, so 'open' to get a more understandable error
-        open(filename) 
+        #open(filename)
         c = RawConfigParser()
         c.read(filename)
 
