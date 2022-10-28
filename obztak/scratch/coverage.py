@@ -48,7 +48,7 @@ SkymapCls,suffix = DECamMcBride,'_mbt'
 
 # COALESCE(qc_teff,'NaN')
 QUERY ="""
-SELECT id as expnum, telra as ra, teldec as dec, exptime, filter, propid,
+SELECT id as expnum, telra as ra, teldec as dec, exptime, filter, propid,program,
 (CASE WHEN qc_teff is NULL THEN 'NaN' WHEN qc_teff=-1 THEN 'NAN' ELSE qc_teff END) as teff,
 (CASE WHEN qc_fwhm is NULL THEN 'NaN' WHEN qc_fwhm=-1 THEN 'NAN' ELSE qc_fwhm END) as fwhm,
 TO_CHAR(TO_TIMESTAMP(utc_beg), 'YYYY-MM-DD HH24:MI:SS') as datetime
