@@ -934,6 +934,7 @@ class DelveTactician(Tactician):
         ('mc',       [1.0, 1.8]),
         ('gw',       [1.0, 2.0]),
         ('extra',    [1.0, 1.4]),
+        ('delver',   [1.0, 1.2]),
     ])
 
     def __init__(self, *args, **kwargs):
@@ -1416,7 +1417,7 @@ class DelveTactician(Tactician):
         #sel &= np.in1d(self.fields['TILING'],[1])
 
         # Airmass cut
-        airmass_min, airmass_max = self.CONDITIONS['extra']
+        airmass_min, airmass_max = self.CONDITIONS['delver']
         sel &= ((airmass > airmass_min) & (airmass < airmass_max))
 
         # Higher weight for fields close to the moon (when up)
