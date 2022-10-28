@@ -2,6 +2,8 @@
 """
 Code related to the DECam Dwarf Galaxy Survey.
 """
+from __future__ import print_function
+
 import os,sys
 import logging
 import copy

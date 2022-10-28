@@ -2,6 +2,7 @@
 """
 Code related to the Magellanic Satellites Survey (MagLiteS).
 """
+from __future__ import print_function
 import os,sys
 import logging
 import copy

@@ -79,10 +79,13 @@ class CTIO(ephem.Observer):
 
     def _load_constraints(self, filename=None):
         """ Load Blanco constraint data """
+        #if filename is None:
+        #    filename = os.path.join(fileio.get_datadir(),'blanco_hour_angle_limits.dat')
+        #self.constraints = np.genfromtxt(filename, names=True, dtype=None,
+        #                                 encoding=None)
         if filename is None:
-            filename = os.path.join(fileio.get_datadir(),'blanco_hour_angle_limits.dat')
-        self.constraints = np.genfromtxt(filename, names=True, dtype=None,
-                                         encoding=None)
+            filename = os.path.join(fileio.get_datadir(),'blanco_hour_angle_limits.csv')
+        self.constraints = fileio.read_csv(filename).to_records(index=False)
 
         # ADW: This is not very pythonic....
         ha_degrees = np.array([proj.hms2dec(ha) for ha in self.constraints['HA']])
