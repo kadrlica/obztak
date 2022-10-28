@@ -6,6 +6,7 @@ __author__ = "Alex Drlica-Wagner"
 import sys
 
 from obztak.utils import slack
+
 from obztak.utils.parser import Parser
 parser = Parser(description=__doc__)
 parser.add_argument('-d','--debug',action='store_true',help="execute without post")

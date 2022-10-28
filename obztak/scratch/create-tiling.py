@@ -10,7 +10,7 @@ from obztak.utils import fileio
 from obztak.survey import Survey
 from obztak.utils.constants import BANDS,SMASH_POLE,CCD_X,CCD_Y,STANDARDS,COLORS,DECAM
 
-from obztak.ddgs import DdgsSurvey
+from obztak.delve import DelveSurvey
 from obztak.maglites import MaglitesSurvey
 from obztak.maglites2 import Maglites2Survey
 
