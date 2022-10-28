@@ -6,6 +6,7 @@ import os,pwd
 from os.path import splitext, exists, join
 from collections import OrderedDict as odict
 import subprocess
+import six
 
 import numpy as np
 import pandas as pd
@@ -14,6 +15,7 @@ import logging
 
 from obztak import __version__
 from obztak.utils.constants import FLOAT_FMT
+from obztak.utils.date import isstring
 
 def get_username():
     import os,pwd
@@ -42,6 +44,7 @@ def read_csv(filename, **kwargs):
     from distutils.version import LooseVersion
     kwargs.setdefault('parse_dates',False)
     kwargs.setdefault('comment','#')
+    kwargs.setdefault('encoding',None)
 
     #if int(pd.__version__.replace('.','')) > 90:
     if LooseVersion(pd.__version__) > LooseVersion('0.9.0'):
@@ -71,7 +74,7 @@ def to_csv(filename,data,**kwargs):
     basename,ext = os.path.splitext(filename)
     if ext == '.gz': filename = basename
 
-    with open(filename,'wb') as out:
+    with open(filename,'w') as out:
         out.write(header())
         df.to_csv(out,**kwargs)
 
@@ -93,7 +96,7 @@ def write_json(filename,data,**kwargs):
     kwargs.setdefault('indent',4)
     json.encoder.FLOAT_REPR = lambda o: format(o, '.4f')
 
-    with open(filename,'wb') as out:
+    with open(filename,'w') as out:
         # It'd be nice to have a header
         #out.write(header())
         out.write(json.dumps(data,**kwargs))
@@ -132,7 +135,42 @@ def header():
     header += "# date: %s UTC\n"%(datestring(ephem.now(),0))
     header += "# version: obztak v%s\n"%(__version__)
     return header
-    
+
+
+def rec_append_fields(rec, names, arrs, dtypes=None):
+    """
+    Return a new record array with field names populated with data
+    from arrays in *arrs*.  If appending a single field, then *names*,
+    *arrs* and *dtypes* do not have to be lists. They can just be the
+    values themselves.
+    """
+    if (not isstring(names) and iterable(names) and len(names) and isstring(names[0])):
+        if len(names) != len(arrs):
+            raise ValueError("number of arrays do not match number of names")
+    else:  # we have only 1 name and 1 array
+        names = [names]
+        arrs = [arrs]
+    arrs = list(map(np.asarray, arrs))
+    if dtypes is None:
+        dtypes = [a.dtype for a in arrs]
+    elif not iterable(dtypes):
+        dtypes = [dtypes]
+    if len(arrs) != len(dtypes):
+        if len(dtypes) == 1:
+            dtypes = dtypes * len(arrs)
+        else:
+            raise ValueError("dtypes must be None, a single dtype or a list")
+    old_dtypes = rec.dtype.descr
+    if six.PY2:
+        old_dtypes = [(name.encode('utf-8'), dt) for name, dt in old_dtypes]
+    newdtype = np.dtype(old_dtypes + list(zip(names, dtypes)))
+    newrec = np.recarray(rec.shape, dtype=newdtype)
+    for field in rec.dtype.fields:
+        newrec[field] = rec[field]
+    for name, arr in zip(names, arrs):
+        newrec[name] = arr
+    return newrec
+
 if __name__ == "__main__":
     import argparse
     description = __doc__

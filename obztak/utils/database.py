@@ -15,6 +15,11 @@ import psycopg2
 import pandas as pd
 import numpy as np
 
+try:
+    from configparser import RawConfigParser
+except ImportError:
+    from ConfigParser import RawConfigParser
+
 def desc2dtype(desc):
     """ Covert from postgres type description to numpy dtype.
     Tries to conform to the type mapping on the psycopg2 documentation:
@@ -110,9 +115,8 @@ class Database(object):
 
         # ConfigParser throws "no section error" if file does not exist...
         # That's confusing, so 'open' to get a more understandable error
-        open(filename) 
-        import ConfigParser
-        c = ConfigParser.RawConfigParser()
+        #open(filename)
+        c = RawConfigParser()
         c.read(filename)
 
         d={}
@@ -139,7 +143,7 @@ class Database(object):
         self.cursor.execute(query)      
         try: 
             return self.cursor.fetchall()
-        except Exception, e:
+        except Exception as e:
             self.reset()
             raise(e)
         
@@ -246,4 +250,4 @@ if __name__ == "__main__":
 
     db = Database()
     db.connect()
-    print db
+    print(db)

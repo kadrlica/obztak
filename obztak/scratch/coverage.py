@@ -48,7 +48,7 @@ SkymapCls,suffix = DECamMcBride,'_mbt'
 
 # COALESCE(qc_teff,'NaN')
 QUERY ="""
-SELECT id as expnum, telra as ra, teldec as dec, exptime, filter, propid,
+SELECT id as expnum, telra as ra, teldec as dec, exptime, filter, propid,program,
 (CASE WHEN qc_teff is NULL THEN 'NaN' WHEN qc_teff=-1 THEN 'NAN' ELSE qc_teff END) as teff,
 (CASE WHEN qc_fwhm is NULL THEN 'NaN' WHEN qc_fwhm=-1 THEN 'NAN' ELSE qc_fwhm END) as fwhm,
 TO_CHAR(TO_TIMESTAMP(utc_beg), 'YYYY-MM-DD HH24:MI:SS') as datetime
@@ -128,11 +128,11 @@ sum_skymaps = odict([(b,np.zeros(hp.nside2npix(NSIDE))) for b in BANDS])
 max_skymaps = odict([(b,np.zeros(hp.nside2npix(NSIDE))) for b in BANDS])
 
 for band,exp in exposures.items():
-    print "%s-band..."%band
+    print("%s-band..."%band)
     nan = np.isnan(exp['teff'])
     median = np.median(exp[~nan]['teff'])
-    print "  Median teff: %.2f"%(median)
-    print "  Fraction without teff: %i%%"%(100*nan.sum()/float(len(nan)))
+    print("  Median teff: %.2f"%(median))
+    print("  Fraction without teff: %i%%"%(100*nan.sum()/float(len(nan))))
     if not nan.sum(): continue
 
     ## DEPRECATED: Now using DELVE QA info.
@@ -143,7 +143,7 @@ for band,exp in exposures.items():
 
 teffmin = 0.25
 for (band,_max),(band,_sum) in zip(max_skymaps.items(),sum_skymaps.items()):
-    print band
+    print(band)
     d2 = exposures[band]
     # teff*Texp > 18s (0.2 * 90s)
 
@@ -155,7 +155,7 @@ for (band,_max),(band,_sum) in zip(max_skymaps.items(),sum_skymaps.items()):
     vec = hp.ang2vec(d2['ra'],d2['dec'],lonlat=True)
     rad = np.radians(DECAM)
     for i,(v,d) in enumerate(zip(vec,d2)):
-        print '\r%s/%s'%(i+1,len(vec)),
+        print('\r%s/%s'%(i+1,len(vec)),end="")
         sys.stdout.flush()
         pix = hp.query_disc(NSIDE,v,rad,inclusive=False,fact=4,nest=False)
         _max[pix] = np.clip(_max[pix],d['teff']*d['exptime'],None)
@@ -163,14 +163,14 @@ for (band,_max),(band,_sum) in zip(max_skymaps.items(),sum_skymaps.items()):
 
     hdr = dict(DATE=str(datetime.date.today()))
     outfile = "decam_sum_expmap_%s_n%s.fits.gz"%(band,NSIDE)
-    print "Writing %s..."%outfile
+    print("\nWriting %s..."%outfile)
     hp.write_map(outfile,_sum,extra_header=hdr)
 
     outfile = "decam_max_expmap_%s_n%s.fits.gz"%(band,NSIDE)
-    print "Writing %s..."%outfile
+    print("Writing %s..."%outfile)
     hp.write_map(outfile,_max,extra_header=hdr)
 
-    print
+    print()
 
 # Do we want to plot?
 if not args.plot: sys.exit(0)
@@ -181,7 +181,7 @@ outbase = "decam_sum_expmap_%s_n%s"
 label = r'$\log_{10} \sum(t_{\rm eff} t_{\rm exp})$'
 for band,sky in sum_skymaps.items():
     if not sky.sum():
-        print ("No exposures found in %s band; skipping..."%band)
+        print("No exposures found in %s band; skipping..."%band)
         continue
 
     #outfile = outbase%(band,NSIDE)+'.fits.gz'
@@ -190,7 +190,7 @@ for band,sky in sum_skymaps.items():
 
     title = '%s-band'%band
     outfile = outbase%(band,NSIDE)+suffix+'.png'
-    print "Writing %s..."%outfile
+    print("Writing %s..."%outfile)
     bmap = SkymapCls(); bmap.draw_des()
     bmap.draw_hpxmap(np.log10(sky));
     plt.colorbar(label=label,**cbar_kwargs)
@@ -208,7 +208,7 @@ for band,sky in sum_skymaps.items():
     #plt.clf()
 
     outfile = outbase%(band,NSIDE)+'_hist.png'
-    print "Writing %s..."%outfile
+    print("Writing %s..."%outfile)
     plt.hist(sky,bins=np.linspace(1,1e3,50),color=COLORS[band])
     plt.title('%s-band'%band); plt.xlabel('sum(TEFF * EXPTIME)')
     plt.savefig(outfile,bbox_inches='tight')
@@ -227,7 +227,7 @@ for band,sky in max_skymaps.items():
     #hp.write_map(outfile,sky)
 
     outfile = outbase%(band,NSIDE)+suffix+'.png'
-    print "Writing %s..."%outfile
+    print("Writing %s..."%outfile)
     title = '%s-band'%band
     bmap = SkymapCls(); bmap.draw_des()
     bmap.draw_hpxmap(np.log10(sky));
@@ -246,7 +246,7 @@ for band,sky in max_skymaps.items():
     #plt.clf()
 
     outfile = outbase%(band,NSIDE)+'_hist.png'
-    print "Writing %s..."%outfile
+    print("Writing %s..."%outfile)
     plt.hist(sky,bins=np.linspace(1,5e2,50),color=COLORS[band])
     plt.title('%s-band'%band); plt.xlabel('max(TEFF * EXPTIME)')
     plt.savefig(outfile,bbox_inches='tight')
@@ -257,17 +257,17 @@ outbase = "decam_sum_90s_%s_n%s"
 label = r'$\sum(t_{\rm eff} t_{\rm exp}) > 90$'
 for band,sky in sum_skymaps.items():
     if not sky.sum():
-        print ("No exposures found in %s band; skipping..."%band)
+        print("No exposures found in %s band; skipping..."%band)
         continue
 
     sky = (sky > 90)
     outfile = outbase%(band,NSIDE)+'.fits.gz'
     title = '%s-band'%band
-    print "Writing %s..."%outfile
+    print("Writing %s..."%outfile)
     hp.write_map(outfile,sky,dtype=bool)
 
     outfile = outbase%(band,NSIDE)+suffix+'.png'
-    print "Writing %s..."%outfile
+    print("Writing %s..."%outfile)
     bmap = SkymapCls(); bmap.draw_des()
     bmap.draw_hpxmap(np.log10(sky));
     plt.title(title)
@@ -294,11 +294,11 @@ for band,sky in max_skymaps.items():
     sky = (sky > 60)
     outfile = outbase%(band,NSIDE)+'.fits.gz'
     title = '%s-band'%band
-    print "Writing %s..."%outfile
+    print("Writing %s..."%outfile)
     hp.write_map(outfile,sky,dtype=bool)
 
     outfile = outbase%(band,NSIDE)+suffix+'.png'
-    print "Writing %s..."%outfile
+    print("Writing %s..."%outfile)
     bmap = SkymapCls(); bmap.draw_des()
     bmap.draw_hpxmap(np.log10(sky));
     plt.title(title)
