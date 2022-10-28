@@ -794,7 +794,7 @@ class DelveSurvey(Survey):
         """
         import healpy as hp
         # These maps are SUM(teff * exptime)
-        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20220804'
+        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20221025'
         if not basename: basename = 'decam_sum_expmap_%s_n1024.fits.gz'
 
         logging.info("Loading maps from: %s"%dirname)
@@ -1410,10 +1410,11 @@ class DelveTactician(Tactician):
 
         # Select region between S82 and SPT
         sel &= (self.fields['DEC'] < -10) & (self.fields['DEC'] > -45)
+        sel &= (self.fields['DEC'] < -25)
         sel &= (self.fields['RA'] > 305)
 
         # Only first tiling
-        #sel &= np.in1d(self.fields['TILING'],[1])
+        sel &= np.in1d(self.fields['TILING'],[2])
 
         # Airmass cut
         airmass_min, airmass_max = self.CONDITIONS['extra']
