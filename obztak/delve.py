@@ -622,9 +622,9 @@ class DelveSurvey(Survey):
             #if num in [200]:
             #    f['PRIORITY'] += 20
 
-            # Remove IC5152
-            if num in [100]:
-                f['PRIORITY'] *= -1
+            ## Remove IC5152
+            #if num in [100]:
+            #    f['PRIORITY'] *= -1
 
             # Remove last 3 exposures due to DES coverage
             if num in [100,200,300]:
@@ -796,7 +796,7 @@ class DelveSurvey(Survey):
         """
         import healpy as hp
         # These maps are SUM(teff * exptime)
-        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20221025'
+        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20221030'
         if not basename: basename = 'decam_sum_expmap_%s_n1024.fits.gz'
 
         logging.info("Loading maps from: %s"%dirname)
@@ -935,7 +935,7 @@ class DelveTactician(Tactician):
         ('deep',     [1.0, 1.4]),
         ('mc',       [1.0, 1.8]),
         ('gw',       [1.0, 2.0]),
-        ('extra',    [1.0, 1.4]),
+        ('extra',    [1.0, 1.5]),
         ('delver',   [1.0, 1.2]),
     ])
 
@@ -1338,7 +1338,13 @@ class DelveTactician(Tactician):
 
         # Airmass cut
         airmass_min, airmass_max = self.CONDITIONS['extra']
-        sel &= ((airmass > airmass_min) & (airmass < airmass_max))
+        if False:
+            sel &= ((airmass > airmass_min) & (airmass < airmass_max))
+        elif self.fwhm <= 1.0:
+            sel &= ((airmass > airmass_min) & (airmass < 1.6))
+            weight += 1e2 * (airmass - 1.0)**3
+        else:
+            sel &= ((airmass > airmass_min) & (airmass < 1.4))
 
         # Higher weight for fields close to the moon (when up)
         # angle = 50 -> weight = 6.4
