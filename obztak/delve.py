@@ -935,7 +935,7 @@ class DelveTactician(Tactician):
         ('deep',     [1.0, 1.4]),
         ('mc',       [1.0, 1.8]),
         ('gw',       [1.0, 2.0]),
-        ('extra',    [1.0, 1.5]),
+        ('extra',    [1.0, 1.6]),
         ('delver',   [1.0, 1.2]),
     ])
 
@@ -1321,9 +1321,9 @@ class DelveTactician(Tactician):
         weight = np.zeros(len(sel))
 
         # Sky brightness selection
-        #sel &= self.skybright_select()
+        sel &= self.skybright_select()
         # Select only one band
-        sel &= (self.fields['FILTER'] == 'z')
+        #sel &= (self.fields['FILTER'] == 'z')
 
         # GLON, GLAT cuts
         glon,glat = cel2gal(self.fields['RA'],self.fields['DEC'])
