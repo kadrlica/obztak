@@ -1321,16 +1321,19 @@ class DelveTactician(Tactician):
         weight = np.zeros(len(sel))
 
         # Sky brightness selection
-        sel &= self.skybright_select()
+        #sel &= self.skybright_select()
+
         # Select only one band
-        #sel &= (self.fields['FILTER'] == 'z')
+        sel &= np.in1d(self.fields['FILTER'], ['z'])
+        # Select only first tiling
+        #sel &= (self.fields['TILING'] <= 1)
 
         # GLON, GLAT cuts
-        glon,glat = cel2gal(self.fields['RA'],self.fields['DEC'])
+        #glon,glat = cel2gal(self.fields['RA'],self.fields['DEC'])
         #sel &= (glon >= 180)
         #sel &= (glat > 0)
         # Remove bulge region
-        sel &= ~( ((glon < 30) | (glon > 330)) & (np.abs(glat) < 15) )
+        #sel &= ~( ((glon < 30) | (glon > 330)) & (np.abs(glat) < 15) )
 
         # Select only one region
         #sel &= (self.fields['DEC'] < 0)
@@ -1378,7 +1381,7 @@ class DelveTactician(Tactician):
 
         ## Try hard to do high priority fields
         weight += 1e1 * (self.fields['PRIORITY'] - 1)
-        weight += 1e5 * (self.fields['TILING'] > 2)
+        #weight += 1e5 * (self.fields['TILING'] > 2)
 
         # Set infinite weight to all disallowed fields
         weight[~sel] = np.inf
@@ -1423,7 +1426,7 @@ class DelveTactician(Tactician):
         sel &= (self.fields['RA'] > 305)
 
         # Only first tiling
-        sel &= np.in1d(self.fields['TILING'],[2])
+        #sel &= np.in1d(self.fields['TILING'],[2])
 
         # Airmass cut
         airmass_min, airmass_max = self.CONDITIONS['delver']
