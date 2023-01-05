@@ -51,7 +51,7 @@ def main():
     pd.set_option('max_colwidth',18)
     fmt={"date": lambda x: "{:%Y-%m-%d %H:%M}".format(pd.to_datetime(x))}
     strkw = dict(index=False,float_format='{:5.2f}'.format,justify='left',
-                     formatters=fmt)
+                 formatters=fmt)
 
     seeing.set_date(datestr(date))
 
