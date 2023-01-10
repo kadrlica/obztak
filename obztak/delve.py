@@ -931,7 +931,7 @@ class DelveScheduler(Scheduler):
 class DelveTactician(Tactician):
     CONDITIONS = odict([
         (None,       [1.0, 2.0]),
-        ('wide',     [1.0, 2.0]),
+        ('wide',     [1.0, 1.6]),
         ('deep',     [1.0, 1.4]),
         ('mc',       [1.0, 1.8]),
         ('gw',       [1.0, 2.0]),
@@ -1321,10 +1321,10 @@ class DelveTactician(Tactician):
         weight = np.zeros(len(sel))
 
         # Sky brightness selection
-        #sel &= self.skybright_select()
+        sel &= self.skybright_select()
 
         # Select only one band
-        sel &= np.in1d(self.fields['FILTER'], ['z'])
+        sel &= np.in1d(self.fields['FILTER'], ['g','r','z'])
         # Select only first tiling
         #sel &= (self.fields['TILING'] <= 1)
 
@@ -1380,7 +1380,7 @@ class DelveTactician(Tactician):
         #weight += 1e3 * (airmass - 1.)**2
 
         ## Try hard to do high priority fields
-        weight += 1e1 * (self.fields['PRIORITY'] - 1)
+        weight += 3e1 * (self.fields['PRIORITY'] - 1)
         #weight += 1e5 * (self.fields['TILING'] > 2)
 
         # Set infinite weight to all disallowed fields
