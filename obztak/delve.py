@@ -1185,9 +1185,9 @@ class DelveTactician(Tactician):
         else:
             sel &= ((airmass > airmass_min) & (airmass < 1.3))
          
-        if self.fwhm <= 1.1:
-            # Prefer fields near the pole
-            weight += 5e2 * ( (self.fields['DEC'] > -60) & (self.fields['RA'] > 270) )
+        #if self.fwhm <= 1.1:
+        #    # Prefer fields near the pole
+        #    weight += 5e2 * ( (self.fields['DEC'] > -60) & (self.fields['RA'] > 270) )
 
         # Higher weight for fields close to the moon (when up)
         # angle = 50 -> weight = 6.4
@@ -1344,7 +1344,7 @@ class DelveTactician(Tactician):
         if False:
             sel &= ((airmass > airmass_min) & (airmass < airmass_max))
         elif self.fwhm <= 1.0:
-            sel &= ((airmass > airmass_min) & (airmass < 1.6))
+            sel &= ((airmass > airmass_min) & (airmass < airmass_max))
             weight += 1e2 * (airmass - 1.0)**3
         else:
             sel &= ((airmass > airmass_min) & (airmass < 1.4))
