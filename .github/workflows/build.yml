@@ -15,6 +15,7 @@ defaults:
   run:
     shell: bash -l {0}
 
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -22,6 +23,8 @@ jobs:
       max-parallel: 3
       matrix:
         python-version: [3.8]
+    env:
+      OBZTAK_SURVEY: obztak
     steps:
     - uses: actions/checkout@v3
     - name: Install Environment with Micromamba
@@ -30,13 +33,12 @@ jobs:
         environment-name: obztak
         extra-specs: |
           python=${{ matrix.python-version }}
-      run: |
-        conda env config vars set OBZTAK_SURVEY=obztak
     - name: Install Package
-      if: ${{ false }}
+      if: ${{ true }}
       run: |
         pip install -e .
     - name: Run Python
+      if: ${{ true }}
       run: |
         python -c "import numpy; print(numpy)"
         python -c "import obztak; print(obztak)"
