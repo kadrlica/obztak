@@ -7,12 +7,12 @@ dependencies:
   - scipy
   - pandas
   - pyyaml
-  - matplotlib=1.5.3 
-  - basemap=1.0.7 
+  - matplotlib
+  - basemap
   - ephem 
-  - astropy=1.3 
-  - fitsio=0.9.8 
-  - healpy=1.9.1 
+  - astropy
+  - fitsio
+  - healpy
   - psycopg2 
   - nose
 variables:
