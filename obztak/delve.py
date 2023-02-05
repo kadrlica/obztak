@@ -312,10 +312,47 @@ class DelveSurvey(Survey):
         ['2023/01/22','second'],
     ]
 
+    nights_2023A = [
+        #['2023/02/21','full-HK'],
+        #['2023/02/22','second-HK'],
+        ['2023/03/01','second'], # extra
+        ['2023/03/02','second'], # extra
+        #['2023/03/10','second'], # DD
+        #['2023/03/11','second'], # DD
+        ['2023/03/28','second'], # extra
+        ['2023/03/31','second'], # extra
+        ['2023/04/12','second'], # extra
+        ['2023/04/13','second'], # extra
+        ['2023/04/15','second'], # extra
+        ['2023/04/16','second'], # extra
+        ['2023/04/18','second'], # extra
+        ['2023/04/19','second'], # extra
+        ['2023/04/22','second'],
+        ['2023/04/28','first'], # extra
+        ['2023/04/30','first'], # extra
+        ['2023/05/10','first'],
+        ['2023/06/02','full'], # extra
+        ['2023/06/03','second'], # extra
+        ['2023/06/06','full'], # extra
+        ['2023/06/16','second'], # Ferguson (delver)
+        ['2023/06/22','second'], # Ferguson (delver)
+        ['2023/06/23','first'],
+        ['2023/06/23','second'], # Ferguson (delver)
+        ['2023/06/24','second'], # Ferguson (delver)
+        ['2023/07/12','full'],
+        ['2023/07/14','full'],
+        ['2023/07/15','full'],
+        ['2023/07/16','second'], # Ferguson (delver)
+        ['2023/07/17','full'],
+        ['2023/07/18','full'],
+        ['2023/07/20','full'],
+        ['2023/07/21','full'],
+    ]
+
     extra_nights = []
 
     nights = nights_2019A + nights_2019B + nights_2020A + nights_2020B + nights_2021A \
-             + nights_2021B + nights_2022A + nights_2022B + extra_nights
+             + nights_2021B + nights_2022A + nights_2022B + nights_2023A + extra_nights
 
     def prepare_fields(self, infile=None, outfile=None, plot=True, **kwargs):
         """ Create the list of fields to be targeted by this survey.
@@ -796,7 +833,7 @@ class DelveSurvey(Survey):
         """
         import healpy as hp
         # These maps are SUM(teff * exptime)
-        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20221030'
+        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20230204'
         if not basename: basename = 'decam_sum_expmap_%s_n1024.fits.gz'
 
         logging.info("Loading maps from: %s"%dirname)
@@ -1325,7 +1362,7 @@ class DelveTactician(Tactician):
 
         # Select only one band
         sel &= np.in1d(self.fields['FILTER'], ['g','r','z'])
-        #sel &= np.in1d(self.fields['FILTER'], ['r'])
+        #sel &= np.in1d(self.fields['FILTER'], ['g','r'])
         # Select only first tiling
         #sel &= (self.fields['TILING'] <= 1)
 
@@ -1337,7 +1374,7 @@ class DelveTactician(Tactician):
         #sel &= ~( ((glon < 30) | (glon > 330)) & (np.abs(glat) < 15) )
 
         # Select only one region
-        sel &= (self.fields['DEC'] > -60)
+        #sel &= (self.fields['DEC'] > -60)
         #sel &= (self.fields['RA'] > 120)
 
         # Airmass cut
