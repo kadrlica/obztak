@@ -10,10 +10,6 @@ import ephem
 import logging
 from collections import OrderedDict as odict
 
-import obztak.utils.projector
-import obztak.utils.constants
-import obztak.utils.ortho
-
 from obztak.utils import constants
 from obztak.utils import ortho
 from obztak.utils import fileio
@@ -416,9 +412,10 @@ class Scheduler(object):
             else:
                 logging.warn("Over-writing nite start time")
         except (TypeError, ValueError):
-            msg = "Requested nite (%s) not found in windows:\n"%nite
-            msg += '['+', '.join([n for n in nites])+']'
+            msg = "Requested nite (%s) not found in windows"%nite
             logging.warning(msg)
+            msg = '['+', '.join([n for n in nites])+']'
+            logging.debug(msg)
 
             start = date
             self.observatory.date = date

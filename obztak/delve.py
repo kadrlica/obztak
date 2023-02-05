@@ -958,8 +958,8 @@ class DelveFieldArray(FieldArray):
 class DelveScheduler(Scheduler):
     _defaults = odict(list(Scheduler._defaults.items()) + [
         ('tactician','coverage'),
-        ('windows',fileio.get_datafile("delve-windows-20220804.csv.gz")),
-        ('targets',fileio.get_datafile("delve-target-fields-20220804.csv.gz")),
+        ('windows',fileio.get_datafile("delve-windows-20230204.csv.gz")),
+        ('targets',fileio.get_datafile("delve-target-fields-20230204.csv.gz")),
     ])
 
     FieldType = DelveFieldArray
