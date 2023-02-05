@@ -7,9 +7,9 @@ name: build
 
 on:
   push:
-    branches: [ master, actions ]
+    branches: [ main, actions ]
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
 
 defaults:
   run:

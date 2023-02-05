@@ -1,6 +1,6 @@
 # Bizarro Observation Tactician (obztak)
 
-[![Build](https://github.com/kadrlica/obztak/actions/workflows/build/badge.svg)](https://github.com/kadrlica/obztak/actions)
+[![Build](https://github.com/kadrlica/obztak/actions/workflows/build.yml/badge.svg)](https://github.com/kadrlica/obztak/actions)
 [![PyPI](https://img.shields.io/pypi/v/obztak.svg)](https://pypi.python.org/pypi/obztak)
 [![Release](https://img.shields.io/github/release/kadrlica/obztak.svg)](../../releases)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](../../)
