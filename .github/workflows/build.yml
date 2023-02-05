@@ -27,6 +27,7 @@ jobs:
     - name: Install Environment with Micromamba
       uses: mamba-org/provision-with-micromamba@main
       with:
+        environment-name: obztak
         extra-specs: |
           python=${{ matrix.python-version }}
     - name: Install Package
