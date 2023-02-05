@@ -17,6 +17,8 @@ from obztak.utils.parser import Parser, DatetimeAction
 
 if __name__ == "__main__":
     parser = Parser(description=__doc__)
+    parser.add_argument('--db',default=None,
+                        help='The database to load from')
     parser.add_argument('-n','--nite',type=int,
                         help='The *local* nite to plot')
     parser.add_argument('-i',dest='inspect',action='store_true',
@@ -33,7 +35,7 @@ if __name__ == "__main__":
 
     print "Plotting nightsum for: %s"%nitestr
 
-    fields = field_factory(survey).load_database()
+    fields = field_factory(survey).load_database(args.db)
     fields = fields[fields['PRIORITY'] >= 0]
     plot_nightsum(fields,nitestr,date)
 

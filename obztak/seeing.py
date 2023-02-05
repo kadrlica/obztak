@@ -36,7 +36,6 @@ DIMMINST = 0.0  # DIMM instrumental contribution to the PSF [arcsec]
 def convert(fwhm_1,
             band_1='dimm', airmass_1=1.0, inst_1=DIMMINST,
             band_2='i',    airmass_2=1.0, inst_2=DECAMINST):
-
     """
     Convert observed seeing value to another band and airmass.
 
@@ -152,7 +151,7 @@ class Seeing():
         fwhm_pred = convert(10**xpred,
                             band_1='i' , airmass_1=1.0    , inst_1=0.0,
                             band_2=band, airmass_2=airmass, inst_2=inst)
-        #import pdb; pdb.set_trace()
+
         return fwhm_pred
 
 
@@ -230,6 +229,7 @@ class QcSeeing(Seeing):
                 select date, qc_fwhm as fwhm, airmass, filter from exposure
                 where date > '%s' and date < '%s'
                 --and filter != 'VR' and qc_fwhm is not NULL
+                --and filter in ('g','r','i','z','Y')
                 and qc_fwhm is not NULL and qc_fwhm > 0
                 """%(tmin, tmax)
                 logging.debug(query)
@@ -253,15 +253,16 @@ class QcSeeing(Seeing):
         self.raw['date']    = raw['date']
         self.raw['fwhm']    = raw['fwhm']
         self.raw['airmass'] = raw['airmass']
-        self.raw['filter']  = raw['filter']
+        self.raw['filter']  = raw['filter'].astype(str)
 
         # Convert to i-band zenith
         self.data = copy.deepcopy(self.raw)
         self.data['filter'] = 'i'
         self.data['airmass'] = 1.0
 
-        kwargs = dict(band_1=self.raw['filter'], inst_1=DECAMINST, airmass_1=self.raw['airmass'])
-        kwargs.update(band_2='i',                inst_2=0.0      , airmass_2=self.data['airmass'])
+        band_1 = self.raw['filter'].astype(str)
+        kwargs = dict(band_1=band_1, inst_1=DECAMINST, airmass_1=self.raw['airmass'])
+        kwargs.update(band_2='i'   , inst_2=0.0      , airmass_2=self.data['airmass'])
         self.data['fwhm'] = convert(self.raw['fwhm'],**kwargs)
 
         return self.data

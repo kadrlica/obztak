@@ -24,6 +24,7 @@ def main():
     print("REMINDER: Press 'Enable Auto' on the SISPI Exposure Control tab")
     auto = AutoObz(args.config)
     auto.chunk = args.chunk
+    auto.verbose = args.verbose
     if args.mode: auto.mode = args.mode
     if args.min_queue_len: auto.min_queue_len = args.min_queue_len
     if args.min_queue_time: auto.min_queue_time = args.min_queue_time

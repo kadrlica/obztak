@@ -12,23 +12,26 @@ import numpy as np
 from obztak import __version__
 from obztak.utils import constants
 from obztak.utils import fileio
-from obztak.utils.date import setdefaults
+from obztak.utils.date import setdefaults, datestr, isstring
 
 # Default field array values
 DEFAULTS = odict([
     ('HEX',       dict(dtype=int,value=0)),
     ('RA',        dict(dtype=float,value=None)),
     ('DEC',       dict(dtype=float,value=None)),
-    ('FILTER',    dict(dtype='S1',value='')),
+    #('FILTER',    dict(dtype='S1',value='')),
+    ('FILTER',    dict(dtype=(np.str_,1),value='')),
     ('EXPTIME',   dict(dtype=float,value=90)),
     ('TILING',    dict(dtype=int,value=0)),
     ('PRIORITY',  dict(dtype=int,value=1)),
-    ('DATE',      dict(dtype='S30',value='')),
+    #('DATE',      dict(dtype='S30',value='')),
+    ('DATE',      dict(dtype=(np.str_,30),value='')),
     ('AIRMASS',   dict(dtype=float,value=-1.0)),
     ('SLEW',      dict(dtype=float,value=-1.0)),
     ('MOONANGLE', dict(dtype=float,value=-1.0)),
     ('HOURANGLE', dict(dtype=float,value=-1.0)),
-    ('PROGRAM',   dict(dtype='S30',value='')),
+    #('PROGRAM',   dict(dtype='S30',value='')),
+    ('PROGRAM',   dict(dtype=(np.str_,30),value='')),
 ])
 DTYPES = odict([(k,v['dtype']) for k,v in DEFAULTS.items()])
 VALUES = odict([(k,v['value']) for k,v in DEFAULTS.items()])
@@ -40,7 +43,7 @@ SEP = ':'
 SISPI_DICT = odict([
     ("object",  None),
     ("seqnum",  None), # 1-indexed
-    ("seqtot",  2),
+    ("seqtot",  1),
     ("seqid",   ""),
     ("expTime", 90),
     ("RA",      None),
@@ -79,9 +82,9 @@ class FieldArray(np.recarray):
 
     def __new__(cls,shape=0):
         # Need to do it this way so that array can be resized...
-        dtype = DTYPES.items()
+        dtype = list(DTYPES.items())
         self = np.recarray(shape,dtype=dtype).view(cls)
-        values = VALUES.items()
+        values = list(VALUES.items())
         for k,v in values: self[k].fill(v)
         return self
     
@@ -99,7 +102,7 @@ class FieldArray(np.recarray):
         return np.concatenate([self,other]).view(self.__class__)
 
     def __getitem__(self,key):
-        if isinstance(key,basestring) and key == 'ID':
+        if isstring(key) and key == 'ID':
             return self.unique_id
         else:
             return super(FieldArray,self).__getitem__(key)
@@ -120,19 +123,22 @@ class FieldArray(np.recarray):
 
     @property
     def object(self):
-        return np.char.mod(self.OBJECT_FMT,self.unique_id).astype('S80')
+        #return np.char.mod(self.OBJECT_FMT,self.unique_id).astype('S80')
+        return np.char.mod(self.OBJECT_FMT,self.unique_id).astype((np.str_,80))
 
     @property
     def seqid(self):
-        return np.char.mod(self.SEQID_FMT,self).astype('S80')
+        #return np.char.mod(self.SEQID_FMT,self).astype('S80')
+        return np.char.mod(self.SEQID_FMT,self).astype((np.str_,80))
 
     @property
     def seqnum(self):
-        return np.array([self.BANDS.index(f)+1 for f in self['FILTER']],dtype=int)
+        #return np.array([self.BANDS.index(f)+1 for f in self['FILTER']],dtype=int)
+        return np.ones(len(self['FILTER']),dtype=int)
 
     @property
     def propid(self):
-        return np.repeat(PROPID,len(self))
+        return np.repeat(self.PROPID,len(self))
 
     @property
     def comment(self):
@@ -149,23 +155,27 @@ class FieldArray(np.recarray):
             hex,tiling = map(int,string.split('-')[:2])
             self['HEX'] = hex
             self['TILING'] = tiling
+            return True
         except ValueError:
             logging.warn("Unparsed unique ID: '%s'"%string)
             self['HEX'] = -1
             self['TILING'] = -1
+            return False
 
     def from_object(self,string):
-        #self.from_unique_id(string.lstrip(OBJECT_PREFIX))
-        self.from_unique_id(string.split(SEP,1)[-1].strip())
+        return self.from_unique_id(string.split(SEP,1)[-1].strip())
 
     def from_seqid(self, string):
-        #date = string.lstrip(SEQID_PREFIX)
-        if SEP not in string: return
-        date = string.split(SEP,1)[-1].strip()
+        if SEP not in string: return False
+        date = str(string.split(SEP,1)[-1].strip())
+        # Check that it is a valid date...
+        try: datestr(date)
+        except: return False
         self['DATE'] = date
+        return True
 
     def from_comment(self, string):
-        if SEP not in string: return
+        if SEP not in string: return False
         integers = ['PRIORITY']
         floats   = ['AIRMASS','SLEW','MOONANGLE','HOURANGLE']
         values = dict([x.strip().split('=') for x in string.split(SEP,1)[-1].split(',')])
@@ -179,6 +189,7 @@ class FieldArray(np.recarray):
             else:
                 msg = "Unrecognized comment field: %s"%key
                 logging.warning(msg)
+        return True
 
     def to_recarray(self):
         return self.view(np.recarray)
@@ -196,10 +207,10 @@ class FieldArray(np.recarray):
             # Fill default program
             if not sispi_dict['program']:
                 sispi_dict['program'] = self.SISPI_DICT['program']
-            sispi_dict['object'] = objects[i]
-            sispi_dict['seqnum'] = seqnums[i]
-            sispi_dict['seqid']  = seqids[i]
-            sispi_dict['comment'] = comments[i]
+            sispi_dict['object'] = str(objects[i])
+            sispi_dict['seqnum'] = int(seqnums[i])
+            sispi_dict['seqid']  = str(seqids[i])
+            sispi_dict['comment'] = str(comments[i])
             sispi.append(sispi_dict)
         return sispi
 
@@ -210,7 +221,7 @@ class FieldArray(np.recarray):
         Parameters
         ----------
         sdict        : sispi exposure dictionary
-        check_propid : check that the propid matches this survey
+        check_propid : require that the propid matches this survey
 
         Returns
         -------
@@ -222,8 +233,10 @@ class FieldArray(np.recarray):
             return False
 
         # Ignore exposures with the wrong propid
+        # However, exposures being exposed have propid = None
         propid = sdict.get('propid')
-        if check_propid and propid != cls.PROPID: 
+        PROPIDS = [cls.PROPID, '2022B-780972'] # Hack for Ferguson
+        if check_propid and ((propid is not None) and (propid not in PROPIDS)):
             logging.warn("Found exposure with propid=%s; skipping..."%propid)
             return False
 
@@ -248,9 +261,10 @@ class FieldArray(np.recarray):
                 for sispi_key,field_key in SISPI_MAP.items():
                     f[field_key] = s[sispi_key]
                 f.from_object(s['object'])
-                # Parse scheduled date if date is not present
-                if 'date' in s: f['DATE'] = s['date']
-                else: f.from_seqid(s['seqid'])
+                # Try to parse scheduled date if date is not present
+                if 'date' in s: f['DATE'] = s['date'] # ADW: is 'date' a valid key?
+                elif f.from_seqid(s['seqid']): pass
+                else: raise(ValueError("Failed to load date"))
                 f.from_comment(s['comment'])
                 fields = fields + f
             #ADW: This is probably too inclusive...
@@ -285,19 +299,21 @@ class FieldArray(np.recarray):
         """
         defaults = dict(propid=cls.SISPI_DICT['propid'], limit='',
                         object_fmt = cls.OBJECT_FMT%'')
+        #date_column = 'date' or 'to_timestamp(utc_beg)'
+        defaults['date_column'] = 'date'
         kwargs = setdefaults(kwargs,copy.deepcopy(defaults))
 
         # Should pull this out to be accessible (self.query())?
         query ="""
         SELECT object, seqid, seqnum, telra as RA, teldec as dec,
         expTime, filter,
-        to_char(to_timestamp(utc_beg), 'YYYY/MM/DD HH24:MI:SS.MS') AS DATE,
+        to_char(%(date_column)s, 'YYYY/MM/DD HH24:MI:SS.MS') AS DATE,
         COALESCE(airmass,-1) as AIRMASS, COALESCE(moonangl,-1) as MOONANGLE,
         COALESCE(ha, -1) as HOURANGLE, COALESCE(slewangl,-1) as SLEW
         FROM exposure where propid = '%(propid)s' and exptime > 89
         and discard = False and delivered = True and flavor = 'object'
         and object like '%(object_fmt)s%%'
-        ORDER BY utc_beg %(limit)s
+        ORDER BY %(date_column)s %(limit)s
         """%kwargs
         return query
 
@@ -330,7 +346,7 @@ class FieldArray(np.recarray):
 
         logging.debug(query)
         data = database.execute(query)
-        names = map(str.upper,database.get_columns())
+        names = list(map(str.upper,database.get_columns()))
         objidx = names.index('OBJECT')
         if not len(data):
             logging.warn("No fields found in database.")
@@ -349,14 +365,21 @@ class FieldArray(np.recarray):
 
     @classmethod
     def load(cls, filename):
-        base,ext = os.path.splitext(filename)
+
+        # Strip a .gz extension
+        base,ext = os.path.splitext(filename.rstrip('.gz'))
+
         if ext in ('.json'):
             sispi = fileio.read_json(filename)
-            return cls().load_sispi(sispi)
-        elif ext in ('.csv','.txt','.gz'):
+            return cls().load_sispi(sispi,check_propid=True)
+        elif ext in ('.csv','.txt'):
             #dtype = DTYPES.items()
             #recarray = fileio.csv2rec(filename,dtype=dtype)
             recarray = fileio.csv2rec(filename)
+            return cls().load_recarray(recarray)
+        elif ext in ('.fits'):
+            import fitsio
+            recarray = fitsio.read(filename)
             return cls().load_recarray(recarray)
         else:
             msg = "Unrecognized file extension: %s"%ext

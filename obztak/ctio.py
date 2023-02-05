@@ -4,12 +4,14 @@ Generic python script.
 """
 __author__ = "Alex Drlica-Wagner"
 import os
-import ephem
-import pytz
+from distutils.version import LooseVersion
 
 import numpy as np
 
-from obztak.utils import constants
+import ephem
+import pytz
+
+from obztak.utils import constants, fileio
 from obztak.utils import projector as proj
 
 # WARNING: copy.deepcopy doesn't work for ephem.Observer
@@ -25,6 +27,21 @@ class CTIO(ephem.Observer):
         self.tz = pytz.timezone('Chile/Continental')
         self.twilight = '-14'
         self._load_constraints()
+
+    def get_lon(self):
+        """ Return longitude in degrees. """
+        if LooseVersion(ephem.__version__) > LooseVersion('4'):
+            return np.degrees(self.lon)
+        else:
+            return self.lon
+
+    def get_lat(self):
+        """ Return latitude in degrees. """
+        if LooseVersion(ephem.__version__) > LooseVersion('4'):
+            return np.degrees(self.lat)
+        else:
+            return self.lat
+
 
     def utc2local(self, utc):
         """ Convert ephem in UTC to local observatory time """
@@ -63,14 +80,12 @@ class CTIO(ephem.Observer):
     def _load_constraints(self, filename=None):
         """ Load Blanco constraint data """
         if filename is None:
-            from obztak.utils import fileio
-            filename = os.path.join(fileio.get_datadir(),'blanco_hour_angle_limits.dat')
-        self.constraints = np.recfromtxt(filename, names=True)
+            filename = os.path.join(fileio.get_datadir(),'blanco_hour_angle_limits.csv')
+
+        self.constraints = fileio.read_csv(filename).to_records(index=False)
 
         # ADW: This is not very pythonic....
-        ha_degrees = np.tile(0., len(self.constraints['HA']))
-        for ii in range(0, len(self.constraints['HA'])):
-            ha_degrees[ii] = proj.hms2dec(self.constraints['HA'][ii])
+        ha_degrees = np.array([proj.hms2dec(ha) for ha in self.constraints['HA']])
 
         # Buffer to protect us from the chicken
         ha_degrees -= 1.25 

@@ -122,7 +122,12 @@ class Tactician(object):
             previous_field = self.completed_fields[-1]
 
             # Ignore if more than 30 minutes has elapsed
-            if (self.date-ephem.Date(previous_field['DATE'])) > 30*ephem.minute:
+            if (self.date-ephem.Date(previous_field['DATE'].astype(str))) > 30*ephem.minute:
+                previous_field = None
+
+            # Exposure being exposed has RA,DEC = 0,0; problem!
+            # Could also require previous_field['PROGRAM'] == 'None'
+            elif (previous_field['RA'] == 0) and (previous_field['DEC'] == 0):
                 previous_field = None
 
         if previous_field:
@@ -134,13 +139,14 @@ class Tactician(object):
     @property
     def slew_time(self):
         """Estimate of the slew time (Alt/Az telescope)."""
+        DeprecationWarning("'slew_time' has been deprecated; use 'slew'")
         # Set previous field as last completed field
         previous_field = None
         if (self.completed_fields is not None) and len(self.completed_fields):
             previous_field = self.completed_fields[-1]
 
             # Ignore if more than 30 minutes has elapsed
-            if (self.date-ephem.Date(previous_field['DATE'])) > 30*ephem.minute:
+            if (self.date-ephem.Date(previous_field['DATE'].astype(str))) > 30*ephem.minute:
                 previous_field = None
 
         if previous_field:
@@ -218,7 +224,7 @@ class Tactician(object):
         #    timedelta += 30*ephem.second
 
         fields['AIRMASS']   = self.airmass[index]
-        fields['DATE']      = map(datestring,self.date+timedelta)
+        fields['DATE']      = list(map(datestring,self.date+timedelta))
         fields['SLEW']      = self.slew[index]
         fields['MOONANGLE'] = self.moon_angle[index]
         fields['HOURANGLE'] = self.hour_angle[index]

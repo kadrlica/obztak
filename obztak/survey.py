@@ -108,7 +108,7 @@ class Survey(object):
         observation_windows = np.rec.fromrecords(observation_windows,names=names)
 
         if outfile:
-            logging.debug("Writing %s..."%outfile)
+            logging.info("Writing %s..."%outfile)
             fileio.rec2csv(outfile,observation_windows)
 
         return observation_windows
@@ -247,16 +247,15 @@ class Survey(object):
 
 
     @staticmethod
-    def select_in_path(filename,ra,dec,polys=None,wrap=180.):
+    def select_in_path(filename,ra,dec,polys=None,wrap=180.,radius=0.0):
         import matplotlib.path
-        from matplotlib import mlab
         ra,dec = np.copy(ra), np.copy(dec)
 
         try:
             data = np.genfromtxt(filename,names=['ra','dec','poly'])
         except ValueError:
             data = np.genfromtxt(filename,names=['ra','dec'])
-            data = mlab.rec_append_fields(data,'poly',np.zeros(len(data)))
+            data = fileio.rec_append_fields(data,'poly',np.zeros(len(data)))
 
         paths = []
         ra -= 360 * (ra > wrap)
@@ -266,7 +265,7 @@ class Survey(object):
             poly = data[data['poly'] == p]
             vertices = np.vstack(np.vstack([poly['ra'],poly['dec']])).T
             paths.append(matplotlib.path.Path(vertices))
-        sel = np.sum([p.contains_points(np.vstack([ra,dec]).T) for p in paths],axis=0) > 0
+        sel = np.sum([p.contains_points(np.vstack([ra,dec]).T,radius=radius) for p in paths],axis=0) > 0
         return sel
 
     @staticmethod
@@ -286,7 +285,7 @@ class Survey(object):
         return sel
 
     @staticmethod
-    def footprintDES(ra,dec):
+    def footprintDES(ra,dec,radius=0.0):
         """ Selecting exposures in the DES footprint
 
         Parameters:
@@ -298,8 +297,9 @@ class Survey(object):
         --------
         sel : Selection of fields within the footprint
         """
-        filename = fileio.get_datafile('des-round17-poly.txt')
-        return Survey.select_in_path(filename,ra,dec)
+        #filename = fileio.get_datafile('des-round17-poly.txt')
+        filename = fileio.get_datafile('des-round19-poly.txt')
+        return Survey.select_in_path(filename,ra,dec,radius=radius)
 
     @staticmethod
     def footprintSMASH(ra,dec,angsep=DECAM):
@@ -613,8 +613,8 @@ def parser():
                         help='Include SMC Northern Overdensity fields.')
     parser.add_argument('-w','--windows',default='observation_windows.csv',
                         help='List of observation windows.')
-    parser.add_argument('--no-standards',action='store_false',dest='standards',
-                        help = "Don't include time for standard star observations.")
+    parser.add_argument('--standards',action='store_true',dest='standards',
+                        help = "Include time for standard star observations at the midpoint of half nights.")
     return parser
 
 

@@ -41,8 +41,8 @@ class AutoObz(object):
         self.mode = None
         self.min_queue_len = 30
         self.min_queue_time = 70
-
-
+        self.verbose = False
+        
     def make_script(self):
         """Create the observing script"""
         with open(self.queue_fname, 'r') as fp:
@@ -57,9 +57,12 @@ class AutoObz(object):
             if exp is None: continue
             for k,v in SISPI_DICT.items():
                 exp.setdefault(k,v)
+            # Not great...
+            exp['RA'] = 0.0
+            exp['dec'] = 0.0
             exp['date'] = datetime.utcnow().strftime('%Y/%m/%d %H:%M:%S')
 
-        tmp = tempfile.NamedTemporaryFile(suffix='.json')
+        tmp = tempfile.NamedTemporaryFile(suffix='.json',delete=False)
         json.dump(in_progress, tmp)
         tmp.flush()
 
@@ -67,12 +70,11 @@ class AutoObz(object):
         delay = (90 + 30)*len(in_progress)
         # Sum the exposure times for the current queue
         delay += sum([q.get('expTime',0)+30 for q in sispi_queue])
-        logging.debug("Total queue time: %g seconds"%delay)
+        logging.info("Queue contains %d exposures with a runtime of %d minutes"% (len(sispi_queue),delay//60))
 
         # If we don't want to add anything, return an empty list
-        if len(sispi_queue) >= self.min_queue_len or delay/60. >= self.min_queue_time:
-            logging.info("Queue contains %d exposures and a runtime of %d minutes; waiting..."
-                         % (len(sispi_queue),delay//60))
+        if len(sispi_queue)>=self.min_queue_len or delay/60.>=self.min_queue_time:
+            logging.info("waiting...")
             # Add an empty script so AUTOOBS knows the scheduler "passed"
             with open(self.output_fname, 'w') as fp:
                 json.dump([], fp, indent=4)
@@ -92,12 +94,16 @@ class AutoObz(object):
         cmd += " -c %(progress)s"%params # needs to be first
         cmd += " -c %(previous)s -c %(current)s"%params
         if self.mode: cmd += " -m %(mode)s"%params
+        if self.verbose: cmd += " -v"
 
         logging.info(cmd)
 
         # Generate the script
         logging.info("Calling scheduler")
         subprocess.check_call(cmd, shell=True)
+
+        # Print the time
+        logging.info(datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S'))
 
     def publish(self):
         """Publish the current queue to the web"""
@@ -141,4 +147,5 @@ class AutoObz(object):
             new_sispi_script = self.make_script()
 
             # Publish the queue (even if no new script is created)
-            self.publish()
+            #self.publish()
+
