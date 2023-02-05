@@ -33,7 +33,7 @@ from obztak.utils.constants import COLORS, CMAPS, TCOLORS
 from obztak.utils.constants import FIGSIZE, SCALE, DPI
 
 # ADW: This is bad...
-plt.ion()
+#plt.ion()
 
 ############################################################
 
