@@ -47,6 +47,7 @@ plt.figure()
 smap = skymap.SurveyMcBryde()
 smap.draw_fields(new[done])
 smap.draw_des()
+smap.draw_milky_way()
 plt.title('Exposures newly considered done')
 plt.show()
 
@@ -61,10 +62,11 @@ plt.figure()
 smap = skymap.SurveyMcBryde()
 smap.draw_fields(new[undone])
 smap.draw_des()
+smap.draw_milky_way()
 plt.title('Exposures no longer considered done')
 plt.show()
 
-# This block just updates based on previous field list
+# This block updates previous field list
 if False:
     # Write here
     out = DelveFieldArray.load(args.old)
@@ -81,6 +83,7 @@ if False:
     smap = skymap.SurveyMcBryde()
     smap.draw_fields(update[done & ~obs])
     smap.draw_des()
+    smap.draw_milky_way()
     #smap.draw_fields(update[done])
     plt.title('Exposures updated in output')
 
@@ -99,11 +102,11 @@ if True:
     delve['PRIORITY'][sel] = -1
 
     todo_wide = (delve['PRIORITY'] > 0) & (delve['TILING'] < 4) & (delve['PROGRAM'] == 'delve-wide')
-    print("Todo WIDE: nexp=%d, exptime=%.1f h"%(todo_wide.sum(), (delve[todo_wide]['EXPTIME']+30).sum()/3600.))
+    print("TODO WIDE: nexp=%d, exptime=%.1f h"%(todo_wide.sum(), (delve[todo_wide]['EXPTIME']+30).sum()/3600.))
     todo_mc = (delve['PRIORITY'] > 0) & (delve['TILING'] < 4) & (delve['PROGRAM'] == 'delve-mc')
-    print("Todo MC: nexp=%d, exptime=%.1f h"%(todo_mc.sum(), (delve[todo_mc]['EXPTIME']+30).sum()/3600.))
+    print("TODO MC: nexp=%d, exptime=%.1f h"%(todo_mc.sum(), (delve[todo_mc]['EXPTIME']+30).sum()/3600.))
     todo_deep = (delve['PRIORITY'] > 0) & (delve['PROGRAM'] == 'delve-deep')
-    print("Todo DEEP: nexp=%d, exptime=%.1f h"%(todo_deep.sum(), (delve[todo_deep]['EXPTIME']+30).sum()/3600.))
+    print("TODO DEEP: nexp=%d, exptime=%.1f h"%(todo_deep.sum(), (delve[todo_deep]['EXPTIME']+30).sum()/3600.))
 
     todo = todo_wide | todo_mc | todo_deep
 
@@ -115,7 +118,6 @@ if True:
     plt.title('DELVE Exposures TODO')
     plt.show()
 
-
 # Check with DEROSITAS
 if False:
     deros_g = DelveFieldArray.load('derositas/data/test_g_all_20210127.csv')
@@ -125,11 +127,12 @@ if False:
     smap.draw_fields(deros_g)
     smap.draw_fields(deros_i)
     smap.draw_des()
+    smap.draw_milky_way()
     #smap.draw_fields(update[done])
     plt.title('DeROSITAS TODO')
 
 # Set missing DeROSITAS field priority
-if True:
+if False:
     import pandas as pd
     uid = pd.read_csv('derositas/derositas-uid-20210615.csv')
     sel = np.in1d(new.unique_id,uid)
