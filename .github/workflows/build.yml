@@ -28,8 +28,8 @@ jobs:
       uses: mamba-org/provision-with-micromamba@main
       with:
         environment-name: obztak
-        extra-specs: |
-          python=${{ matrix.python-version }}
+        #extra-specs: |
+        #  python=${{ matrix.python-version }}
     - name: Install Package
       if: ${{ false }}
       run: |
