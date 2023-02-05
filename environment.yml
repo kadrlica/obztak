@@ -1,0 +1,18 @@
+name: obztak
+channels:
+  - conda-forge
+dependencies:
+  - numpy
+  - scipy
+  - pandas
+  - pyyaml
+  - matplotlib
+  - basemap
+  - ephem 
+  - astropy
+  - fitsio
+  - healpy
+  - psycopg2 
+  - nose
+#variables:
+#  OBZTAK_SURVEY: obztak

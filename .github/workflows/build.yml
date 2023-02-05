@@ -1,0 +1,56 @@
+# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
+# For more information on conda actions see: https://autobencoder.com/2020-08-24-conda-actions/
+# Starter workflow for conda: https://github.com/actions/starter-workflows/blob/main/ci/python-package-conda.yml
+
+name: build
+
+on:
+  push:
+    branches: [ main, actions ]
+  pull_request:
+    branches: [ main ]
+
+defaults:
+  run:
+    shell: bash -l {0}
+
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 3
+      matrix:
+        python-version: [3.8]
+    env:
+      OBZTAK_SURVEY: obztak
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install Environment with Micromamba
+      uses: mamba-org/provision-with-micromamba@main
+      with:
+        environment-name: obztak
+        extra-specs: |
+          python=${{ matrix.python-version }}
+    - name: Install Package
+      if: ${{ true }}
+      run: |
+        pip install -e .
+    - name: Run Python
+      if: ${{ true }}
+      run: |
+        python -c "import obztak; print(obztak)"
+    - name: Lint with flake8
+      if: ${{ false }}
+      run: |
+        mamba install -q flake8 -c conda-forge
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    - name: Test with nose
+      if: ${{ true }}
+      run: |
+        export MPLBACKEND=Agg
+        nosetests -v tests

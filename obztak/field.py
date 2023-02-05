@@ -152,7 +152,7 @@ class FieldArray(np.recarray):
 
     def from_unique_id(self,string):
         try:
-            hex,tiling = map(int,string.split('-')[:2])
+            hex,tiling = list(map(int,string.split('-')[:2]))
             self['HEX'] = hex
             self['TILING'] = tiling
             return True

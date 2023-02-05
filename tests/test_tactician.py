@@ -65,12 +65,16 @@ def test_calculate_moon():
     test_moon_angle = np.array([108.9487001, 97.8196126, 70.7322332, 51.6236834, 64.0174593, 93.9227775, 116.3650182, 111.7185502, 88.2697742, 71.4721274])
     # With topocentric correction
     test_moon_angle = np.array([109.6670211, 98.396651, 71.3473021, 52.4287292, 64.6183409, 94.124153, 116.0532799, 111.0075416, 87.4853729, 70.7408394])
+    # Newer version of ephem (2023)
+    test_moon_angle = np.array([109.6670216,  98.3966407,  71.3472944,  52.4287432,  64.6183752, 94.1241885, 116.0533029, 111.0075417,  87.4853641,  70.7408376])
 
-    np.testing.assert_almost_equal(tac.moon_angle,test_moon_angle,
+    np.testing.assert_almost_equal(tac.moon_angle,test_moon_angle,decimal=5,
                                    err_msg='moon_angle')
 
     test_moon_phase = 89.82009887695312
-    np.testing.assert_almost_equal(tac.moon_phase,test_moon_phase,
+    # Newer version of ephem (2023)
+    test_moon_phase = 89.82008361816406
+    np.testing.assert_almost_equal(tac.moon_phase,test_moon_phase, decimal=4,
                                    err_msg='moon_phase')
 
 def test_calculate_slew():
