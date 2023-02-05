@@ -358,7 +358,7 @@ class Scheduler(object):
 
         field = self.target_fields[select]
         nfields = select.sum()
-        field['DATE'] = map(datestring,nfields*[date])
+        field['DATE'] = list(map(datestring,nfields*[date]))
         return field
 
     def schedule_chunk(self,tstart=None,chunk=60,clip=False,plot=False,mode=None):

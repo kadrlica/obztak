@@ -40,7 +40,6 @@ jobs:
     - name: Run Python
       if: ${{ true }}
       run: |
-        python -c "import numpy; print(numpy)"
         python -c "import obztak; print(obztak)"
     - name: Lint with flake8
       if: ${{ false }}
@@ -51,7 +50,7 @@ jobs:
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with nose
-      if: ${{ false }}
+      if: ${{ true }}
       run: |
         export MPLBACKEND=Agg
         nosetests -v tests

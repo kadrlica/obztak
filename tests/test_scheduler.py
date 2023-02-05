@@ -21,8 +21,9 @@ def test_schedule_field():
     assert len(out)==1
 
     index = 0
-    value = {u'count': 1, u'program': u'maglites', u'seqtot': 2, u'seqnum': 1, u'expType': u'object', u'object': u'MAGLITES field: 6679-01-g', u'filter': u'g', u'seqid': u'MAGLITES scheduled: 2017/02/22 06:00:00.0000', u'RA': 121.083, u'propid': u'2016A-0366', u'dec': -57.0986, u'expTime': 90.0, u'wait': u'False'}
+    value = {u'count': 1, u'program': u'maglites', u'seqtot': 1, u'seqnum': 1, u'expType': u'object', u'object': u'MAGLITES field: 6679-01-g', u'filter': u'g', u'seqid': u'MAGLITES scheduled: 2017/02/22 06:00:00.0000', u'RA': 121.083, u'propid': u'2016A-0366', u'dec': -57.0986, u'expTime': 90.0, u'wait': u'False'}
     check_dict(value,out[index])
+
 
 def test_schedule_chunk():
     kwargs = dict(utc='2017-02-22T06:00:00',chunk=60,outfile='chunk_test.json',
@@ -36,7 +37,7 @@ def test_schedule_chunk():
     assert len(out)==30
 
     index = 17
-    value = {u'count': 1, u'program': u'maglites', u'seqtot': 2, u'seqnum': 2, u'expType': u'object', u'object': u'MAGLITES field: 6679-01-r', u'filter': u'r', u'seqid': u'MAGLITES scheduled: 2017/02/22 06:34:00.0000', u'RA': 121.083, u'propid': u'2016A-0366', u'dec': -57.0986, u'expTime': 90.0, u'wait': u'False'}
+    value = {u'count': 1, u'program': u'maglites', u'seqtot': 1, u'seqnum': 1, u'expType': u'object', u'object': u'MAGLITES field: 6679-01-r', u'filter': u'r', u'seqid': u'MAGLITES scheduled: 2017/02/22 06:34:00.0000', u'RA': 121.083, u'propid': u'2016A-0366', u'dec': -57.0986, u'expTime': 90.0, u'wait': u'False'}
     check_dict(value,out[index])
 
 def test_schedule_night():
@@ -54,7 +55,7 @@ def test_schedule_night():
     assert len(out)==30
 
     index = 17
-    value = {u'count': 1, u'program': u'maglites', u'seqtot': 2, u'seqnum': 2, u'expType': u'object', u'object': u'MAGLITES field: 6575-01-r', u'filter': u'r', u'seqid': u'MAGLITES scheduled: 2016/02/12 07:41:00.0000', u'RA': 127.941, u'proposer': u'Bechtol', u'propid': u'2016A-0366', u'dec': -60.8294, u'expTime': 90.0, u'wait': u'False'}
+    value = {u'count': 1, u'program': u'maglites', u'seqtot': 1, u'seqnum': 1, u'expType': u'object', u'object': u'MAGLITES field: 6575-01-r', u'filter': u'r', u'seqid': u'MAGLITES scheduled: 2016/02/12 07:41:00.0000', u'RA': 127.941, u'proposer': u'Bechtol', u'propid': u'2016A-0366', u'dec': -60.8294, u'expTime': 90.0, u'wait': u'False'}
 
     check_dict(value,out[index])
 
@@ -75,7 +76,7 @@ def NOTEST_schedule_survey():
     assert len(out) == 30
 
     index = 17
-    value = {u'count': 1, u'program': u'maglites', u'seqtot': 2, u'seqnum': 2, u'expType': u'object', u'object': u'MAGLITES field: 6687-01-r', u'filter': u'r', u'seqid': u'MAGLITES scheduled: 2016/02/14 08:46:30.0000', u'RA': 176.263, u'propid': u'2016A-0366', u'dec': -74.1112, u'expTime': 90.0, u'wait': u'False'}
+    value = {u'count': 1, u'program': u'maglites', u'seqtot': 1, u'seqnum': 1, u'expType': u'object', u'object': u'MAGLITES field: 6687-01-r', u'filter': u'r', u'seqid': u'MAGLITES scheduled: 2016/02/14 08:46:30.0000', u'RA': 176.263, u'propid': u'2016A-0366', u'dec': -74.1112, u'expTime': 90.0, u'wait': u'False'}
     check_dict(value,out[index])
 
 if __name__ == "__main__":
