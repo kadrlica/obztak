@@ -1,7 +1,6 @@
 name: obztak
 channels:
   - conda-forge
-  - kadrlica
 dependencies:
   - numpy
   - scipy
@@ -15,5 +14,5 @@ dependencies:
   - healpy
   - psycopg2 
   - nose
-variables:
-  OBZTAK_SURVEY: obztak
+#variables:
+#  OBZTAK_SURVEY: obztak
