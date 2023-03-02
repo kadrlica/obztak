@@ -1361,7 +1361,7 @@ class DelveTactician(Tactician):
         sel &= self.skybright_select()
 
         # Select only one band
-        sel &= np.in1d(self.fields['FILTER'], ['g','r','z'])
+        #sel &= np.in1d(self.fields['FILTER'], ['g','r','z'])
         #sel &= np.in1d(self.fields['FILTER'], ['g','r'])
         # Select only first tiling
         #sel &= (self.fields['TILING'] <= 1)
@@ -1375,7 +1375,7 @@ class DelveTactician(Tactician):
 
         # Select only one region
         sel &= (self.fields['DEC'] > -30)
-        sel &= (self.fields['RA'] > 120)
+        sel &= (self.fields['RA'] > 125)
 
         # Airmass cut
         airmass_min, airmass_max = self.CONDITIONS['extra']
