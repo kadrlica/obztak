@@ -1379,6 +1379,7 @@ class DelveTactician(Tactician):
         sel &= (self.fields['RA'] > 150)
 
         # Airmass cut
+        #self.fwhm = 1.2
         airmass_min, airmass_max = self.CONDITIONS['extra']
         if False:
             sel &= ((airmass > airmass_min) & (airmass < airmass_max))
@@ -1404,7 +1405,7 @@ class DelveTactician(Tactician):
         # Higher weight for rising fields (higher hour angle)
         # HA [min,max] = [-53,54] (for airmass 1.4)
         #weight += 10.0 * self.hour_angle
-        weight += 5.0 * self.hour_angle
+        weight += 2.0 * self.hour_angle
         #weight += 0.1 * self.hour_angle
 
         # Higher weight for larger slews
