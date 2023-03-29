@@ -37,6 +37,9 @@ TEFF_MIN_WIDE = pd.DataFrame(dict(FILTER=['g','i'],TEFF=[0.4,0.5]))
 TEFF_MIN_MC   = pd.DataFrame(dict(FILTER=['g','r','i'],TEFF=[0.3,0.3,0.45]))
 TEFF_MIN_EXTRA = pd.DataFrame(dict(FILTER=['g','r','i','z'],TEFF=[0.3,0.3,0.3,0.3]))
 
+#TEFF_MIN_WIDE = pd.DataFrame(dict(FILTER=['g','i'],TEFF=[0.2,0.2]))
+#TEFF_MIN_EXTRA = pd.DataFrame(dict(FILTER=['g','r','i','z'],TEFF=[0.2,0.2,0.2,0.2]))
+
 # Seeing limits for DELVE survey components
 FWHM_DEEP = 0.9 # arcsec
 FWHM_MC   = 1.1 # arcsec
@@ -833,6 +836,7 @@ class DelveSurvey(Survey):
         """
         import healpy as hp
         # These maps are SUM(teff * exptime)
+        #if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20230321'
         if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20230204'
         if not basename: basename = 'decam_sum_expmap_%s_n1024.fits.gz'
 
@@ -1363,9 +1367,9 @@ class DelveTactician(Tactician):
         # Select only one band
         #sel &= np.in1d(self.fields['FILTER'], ['g','r','z'])
         #sel &= np.in1d(self.fields['FILTER'], ['g','r'])
-        sel &= np.in1d(self.fields['FILTER'], ['z'])
+        #sel &= np.in1d(self.fields['FILTER'], ['z'])
         # Select only first tiling
-        #sel &= (self.fields['TILING'] <= 1)
+        sel &= (self.fields['TILING'] <= 2)
 
         # GLON, GLAT cuts
         #glon,glat = cel2gal(self.fields['RA'],self.fields['DEC'])
@@ -1376,7 +1380,7 @@ class DelveTactician(Tactician):
 
         # Select only one region
         #sel &= (self.fields['DEC'] < -60)
-        sel &= (self.fields['RA'] > 150)
+        #sel &= (self.fields['RA'] > 150)
 
         # Airmass cut
         #self.fwhm = 1.2
