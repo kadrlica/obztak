@@ -1005,7 +1005,7 @@ class DelveTactician(Tactician):
         sel = np.ones(len(self.fields),dtype=bool)
 
         if (self.sun.alt > -0.28):
-            # i-band if Sun altitude > -16 deg
+            # i,z if Sun altitude > -16 deg
             sel &= (np.char.count('iz',self.fields['FILTER'].astype(str)) > 0)
         # Moon band constraints (alt = 0.175 rad = 10 deg)
         elif (self.moon.phase >= 40) and (self.moon.alt > 0.175):
@@ -1367,9 +1367,11 @@ class DelveTactician(Tactician):
         # Select only one band
         #sel &= np.in1d(self.fields['FILTER'], ['g','r','z'])
         #sel &= np.in1d(self.fields['FILTER'], ['g','r'])
-        #sel &= np.in1d(self.fields['FILTER'], ['z'])
+        sel &= np.in1d(self.fields['FILTER'], ['i','z'])
+        weight += 1e4 * np.in1d(self.fields['FILTER'], ['i'])
+
         # Select only first tiling
-        sel &= (self.fields['TILING'] <= 2)
+        #sel &= (self.fields['TILING'] <= 2)
 
         # GLON, GLAT cuts
         #glon,glat = cel2gal(self.fields['RA'],self.fields['DEC'])
@@ -1391,13 +1393,15 @@ class DelveTactician(Tactician):
             sel &= ((airmass > airmass_min) & (airmass < airmass_max))
             weight += 1e2 * (airmass - 1.0)**3
         else:
-            sel &= ((airmass > airmass_min) & (airmass < 1.4))
+            #sel &= ((airmass > airmass_min) & (airmass < 1.4))
+            sel &= ((airmass > airmass_min) & (airmass < airmass_max))
+            weight += 1e2 * (airmass - 1.0)**3
 
         # Higher weight for fields close to the moon (when up)
         # angle = 50 -> weight = 6.4
         # Moon angle constraints (viable fields sets moon_angle > 20.)
         if (self.moon.alt > -0.04) and (self.moon.phase >= 30):
-            moon_limit = 40.0
+            moon_limit = 50.0
             sel &= (moon_angle > moon_limit)
 
             # Use a larger (smaller) weight to increase (decrease) the
