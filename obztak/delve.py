@@ -1368,7 +1368,7 @@ class DelveTactician(Tactician):
         #sel &= np.in1d(self.fields['FILTER'], ['g','r','z'])
         #sel &= np.in1d(self.fields['FILTER'], ['g','r'])
         sel &= np.in1d(self.fields['FILTER'], ['i','z'])
-        weight += 1e4 * np.in1d(self.fields['FILTER'], ['i'])
+        #weight += 1e4 * np.in1d(self.fields['FILTER'], ['i'])
 
         # Select only first tiling
         #sel &= (self.fields['TILING'] <= 2)
@@ -1389,13 +1389,11 @@ class DelveTactician(Tactician):
         airmass_min, airmass_max = self.CONDITIONS['extra']
         if False:
             sel &= ((airmass > airmass_min) & (airmass < airmass_max))
-        elif self.fwhm <= 1.0:
+        elif self.fwhm <= 1.2:
             sel &= ((airmass > airmass_min) & (airmass < airmass_max))
             weight += 1e2 * (airmass - 1.0)**3
         else:
-            #sel &= ((airmass > airmass_min) & (airmass < 1.4))
-            sel &= ((airmass > airmass_min) & (airmass < airmass_max))
-            weight += 1e2 * (airmass - 1.0)**3
+            sel &= ((airmass > airmass_min) & (airmass < 1.4))
 
         # Higher weight for fields close to the moon (when up)
         # angle = 50 -> weight = 6.4
