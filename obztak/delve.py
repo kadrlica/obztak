@@ -1011,17 +1011,15 @@ class DelveTactician(Tactician):
         elif (self.moon.phase >= 40) and (self.moon.alt > 0.175):
             # Moon is very bright; only do i
             sel &= (np.char.count('iz',self.fields['FILTER'].astype(str)) > 0)
-            # Allow i,z but prefer z
-            #sel &= (np.char.count('iz',self.fields['FILTER']) > 0)
-            #weight += 1e2 * (np.char.count('i',self.fields['FILTER']) > 0)
         elif (self.moon.phase >= 30) and (self.moon.alt > 0.0):
             # Moon is moderately full; do r,i
+            sel &= (np.char.count('ri',self.fields['FILTER'].astype(str)) > 0)
+        elif (self.moon.phase >= 15) and (self.moon.alt > 0.175):
+            # Moon is up full; do g,r,i
             sel &= (np.char.count('ri',self.fields['FILTER'].astype(str)) > 0)
         else:
             # Moon is faint or down; do g,r,i
             sel &= (np.char.count('gr',self.fields['FILTER'].astype(str)) > 0)
-            # Alternatively, only red bands if others unavailable
-            #weight += 1e8 * (np.char.count('iz',self.fields['FILTER']) > 0)
         return sel
 
     @property
@@ -1217,14 +1215,15 @@ class DelveTactician(Tactician):
             sel &= ((airmass > airmass_min) & (airmass < airmass_max))
         elif self.fwhm <= 0.9:
             sel &= ((airmass > airmass_min) & (airmass < airmass_max))
-            weight += 5e3 * (airmass - 1.0)**3
+            weight += 5e1 * (1.0/airmass)**3
         elif self.fwhm <= 1.1:
             sel &= ((airmass > airmass_min) & (airmass < 1.6))
-            weight += 1e2 * (airmass - 1.0)**3
         elif self.fwhm <= 1.4:
             sel &= ((airmass > airmass_min) & (airmass < 1.4))
+            weight += 1e2 * (airmass - 1.0)**3
         else:
             sel &= ((airmass > airmass_min) & (airmass < 1.3))
+            weight += 1e2 * (airmass - 1.0)**3
 
         #if self.fwhm <= 1.1:
         #    # Prefer fields near the pole
@@ -1256,8 +1255,8 @@ class DelveTactician(Tactician):
 
         # Higher weight for higher airmass
         # airmass = 1.4 -> weight = 6.4
-        weight += 100. * (airmass - 1.)**3
-        #weight += 1e3 * (airmass - 1.)**2
+        weight += 100. * (airmass - 1.0)**3
+        #weight += 1e3 * (airmass - 1.0)**2
 
         # Hack priority near edge of DES S82 (doesn't really work)
         #x = (self.fields['RA'] >= 45) & (self.fields['RA'] <= 100) \
@@ -1367,8 +1366,9 @@ class DelveTactician(Tactician):
         # Select only one band
         #sel &= np.in1d(self.fields['FILTER'], ['g','r','z'])
         #sel &= np.in1d(self.fields['FILTER'], ['g','r'])
-        sel &= np.in1d(self.fields['FILTER'], ['i','z'])
-        #weight += 1e4 * np.in1d(self.fields['FILTER'], ['i'])
+        #sel &= np.in1d(self.fields['FILTER'], ['i','z'])
+        if (self.moon.phase >= 15) and (self.moon.alt > 0.175):
+            sel &= np.in1d(self.fields['FILTER'], ['i'])
 
         # Select only first tiling
         #sel &= (self.fields['TILING'] <= 2)
@@ -1391,9 +1391,10 @@ class DelveTactician(Tactician):
             sel &= ((airmass > airmass_min) & (airmass < airmass_max))
         elif self.fwhm <= 1.2:
             sel &= ((airmass > airmass_min) & (airmass < airmass_max))
-            weight += 1e2 * (airmass - 1.0)**3
+            #weight += 5e1 * (1.0/airmass)**3
         else:
             sel &= ((airmass > airmass_min) & (airmass < 1.4))
+            weight += 1e2 * (airmass - 1.0)**3
 
         # Higher weight for fields close to the moon (when up)
         # angle = 50 -> weight = 6.4
