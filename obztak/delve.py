@@ -976,7 +976,7 @@ class DelveTactician(Tactician):
         ('deep',     [1.0, 1.4]),
         ('mc',       [1.0, 1.8]),
         ('gw',       [1.0, 2.0]),
-        ('extra',    [1.0, 1.6]),
+        ('extra',    [1.0, 1.8]),
         ('delver',   [1.0, 1.2]),
     ])
 
