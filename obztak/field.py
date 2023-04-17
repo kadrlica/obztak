@@ -343,8 +343,10 @@ class FieldArray(np.recarray):
 
         database.connect()
         query = cls.query()
-
         logging.debug(query)
+
+        """
+        ### DEPRECATED: 2023-04-16 - This was too inefficient for large arrays
         data = database.execute(query)
         names = list(map(str.upper,database.get_columns()))
         objidx = names.index('OBJECT')
@@ -360,6 +362,25 @@ class FieldArray(np.recarray):
                     f[key] = d[i]
             f.from_object(d[objidx])
             fields = fields + f
+        """
+        # Query database to recarray
+        data = database.query2recarray(query)
+        if not len(data):
+            logging.warn("No fields found in database.")
+            return cls()
+
+        names = list(map(str.upper,data.dtype.names))
+        data.dtype.names = names
+        objidx = names.index('OBJECT')
+
+        fields = cls(len(data))
+        for key in names:
+            if key in fields.dtype.names:
+                fields[key] = data[key]
+
+        # Parse from object string (inefficient)
+        for i,d in enumerate(data):
+            fields[i:i+1].from_object(d[objidx])
 
         return fields
 
