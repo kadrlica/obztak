@@ -68,7 +68,7 @@ class Scheduler(object):
 
         if isstring(target_fields):
             self.target_fields = self.FieldType.read(target_fields)
-            logging.info("Loading target fields:\n %s"%target_fields)
+            logging.info("Loading target fields...\n %s"%target_fields)
         else:
             self.target_fields = self.FieldType(target_fields)
         return self.target_fields
@@ -81,7 +81,7 @@ class Scheduler(object):
             windows = self._defaults['windows']
 
         if isstring(windows):
-            logging.info("Loading observing windows:\n %s"%windows)
+            logging.info("Loading observing windows...\n %s"%windows)
             windows = fileio.csv2rec(windows)
 
         self.windows = []
@@ -106,6 +106,7 @@ class Scheduler(object):
         """
         Load fields from the telemetry database that were already observed.
         """
+        logging.info("Loading observed fields...")
         try:
             fields = self.FieldType.load_database()
         except Exception as e:
@@ -129,6 +130,7 @@ class Scheduler(object):
         fields           : FieldArray of the completed fields
         """
         # Deal with 'None' string
+        logging.info("Loading completed fields...")
         if isinstance(completed_fields,list):
             if completed_fields[0].lower()=='none':
                 self.completed_fields = self.FieldType()
