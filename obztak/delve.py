@@ -1014,7 +1014,7 @@ class DelveTactician(Tactician):
         elif (self.moon.phase >= 30) and (self.moon.alt > 0.0):
             # Moon is moderately full; do r,i
             sel &= (np.char.count('ri',self.fields['FILTER'].astype(str)) > 0)
-        elif (self.moon.phase >= 9) and (self.moon.alt > 0.175):
+        elif (self.moon.phase >= 20) and (self.moon.alt > 0.175):
             # Moon is up full; do g,r,i
             sel &= (np.char.count('ri',self.fields['FILTER'].astype(str)) > 0)
         else:
@@ -1367,8 +1367,8 @@ class DelveTactician(Tactician):
         #sel &= np.in1d(self.fields['FILTER'], ['g','r','z'])
         #sel &= np.in1d(self.fields['FILTER'], ['g','r'])
         #sel &= np.in1d(self.fields['FILTER'], ['i','z'])
-        if (self.moon.phase >= 9) and (self.moon.alt > 0.175):
-            sel &= np.in1d(self.fields['FILTER'], ['i'])
+        #if (self.moon.phase >= 9) and (self.moon.alt > 0.175):
+        #    sel &= np.in1d(self.fields['FILTER'], ['i'])
 
         # Select only first tiling
         #sel &= (self.fields['TILING'] <= 2)
