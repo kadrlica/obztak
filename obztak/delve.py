@@ -1189,12 +1189,12 @@ class DelveTactician(Tactician):
         sel &= (self.fields['PROGRAM'].astype(str) == 'delve-wide')
 
         # GLON, GLAT cuts
-        #glon,glat = cel2gal(self.fields['RA'],self.fields['DEC'])
+        glon,glat = cel2gal(self.fields['RA'],self.fields['DEC'])
         # Remove southern galactic cap
         #sel &= (glon >= 180)
         #sel &= (glat > 0)
         # Remove bulge region
-        #sel &= ~( ((glon < 30) | (glon > 330)) & (np.abs(glat) < 15) )
+        sel &= ~( ((glon < 30) | (glon > 330)) & (np.abs(glat) < 15) )
 
         # DEC cut
         #sel &= (self.fields['DEC'] < -60)
