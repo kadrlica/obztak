@@ -836,7 +836,7 @@ class DelveSurvey(Survey):
         """
         import healpy as hp
         # These maps are SUM(teff * exptime)
-        #if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20230321'
+        #if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20230426'
         if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20230204'
         if not basename: basename = 'decam_sum_expmap_%s_n1024.fits.gz'
 
@@ -944,13 +944,15 @@ class DelveFieldArray(FieldArray):
         and object NOT LIKE '%%LMi%%'
         and object NOT LIKE '%%dr2_%%'
         and id NOT IN (967215)
+        -- Disk corruption
+        and id NOT IN (1029209, 1029212, 1029213, 1029214)
         -- and id NOT IN (860597, 860598, 860599, 860600, 860601, 860602)
         -- Mirror compressed air on 20201025
         -- and id NOT BETWEEN 948781 and 948795
         -- Cloudy nite with lots of qc_teff = nan
         and NOT (id BETWEEN 1025565 and 1025876 and qc_teff is null)
         and (
-             (COALESCE(qc_teff,-1) NOT BETWEEN 0 and 0.2
+             (COALESCE(qc_teff,-1) NOT BETWEEN 0 and 0.3
              AND COALESCE(qc_fwhm,1) BETWEEN 0.5 and 1.5)
              OR %(date_column)s  > (now() - interval '14 hours')
         )
@@ -963,7 +965,7 @@ class DelveScheduler(Scheduler):
     _defaults = odict(list(Scheduler._defaults.items()) + [
         ('tactician','coverage'),
         ('windows',fileio.get_datafile("delve-windows-20230204.csv.gz")),
-        ('targets',fileio.get_datafile("delve-target-fields-20230204.csv.gz")),
+        ('targets',fileio.get_datafile("delve-target-fields-20230204-v2.csv.gz")),
     ])
 
     FieldType = DelveFieldArray
@@ -1013,7 +1015,8 @@ class DelveTactician(Tactician):
             sel &= (np.char.count('iz',self.fields['FILTER'].astype(str)) > 0)
         elif (self.moon.phase >= 30) and (self.moon.alt > 0.0):
             # Moon is moderately full; do r,i
-            sel &= (np.char.count('ri',self.fields['FILTER'].astype(str)) > 0)
+            #sel &= (np.char.count('ri',self.fields['FILTER'].astype(str)) > 0)
+            sel &= (np.char.count('i',self.fields['FILTER'].astype(str)) > 0)
         elif (self.moon.phase >= 20) and (self.moon.alt > 0.175):
             # Moon is up full; do g,r,i
             sel &= (np.char.count('ri',self.fields['FILTER'].astype(str)) > 0)
@@ -1369,6 +1372,9 @@ class DelveTactician(Tactician):
         #sel &= np.in1d(self.fields['FILTER'], ['i','z'])
         #if (self.moon.phase >= 9) and (self.moon.alt > 0.175):
         #    sel &= np.in1d(self.fields['FILTER'], ['i'])
+        if (self.moon.phase >= 40) and (self.moon.alt < 0.5):
+            #sel &= np.in1d(self.fields['FILTER'], ['i'])
+            weight += 5e3 * np.in1d(self.fields['FILTER'], ['z'])
 
         # Select only first tiling
         #sel &= (self.fields['TILING'] <= 2)
@@ -1400,7 +1406,7 @@ class DelveTactician(Tactician):
         # angle = 50 -> weight = 6.4
         # Moon angle constraints (viable fields sets moon_angle > 20.)
         if (self.moon.alt > -0.04) and (self.moon.phase >= 30):
-            moon_limit = 50.0
+            moon_limit = 40.0
             sel &= (moon_angle > moon_limit)
 
             # Use a larger (smaller) weight to increase (decrease) the
