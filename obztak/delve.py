@@ -836,7 +836,7 @@ class DelveSurvey(Survey):
         """
         import healpy as hp
         # These maps are SUM(teff * exptime)
-        #if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20230426'
+        #if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20230501'
         if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20230204'
         if not basename: basename = 'decam_sum_expmap_%s_n1024.fits.gz'
 
@@ -1022,7 +1022,7 @@ class DelveTactician(Tactician):
             sel &= (np.char.count('ri',self.fields['FILTER'].astype(str)) > 0)
         else:
             # Moon is faint or down; do g,r,i
-            sel &= (np.char.count('gr',self.fields['FILTER'].astype(str)) > 0)
+            sel &= (np.char.count('gri',self.fields['FILTER'].astype(str)) > 0)
         return sel
 
     @property
@@ -1369,12 +1369,15 @@ class DelveTactician(Tactician):
         # Select only one band
         #sel &= np.in1d(self.fields['FILTER'], ['g','r','z'])
         #sel &= np.in1d(self.fields['FILTER'], ['g','r'])
-        #sel &= np.in1d(self.fields['FILTER'], ['i','z'])
+        sel &= np.in1d(self.fields['FILTER'], ['i','z'])
         #if (self.moon.phase >= 9) and (self.moon.alt > 0.175):
         #    sel &= np.in1d(self.fields['FILTER'], ['i'])
-        if (self.moon.phase >= 40) and (self.moon.alt < 0.5):
+        if (self.moon.phase >= 80) and (self.moon.alt > 0.3):
+            #sel &= np.in1d(self.fields['FILTER'], ['z'])
+            weight += 1e3 * np.in1d(self.fields['FILTER'], ['i'])
+        if (self.moon.phase >= 40) and (self.moon.alt < 0.3):
             #sel &= np.in1d(self.fields['FILTER'], ['i'])
-            weight += 5e3 * np.in1d(self.fields['FILTER'], ['z'])
+            weight += 1e3 * np.in1d(self.fields['FILTER'], ['z'])
 
         # Select only first tiling
         #sel &= (self.fields['TILING'] <= 2)
@@ -1395,8 +1398,11 @@ class DelveTactician(Tactician):
         airmass_min, airmass_max = self.CONDITIONS['extra']
         if False:
             sel &= ((airmass > airmass_min) & (airmass < airmass_max))
-        elif self.fwhm <= 1.2:
+        elif self.fwhm <= 1.0:
             sel &= ((airmass > airmass_min) & (airmass < airmass_max))
+            #weight += 5e1 * (1.0/airmass)**3
+        elif self.fwhm <= 1.2:
+            sel &= ((airmass > airmass_min) & (airmass < 1.6))
             #weight += 5e1 * (1.0/airmass)**3
         else:
             sel &= ((airmass > airmass_min) & (airmass < 1.4))
