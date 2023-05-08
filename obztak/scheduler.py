@@ -306,8 +306,9 @@ class Scheduler(object):
             self.completed_fields = self.completed_fields + field_select
             self.scheduled_fields = self.scheduled_fields + field_select
 
-            msg=" %(DATE).19s: id=%(ID)10s, secz=%(AIRMASS).2f, slew=%(SLEW).2f"
-            msg+=", moon=%(PHASE).0f%%,%(ALT).0fdeg"
+            #msg=" %(DATE).19s: id=%(ID)10s, secz=%(AIRMASS).2f, slew=%(SLEW).2f"
+            msg=" %(DATE).19s: id=%(ID)10s, ra,dec=%(RA).2f,%(DEC).2f"
+            msg+=", secz=%(AIRMASS).2f, moon=%(PHASE).0f%%,%(ALT).0fdeg"
             for i,f in zip(field_select.unique_id,field_select):
                 params = dict([('ID',i)]+[(k,f[k]) for k in f.dtype.names])
                 params.update({
