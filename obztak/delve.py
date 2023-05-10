@@ -1015,10 +1015,9 @@ class DelveTactician(Tactician):
             sel &= (np.char.count('iz',self.fields['FILTER'].astype(str)) > 0)
         elif (self.moon.phase >= 30) and (self.moon.alt > 0.0):
             # Moon is moderately full; do r,i
-            #sel &= (np.char.count('ri',self.fields['FILTER'].astype(str)) > 0)
-            sel &= (np.char.count('i',self.fields['FILTER'].astype(str)) > 0)
+            sel &= (np.char.count('ri',self.fields['FILTER'].astype(str)) > 0)
         elif (self.moon.phase >= 20) and (self.moon.alt > 0.175):
-            # Moon is up full; do g,r,i
+            # Moon is up; do g,r,i
             sel &= (np.char.count('ri',self.fields['FILTER'].astype(str)) > 0)
         else:
             # Moon is faint or down; do g,r,i
@@ -1369,13 +1368,13 @@ class DelveTactician(Tactician):
         # Select only one band
         #sel &= np.in1d(self.fields['FILTER'], ['g','r','z'])
         #sel &= np.in1d(self.fields['FILTER'], ['g','r'])
-        sel &= np.in1d(self.fields['FILTER'], ['i','z'])
+        #sel &= np.in1d(self.fields['FILTER'], ['i','z'])
         #if (self.moon.phase >= 9) and (self.moon.alt > 0.175):
         #    sel &= np.in1d(self.fields['FILTER'], ['i'])
-        if (self.moon.phase >= 80) and (self.moon.alt > 0.3):
-            #sel &= np.in1d(self.fields['FILTER'], ['z'])
-            weight += 1e3 * np.in1d(self.fields['FILTER'], ['i'])
-        if (self.moon.phase >= 40) and (self.moon.alt < 0.3):
+        #if (self.moon.phase >= 80) and (self.moon.alt > 0.3):
+        #    #sel &= np.in1d(self.fields['FILTER'], ['z'])
+        #    weight += 1e3 * np.in1d(self.fields['FILTER'], ['i'])
+        if (self.moon.phase < 90) and (self.moon.alt < 0.4):
             #sel &= np.in1d(self.fields['FILTER'], ['i'])
             weight += 1e3 * np.in1d(self.fields['FILTER'], ['z'])
 
@@ -1383,9 +1382,9 @@ class DelveTactician(Tactician):
         #sel &= (self.fields['TILING'] <= 2)
 
         # GLON, GLAT cuts
-        #glon,glat = cel2gal(self.fields['RA'],self.fields['DEC'])
+        glon,glat = cel2gal(self.fields['RA'],self.fields['DEC'])
         #sel &= (glon >= 180)
-        #sel &= (glat > 0)
+        sel &= (glat > 0)
         # Remove bulge region
         #sel &= ~( ((glon < 30) | (glon > 330)) & (np.abs(glat) < 15) )
 
