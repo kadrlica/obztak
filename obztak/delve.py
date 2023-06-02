@@ -813,7 +813,8 @@ class DelveSurvey(Survey):
         """ Load bright star list """
         ra,dec = np.copy(ra), np.copy(dec)
         sel = np.zeros(len(ra),dtype=bool)
-        filename = fileio.get_datafile('famous-bright-stars.csv')
+        #filename = fileio.get_datafile('famous-bright-stars.csv')
+        filename = fileio.get_datafile('bsc5p-bright-stars.csv')
         targets = fileio.read_csv(filename).to_records()
         for t in targets:
             sel |= (angsep(t['ra'],t['dec'],ra,dec) < t['radius'])
@@ -836,8 +837,8 @@ class DelveSurvey(Survey):
         """
         import healpy as hp
         # These maps are SUM(teff * exptime)
-        #if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20230501'
-        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20230204'
+        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20230601'
+        #if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20230204'
         if not basename: basename = 'decam_sum_expmap_%s_n1024.fits.gz'
 
         logging.info("Loading maps from: %s"%dirname)
@@ -965,7 +966,7 @@ class DelveScheduler(Scheduler):
     _defaults = odict(list(Scheduler._defaults.items()) + [
         ('tactician','coverage'),
         ('windows',fileio.get_datafile("delve-windows-20230204.csv.gz")),
-        ('targets',fileio.get_datafile("delve-target-fields-20230204-v2.csv.gz")),
+       ('targets',fileio.get_datafile("delve-target-fields-20230601.csv.gz")),
     ])
 
     FieldType = DelveFieldArray
@@ -974,11 +975,11 @@ class DelveScheduler(Scheduler):
 class DelveTactician(Tactician):
     CONDITIONS = odict([
         (None,       [1.0, 2.0]),
-        ('wide',     [1.0, 1.8]),
+        ('wide',     [1.0, 1.5]),
         ('deep',     [1.0, 1.4]),
         ('mc',       [1.0, 1.8]),
         ('gw',       [1.0, 2.0]),
-        ('extra',    [1.0, 1.8]),
+        ('extra',    [1.0, 1.5]),
         ('delver',   [1.0, 1.2]),
     ])
 
@@ -1011,7 +1012,7 @@ class DelveTactician(Tactician):
             sel &= (np.char.count('iz',self.fields['FILTER'].astype(str)) > 0)
         # Moon band constraints (alt = 0.175 rad = 10 deg)
         elif (self.moon.phase >= 40) and (self.moon.alt > 0.175):
-            # Moon is very bright; only do i
+            # Moon is very bright; only do i,z
             sel &= (np.char.count('iz',self.fields['FILTER'].astype(str)) > 0)
         elif (self.moon.phase >= 30) and (self.moon.alt > 0.0):
             # Moon is moderately full; do r,i
@@ -1213,7 +1214,7 @@ class DelveTactician(Tactician):
         airmass_min, airmass_max = self.CONDITIONS['wide']
 
         #self.fwhm = 1.1
-        if False:
+        if True:
             sel &= ((airmass > airmass_min) & (airmass < airmass_max))
         elif self.fwhm <= 0.9:
             sel &= ((airmass > airmass_min) & (airmass < airmass_max))
@@ -1371,20 +1372,20 @@ class DelveTactician(Tactician):
         #sel &= np.in1d(self.fields['FILTER'], ['i','z'])
         #if (self.moon.phase >= 9) and (self.moon.alt > 0.175):
         #    sel &= np.in1d(self.fields['FILTER'], ['i'])
-        #if (self.moon.phase >= 80) and (self.moon.alt > 0.3):
-        #    #sel &= np.in1d(self.fields['FILTER'], ['z'])
-        #    weight += 1e3 * np.in1d(self.fields['FILTER'], ['i'])
-        if (self.moon.phase < 90) and (self.moon.alt < 0.4):
-            #sel &= np.in1d(self.fields['FILTER'], ['i'])
-            weight += 1e3 * np.in1d(self.fields['FILTER'], ['z'])
+        if (self.moon.phase >= 70) and (self.moon.alt > 0.3):
+            #sel &= np.in1d(self.fields['FILTER'], ['z'])
+            weight += 1e3 * np.in1d(self.fields['FILTER'], ['i'])
+        #if (self.moon.phase < 90) and (self.moon.alt < 0.4):
+        #    #sel &= np.in1d(self.fields['FILTER'], ['i'])
+        #    weight += 1e3 * np.in1d(self.fields['FILTER'], ['z'])
 
         # Select only first tiling
         #sel &= (self.fields['TILING'] <= 2)
 
         # GLON, GLAT cuts
-        glon,glat = cel2gal(self.fields['RA'],self.fields['DEC'])
+        #glon,glat = cel2gal(self.fields['RA'],self.fields['DEC'])
         #sel &= (glon >= 180)
-        sel &= (glat > 0)
+        #sel &= (glat > 0)
         # Remove bulge region
         #sel &= ~( ((glon < 30) | (glon > 330)) & (np.abs(glat) < 15) )
 
@@ -1395,7 +1396,7 @@ class DelveTactician(Tactician):
         # Airmass cut
         #self.fwhm = 1.2
         airmass_min, airmass_max = self.CONDITIONS['extra']
-        if False:
+        if True:
             sel &= ((airmass > airmass_min) & (airmass < airmass_max))
         elif self.fwhm <= 1.0:
             sel &= ((airmass > airmass_min) & (airmass < airmass_max))
