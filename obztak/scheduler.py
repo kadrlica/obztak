@@ -360,7 +360,8 @@ class Scheduler(object):
         field['DATE'] = list(map(datestring,nfields*[date]))
         return field
 
-    def schedule_chunk(self,tstart=None,chunk=60,clip=False,plot=False,mode=None):
+    def schedule_chunk(self, tstart=None, chunk=60, clip=False,
+                       plot=False, mode=None):
         """
         Schedule a chunk of exposures.
 
@@ -381,7 +382,8 @@ class Scheduler(object):
 
         return self.run(tstart,tstop,clip,plot,mode)
 
-    def schedule_nite(self,date=None,start=None,chunk=60,clip=False,plot=False,mode=None):
+    def schedule_nite(self, date=None, start=None, end=None,
+                      chunk=60, clip=False, plot=False, mode=None):
         """
         Schedule a night of observing.
 
@@ -391,6 +393,8 @@ class Scheduler(object):
         Parameters:
         -----------
         date  : The date of the nite to schedule
+        start : When to start the observations (UTC)
+        end   : When to end the observations (UTC)
         chunk : The duration of a chunk of exposures (minutes)
         plot  : Dynamically plot the progress after each chunk
         mode  : Mode for scheduler tactician
@@ -409,36 +413,44 @@ class Scheduler(object):
         try:
             nites = [get_nite(w[0]) for w in self.windows]
             idx = nites.index(nite)
-            winstart,finish = self.windows[idx]
+            window_start,window_end = self.windows[idx]
+
             if start is None:
-                start = winstart
+                start = window_start
             else:
-                logging.warn("Over-writing nite start time")
+                logging.warn("Over-writing nite start time.")
+
+            if end is None:
+                end = window_end
+            else:
+                logging.warn("Over-writing nite end time.")
+
         except (TypeError, ValueError):
             msg = "Requested nite (%s) not found in windows"%nite
             logging.warning(msg)
             msg = '['+', '.join([n for n in nites])+']'
             logging.debug(msg)
 
-            start = date
             self.observatory.date = date
             self.observatory.horizon = self.observatory.twilight
-            finish = self.observatory.next_rising(ephem.Sun(), use_center=True)
+            if start is None:
+                start = date
+            if end is None:
+                end = self.observatory.next_rising(ephem.Sun(), use_center=True)
             self.observatory.horizon = '0'
 
         logging.info("Night start (UTC):  %s"%datestr(start))
-        logging.info("Night finish (UTC): %s"%datestr(finish))
+        logging.info("Night finish (UTC): %s"%datestr(end))
 
-        chunks = []
-        i = 0
-        while start < finish:
-            i+=1
-            msg = "Scheduling %s -- Chunk %i"%(start,i)
+        chunk_start, chunks = start, []
+        while chunk_start < end:
+            msg = "Scheduling %s -- Chunk %i"%(chunk_start, len(chunks)+1)
             logging.debug(msg)
-            end = start+chunk
+            chunk_end = chunk_start+chunk
 
             try:
-                scheduled_fields = self.run(start,end,clip=clip,plot=False,mode=mode)
+                scheduled_fields = self.run(chunk_start,chunk_end,
+                                            clip=clip,plot=False,mode=mode)
             except ValueError:
                 # Write fields even if there is an error
                 #chunks.append(self.scheduled_fields)
@@ -453,22 +465,22 @@ class Scheduler(object):
 
             chunks.append(scheduled_fields)
             fieldtime = chunks[-1]['EXPTIME'][-1]*ephem.second + constants.OVERHEAD
-            start = ephem.Date(chunks[-1]['DATE'][-1].astype(str)) + fieldtime
+            chunk_start = ephem.Date(chunks[-1]['DATE'][-1].astype(str)) + fieldtime
             #start = end
 
-        if plot: raw_input(' ...finish... ')
+        if plot: raw_input(' ...enter to finish... ')
 
         return chunks
 
-    def schedule_survey(self,start=None,end=None,chunk=60,plot=False,mode=None,
-                        write=False,dirname=None):
+    def schedule_survey(self, start=None, end=None, chunk=60,
+                        plot=False, mode=None, write=False, dirname=None):
         """
         Schedule the entire survey.
 
         Parameters:
         -----------
-        start : Start of survey (int or str)
-        end   : End of survey (int or str)
+        start : Start date of survey (int or str)
+        end   : End date of survey (int or str)
         chunk : The duration of a chunk of exposures (minutes)
         plot  : Dynamically plot the progress after each night
         mode  : Mode of scheduler tactician
