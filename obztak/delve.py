@@ -1016,7 +1016,7 @@ class DelveTactician(Tactician):
             sel &= (np.char.count('iz',self.fields['FILTER'].astype(str)) > 0)
         elif (self.moon.phase >= 30) and (self.moon.alt > 0.0):
             # Moon is moderately full; do r,i
-            sel &= (np.char.count('ri',self.fields['FILTER'].astype(str)) > 0)
+            sel &= (np.char.count('i',self.fields['FILTER'].astype(str)) > 0)
         elif (self.moon.phase >= 20) and (self.moon.alt > 0.175):
             # Moon is up; do g,r,i
             sel &= (np.char.count('ri',self.fields['FILTER'].astype(str)) > 0)
