@@ -953,7 +953,7 @@ class DelveFieldArray(FieldArray):
         -- Cloudy nite with lots of qc_teff = nan
         and NOT (id BETWEEN 1025565 and 1025876 and qc_teff is null)
         and (
-             (COALESCE(qc_teff,-1) NOT BETWEEN 0 and 0.3
+             (COALESCE(qc_teff,-1) NOT BETWEEN 0 and 0.4
              AND COALESCE(qc_fwhm,1) BETWEEN 0.5 and 1.5)
              OR %(date_column)s  > (now() - interval '14 hours')
         )
@@ -1369,12 +1369,12 @@ class DelveTactician(Tactician):
         # Select only one band
         #sel &= np.in1d(self.fields['FILTER'], ['g','r','z'])
         #sel &= np.in1d(self.fields['FILTER'], ['g','r'])
-        #sel &= np.in1d(self.fields['FILTER'], ['i','z'])
+        sel &= np.in1d(self.fields['FILTER'], ['z'])
         #if (self.moon.phase >= 9) and (self.moon.alt > 0.175):
         #    sel &= np.in1d(self.fields['FILTER'], ['i'])
-        if (self.moon.phase >= 70) and (self.moon.alt > 0.3):
-            #sel &= np.in1d(self.fields['FILTER'], ['z'])
-            weight += 1e3 * np.in1d(self.fields['FILTER'], ['i'])
+        #if (self.moon.phase >= 70) and (self.moon.alt > 0.3):
+        #    #sel &= np.in1d(self.fields['FILTER'], ['z'])
+        #    weight += 1e3 * np.in1d(self.fields['FILTER'], ['i'])
         #if (self.moon.phase < 90) and (self.moon.alt < 0.4):
         #    #sel &= np.in1d(self.fields['FILTER'], ['i'])
         #    weight += 1e3 * np.in1d(self.fields['FILTER'], ['z'])
@@ -1412,7 +1412,7 @@ class DelveTactician(Tactician):
         # angle = 50 -> weight = 6.4
         # Moon angle constraints (viable fields sets moon_angle > 20.)
         if (self.moon.alt > -0.04) and (self.moon.phase >= 30):
-            moon_limit = 40.0
+            moon_limit = 45.0
             sel &= (moon_angle > moon_limit)
 
             # Use a larger (smaller) weight to increase (decrease) the
