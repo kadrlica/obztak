@@ -975,11 +975,11 @@ class DelveScheduler(Scheduler):
 class DelveTactician(Tactician):
     CONDITIONS = odict([
         (None,       [1.0, 2.0]),
-        ('wide',     [1.0, 1.5]),
+        ('wide',     [1.0, 1.6]),
         ('deep',     [1.0, 1.4]),
         ('mc',       [1.0, 1.8]),
         ('gw',       [1.0, 2.0]),
-        ('extra',    [1.0, 1.5]),
+        ('extra',    [1.0, 1.6]),
         ('delver',   [1.0, 1.2]),
     ])
 
@@ -1013,10 +1013,10 @@ class DelveTactician(Tactician):
         # Moon band constraints (alt = 0.175 rad = 10 deg)
         elif (self.moon.phase >= 40) and (self.moon.alt > 0.175):
             # Moon is very bright; only do i,z
-            sel &= (np.char.count('iz',self.fields['FILTER'].astype(str)) > 0)
+            sel &= (np.char.count('z',self.fields['FILTER'].astype(str)) > 0)
         elif (self.moon.phase >= 30) and (self.moon.alt > 0.0):
             # Moon is moderately full; do r,i
-            sel &= (np.char.count('i',self.fields['FILTER'].astype(str)) > 0)
+            sel &= (np.char.count('iz',self.fields['FILTER'].astype(str)) > 0)
         elif (self.moon.phase >= 20) and (self.moon.alt > 0.175):
             # Moon is up; do g,r,i
             sel &= (np.char.count('ri',self.fields['FILTER'].astype(str)) > 0)
@@ -1369,12 +1369,14 @@ class DelveTactician(Tactician):
         # Select only one band
         #sel &= np.in1d(self.fields['FILTER'], ['g','r','z'])
         #sel &= np.in1d(self.fields['FILTER'], ['g','r'])
-        sel &= np.in1d(self.fields['FILTER'], ['z'])
+        sel &= np.in1d(self.fields['FILTER'], ['i','z'])
         #if (self.moon.phase >= 9) and (self.moon.alt > 0.175):
         #    sel &= np.in1d(self.fields['FILTER'], ['i'])
-        #if (self.moon.phase >= 70) and (self.moon.alt > 0.3):
-        #    #sel &= np.in1d(self.fields['FILTER'], ['z'])
-        #    weight += 1e3 * np.in1d(self.fields['FILTER'], ['i'])
+        if (self.moon.phase >= 70) and (self.moon.alt < 0.0):
+            sel &= np.in1d(self.fields['FILTER'], ['i'])
+        if (self.moon.phase >= 70) and (self.moon.alt > 0.175):
+            #sel &= np.in1d(self.fields['FILTER'], ['z'])
+            weight += 1e3 * np.in1d(self.fields['FILTER'], ['i'])
         #if (self.moon.phase < 90) and (self.moon.alt < 0.4):
         #    #sel &= np.in1d(self.fields['FILTER'], ['i'])
         #    weight += 1e3 * np.in1d(self.fields['FILTER'], ['z'])
@@ -1396,13 +1398,13 @@ class DelveTactician(Tactician):
         # Airmass cut
         #self.fwhm = 1.2
         airmass_min, airmass_max = self.CONDITIONS['extra']
-        if True:
+        if False:
             sel &= ((airmass > airmass_min) & (airmass < airmass_max))
         elif self.fwhm <= 1.0:
             sel &= ((airmass > airmass_min) & (airmass < airmass_max))
             #weight += 5e1 * (1.0/airmass)**3
         elif self.fwhm <= 1.2:
-            sel &= ((airmass > airmass_min) & (airmass < 1.6))
+            sel &= ((airmass > airmass_min) & (airmass < 1.5))
             #weight += 5e1 * (1.0/airmass)**3
         else:
             sel &= ((airmass > airmass_min) & (airmass < 1.4))
