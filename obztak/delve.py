@@ -1010,13 +1010,12 @@ class DelveTactician(Tactician):
         if (self.sun.alt > -0.28):
             # i,z if Sun altitude > -16 deg
             sel &= (np.char.count('iz',self.fields['FILTER'].astype(str)) > 0)
-        # Moon band constraints (alt = 0.175 rad = 10 deg)
         elif (self.moon.phase >= 40) and (self.moon.alt > 0.175):
             # Moon is very bright; only do i,z
             sel &= (np.char.count('iz',self.fields['FILTER'].astype(str)) > 0)
         elif (self.moon.phase >= 30) and (self.moon.alt > 0.0):
             # Moon is moderately full; do r,i
-            sel &= (np.char.count('iz',self.fields['FILTER'].astype(str)) > 0)
+            sel &= (np.char.count('riz',self.fields['FILTER'].astype(str)) > 0)
         elif (self.moon.phase >= 20) and (self.moon.alt > 0.175):
             # Moon is up; do g,r,i
             sel &= (np.char.count('ri',self.fields['FILTER'].astype(str)) > 0)
@@ -1252,8 +1251,8 @@ class DelveTactician(Tactician):
 
         # Higher weight for larger slews
         # slew = 10 deg -> weight = 1e2
-        weight += self.slew**2
-        #weight += self.slew
+        #weight += self.slew**2
+        weight += self.slew
         #weight += 1e3 * self.slew
 
         # Higher weight for higher airmass
@@ -1374,7 +1373,7 @@ class DelveTactician(Tactician):
         #    sel &= np.in1d(self.fields['FILTER'], ['i'])
         #if (self.moon.phase >= 70) and (self.moon.alt < 0.0):
         #    sel &= np.in1d(self.fields['FILTER'], ['i'])
-        if (self.moon.phase >= 70) and (self.moon.alt > 0.175):
+        if (self.moon.phase >= 70) and (self.moon.alt > 0.45):
             #sel &= np.in1d(self.fields['FILTER'], ['z'])
             weight += 1e3 * np.in1d(self.fields['FILTER'], ['i'])
         #if (self.moon.phase < 90) and (self.moon.alt < 0.4):
@@ -1442,7 +1441,7 @@ class DelveTactician(Tactician):
 
         ## Try hard to do high priority fields
         weight += 3e1 * (self.fields['PRIORITY'] - 1)
-        weight += 1e5 * (self.fields['TILING'] > 3)
+        weight += 1e7 * (self.fields['TILING'] > 3)
 
         # Set infinite weight to all disallowed fields
         weight[~sel] = np.inf
