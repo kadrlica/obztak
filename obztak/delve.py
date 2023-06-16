@@ -1213,7 +1213,7 @@ class DelveTactician(Tactician):
         airmass_min, airmass_max = self.CONDITIONS['wide']
 
         #self.fwhm = 1.1
-        if True:
+        if False:
             sel &= ((airmass > airmass_min) & (airmass < airmass_max))
         elif self.fwhm <= 0.9:
             sel &= ((airmass > airmass_min) & (airmass < airmass_max))
