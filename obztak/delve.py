@@ -837,7 +837,7 @@ class DelveSurvey(Survey):
         """
         import healpy as hp
         # These maps are SUM(teff * exptime)
-        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20230601'
+        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20230616'
         #if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20230204'
         if not basename: basename = 'decam_sum_expmap_%s_n1024.fits.gz'
 
@@ -966,7 +966,7 @@ class DelveScheduler(Scheduler):
     _defaults = odict(list(Scheduler._defaults.items()) + [
         ('tactician','coverage'),
         ('windows',fileio.get_datafile("delve-windows-20230601.csv.gz")),
-       ('targets',fileio.get_datafile("delve-target-fields-20230601.csv.gz")),
+        ('targets',fileio.get_datafile("delve-target-fields-20230616.csv.gz")),
     ])
 
     FieldType = DelveFieldArray
@@ -980,7 +980,7 @@ class DelveTactician(Tactician):
         ('mc',       [1.0, 1.8]),
         ('gw',       [1.0, 2.0]),
         ('extra',    [1.0, 1.6]),
-        ('delver',   [1.0, 1.2]),
+        ('delver',   [1.0, 1.4]),
     ])
 
     def __init__(self, *args, **kwargs):
@@ -1474,16 +1474,16 @@ class DelveTactician(Tactician):
         sel &= (self.fields['FILTER'] == 'r')
 
         # GLON, GLAT cuts
-        #glon,glat = cel2gal(self.fields['RA'],self.fields['DEC'])
+        glon,glat = cel2gal(self.fields['RA'],self.fields['DEC'])
         #sel &= (glon >= 180)
-        #sel &= (glat > 0)
+        sel &= (glat < -15)
         # Remove bulge region
         #sel &= ~( ((glon < 30) | (glon > 330)) & (np.abs(glat) < 15) )
 
         # Select region between S82 and SPT
         sel &= (self.fields['DEC'] < -10) & (self.fields['DEC'] > -45)
-        sel &= (self.fields['DEC'] < -25)
-        sel &= (self.fields['RA'] > 305)
+        sel &= (self.fields['DEC'] < -30)
+        #sel &= (self.fields['RA'] > 290)
 
         # Only first tiling
         #sel &= np.in1d(self.fields['TILING'],[2])
@@ -1519,12 +1519,12 @@ class DelveTactician(Tactician):
 
         # Higher weight for higher airmass
         # airmass = 1.4 -> weight = 6.4
-        weight += 100. * (airmass - 1.)**3
-        #weight += 1e3 * (airmass - 1.)**2
+        #weight += 100. * (airmass - 1.)**3
+        weight += 1e3 * (airmass - 1.)**2
 
         ## Try hard to do high priority fields
         weight += 1e1 * (self.fields['PRIORITY'] - 1)
-        weight += 1e5 * (self.fields['TILING'] > 1)
+        weight += 1e5 * (self.fields['TILING'] > 2)
 
         # Set infinite weight to all disallowed fields
         weight[~sel] = np.inf
