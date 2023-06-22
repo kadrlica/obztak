@@ -28,6 +28,7 @@ from obztak.utils.date import datestring, setdefaults, nite2utc,utc2nite,datestr
 NAME    = 'DELVE'
 PROGRAM = NAME.lower()
 PROPID  = '2019A-0305'
+PROPID  = '2023A-343956'
 PROPOSER = 'Drlica-Wagner'
 BANDS = ['g','r','i']
 TILINGS = [1,2,3,4]
@@ -936,8 +937,9 @@ class DelveFieldArray(FieldArray):
         COALESCE(airmass,-1) as AIRMASS, COALESCE(moonangl,-1) as MOONANGLE,
         COALESCE(ha, -1) as HOURANGLE, COALESCE(slewangl,-1) as SLEW, PROGRAM
         --2019B-1014: Felipe Olivares
-        --2022B-780972: Peter Ferguson
-        FROM exposure where propid in ('%(propid)s','2019B-1014','2022B-780972')
+        --2022B-780972: Ferguson
+        --2023A-343956: Ferguson 
+        FROM exposure where propid in ('%(propid)s','2019B-1014','2022B-780972','2023A-343956')
         and exptime > 89
         and discard = False and delivered = True and flavor = 'object'
         and object LIKE '%(object_fmt)s%%'
@@ -1459,7 +1461,8 @@ class DelveTactician(Tactician):
         -------
         weight : array of weights per field
         """
-        self.fields.PROPID = '2022B-780972'
+        #self.fields.PROPID = '2022B-780972'
+        self.fields.PROPID = '2023A-343956'
         self.fields.SISPI_DICT["propid"] = self.fields.PROPID
 
         airmass = self.airmass
