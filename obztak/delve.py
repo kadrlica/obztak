@@ -1488,7 +1488,7 @@ class DelveTactician(Tactician):
         #sel &= ~( ((glon < 30) | (glon > 330)) & (np.abs(glat) < 15) )
 
         # Select region between S82 and SPT
-        sel &= (self.fields['DEC'] < -10) & (self.fields['DEC'] > -45)
+        sel &= (self.fields['DEC'] < -10) & (self.fields['DEC'] > -40)
         sel &= (self.fields['DEC'] < -27)
         #sel &= (self.fields['RA'] > 290)
 
