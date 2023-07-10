@@ -28,7 +28,7 @@ from obztak.utils.date import datestring, setdefaults, nite2utc,utc2nite,datestr
 NAME    = 'DELVE'
 PROGRAM = NAME.lower()
 PROPID  = '2019A-0305'
-PROPID  = '2023A-343956'
+#PROPID  = '2023A-343956'
 PROPOSER = 'Drlica-Wagner'
 BANDS = ['g','r','i']
 TILINGS = [1,2,3,4]
@@ -838,7 +838,7 @@ class DelveSurvey(Survey):
         """
         import healpy as hp
         # These maps are SUM(teff * exptime)
-        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20230623'
+        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20230709'
         #if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20230204'
         if not basename: basename = 'decam_sum_expmap_%s_n1024.fits.gz'
 
@@ -940,7 +940,7 @@ class DelveFieldArray(FieldArray):
         --2022B-780972: Ferguson
         --2023A-343956: Ferguson 
         FROM exposure
-        WHERE propid in ('%(propid)s','2019B-1014','2022B-780972','2023A-343956')
+        WHERE propid in ('%(propid)s','2019A-0305','2019B-1014','2022B-780972','2023A-343956')
         and exptime > 89
         and discard = False and delivered = True and flavor = 'object'
         and object LIKE '%(object_fmt)s%%'
@@ -1197,7 +1197,7 @@ class DelveTactician(Tactician):
         glon,glat = cel2gal(self.fields['RA'],self.fields['DEC'])
         # Remove southern galactic cap
         #sel &= (glon >= 180)
-        #sel &= (glat > 0)
+        sel &= (glat < 0)
         # Remove bulge region
         sel &= ~( ((glon < 30) | (glon > 330)) & (np.abs(glat) < 15) )
 
@@ -1251,8 +1251,8 @@ class DelveTactician(Tactician):
 
         # Higher weight for rising fields (higher hour angle)
         # HA [min,max] = [-53,54] (for airmass 1.4)
-        weight += 10.0 * self.hour_angle
-        #weight += 1.0 * self.hour_angle
+        #weight += 10.0 * self.hour_angle
+        weight += 1.0 * self.hour_angle
         #weight += 0.1 * self.hour_angle
 
         # Higher weight for larger slews
@@ -1489,7 +1489,7 @@ class DelveTactician(Tactician):
 
         # Select region between S82 and SPT
         sel &= (self.fields['DEC'] < -10) & (self.fields['DEC'] > -40)
-        sel &= (self.fields['DEC'] < -27)
+        sel &= (self.fields['DEC'] < -15)
         #sel &= (self.fields['RA'] > 290)
 
         # Only first tiling
@@ -1531,7 +1531,7 @@ class DelveTactician(Tactician):
 
         ## Try hard to do high priority fields
         weight += 1e1 * (self.fields['PRIORITY'] - 1)
-        weight += 1e5 * (self.fields['TILING'] > 3)
+        weight += 1e5 * (self.fields['TILING'] > 2)
 
         # Set infinite weight to all disallowed fields
         weight[~sel] = np.inf
