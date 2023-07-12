@@ -947,6 +947,7 @@ class DelveFieldArray(FieldArray):
         and object NOT LIKE '%%Peg4%%'
         and object NOT LIKE '%%LMi%%'
         and object NOT LIKE '%%dr2_%%'
+        and object NOT LIKE '%%dr3_%%'
         and id NOT IN (967215)
         -- Disk corruption
         and id NOT IN (1029209, 1029212, 1029213, 1029214)
@@ -1019,12 +1020,12 @@ class DelveTactician(Tactician):
         elif (self.moon.phase >= 30) and (self.moon.alt > 0.0):
             # Moon is moderately full; do r,i
             sel &= (np.char.count('riz',self.fields['FILTER'].astype(str)) > 0)
-        elif (self.moon.phase >= 20) and (self.moon.alt > 0.175):
+        elif (self.moon.phase >= 20) and (self.moon.alt > 0.1):
             # Moon is up; do g,r,i
             sel &= (np.char.count('ri',self.fields['FILTER'].astype(str)) > 0)
         else:
             # Moon is faint or down; do g,r,i
-            sel &= (np.char.count('gri',self.fields['FILTER'].astype(str)) > 0)
+            sel &= (np.char.count('gr',self.fields['FILTER'].astype(str)) > 0)
         return sel
 
     @property
@@ -1097,6 +1098,20 @@ class DelveTactician(Tactician):
 
         ## Try hard to do high priority fields
         weight += 1e2 * self.fields['PRIORITY']
+        ## Weight different fields
+
+        sexB = (self.fields['HEX'] >= 100000) & (self.fields['HEX'] < 100100)
+        sel[sexB] = False
+
+        ic5152 = (self.fields['HEX'] >= 100100) & (self.fields['HEX'] < 100200)
+        weight[ic5152] += 0.0
+
+        ngc300 = (self.fields['HEX'] >= 100200) & (self.fields['HEX'] < 100300)
+        weight[ngc300] += 1e3
+        sel[ngc300] = False
+
+        ngc55 = (self.fields['HEX'] >= 100300) & (self.fields['HEX'] < 100400)
+        sel[ngc55] = False
 
         # Set infinite weight to all disallowed fields
         weight[~sel] = np.inf
@@ -1197,7 +1212,7 @@ class DelveTactician(Tactician):
         glon,glat = cel2gal(self.fields['RA'],self.fields['DEC'])
         # Remove southern galactic cap
         #sel &= (glon >= 180)
-        sel &= (glat < 0)
+        #sel &= (glat < 0)
         # Remove bulge region
         sel &= ~( ((glon < 30) | (glon > 330)) & (np.abs(glat) < 15) )
 
@@ -1212,8 +1227,8 @@ class DelveTactician(Tactician):
         # Sky brightness selection
         sel &= self.skybright_select()
 
-        if (self.moon.phase <= 10) or (self.moon.alt < 0.0):
-            sel &= np.in1d(self.fields['FILTER'], ['g'])
+        #if (self.moon.phase <= 10) or (self.moon.alt < 0.0):
+        #    sel &= np.in1d(self.fields['FILTER'], ['g'])
 
         # Airmass cut
         airmass_min, airmass_max = self.CONDITIONS['wide']
@@ -1466,8 +1481,8 @@ class DelveTactician(Tactician):
         weight : array of weights per field
         """
         #self.fields.PROPID = '2022B-780972'
-        self.fields.PROPID = '2023A-343956'
-        self.fields.SISPI_DICT["propid"] = self.fields.PROPID
+        #self.fields.PROPID = '2023A-343956'
+        #self.fields.SISPI_DICT["propid"] = self.fields.PROPID
 
         airmass = self.airmass
         moon_angle = self.moon_angle
