@@ -956,6 +956,8 @@ class DelveFieldArray(FieldArray):
         -- and id NOT BETWEEN 948781 and 948795
         -- Cloudy nite with lots of qc_teff = nan
         and NOT (id BETWEEN 1025565 and 1025876 and qc_teff is null)
+        -- DEEP on 20230712 with poor seeing
+        and NOT (id BETWEEN 1220911 and 1220934 and qc_fwhm > 1.5)
         and (
              (COALESCE(qc_teff,-1) NOT BETWEEN 0 and 0.3
              AND COALESCE(qc_fwhm,1) BETWEEN 0.5 and 1.5)
@@ -1108,7 +1110,7 @@ class DelveTactician(Tactician):
 
         ngc300 = (self.fields['HEX'] >= 100200) & (self.fields['HEX'] < 100300)
         weight[ngc300] += 1e3
-        sel[ngc300] = False
+        #sel[ngc300] = False
 
         ngc55 = (self.fields['HEX'] >= 100300) & (self.fields['HEX'] < 100400)
         sel[ngc55] = False
@@ -1212,7 +1214,7 @@ class DelveTactician(Tactician):
         glon,glat = cel2gal(self.fields['RA'],self.fields['DEC'])
         # Remove southern galactic cap
         #sel &= (glon >= 180)
-        #sel &= (glat < 0)
+        sel &= (glat < 0)
         # Remove bulge region
         sel &= ~( ((glon < 30) | (glon > 330)) & (np.abs(glat) < 15) )
 
@@ -1273,7 +1275,7 @@ class DelveTactician(Tactician):
         # Higher weight for larger slews
         # slew = 10 deg -> weight = 1e2
         #weight += self.slew**2
-        weight += self.slew
+        weight += 1e1 * self.slew
         #weight += 1e3 * self.slew
 
         # Higher weight for higher airmass
@@ -1287,7 +1289,7 @@ class DelveTactician(Tactician):
         #self.fields['PRIORITY'][x] = np.minimum(self.fields['PRIORITY'][x],1)
 
         ## Try hard to do high priority fields
-        weight += 1e2 * (self.fields['PRIORITY'] - 1)
+        weight += 1e1 * (self.fields['PRIORITY'] - 1)
         weight += 1e4 * (self.fields['TILING'] > 3)
 
         # Set infinite weight to all disallowed fields
@@ -1387,9 +1389,9 @@ class DelveTactician(Tactician):
         sel &= self.skybright_select()
 
         # Select only one band
-        #sel &= np.in1d(self.fields['FILTER'], ['g','r','z'])
+        sel &= np.in1d(self.fields['FILTER'], ['g','r','i'])
         #sel &= np.in1d(self.fields['FILTER'], ['g','r'])
-        sel &= np.in1d(self.fields['FILTER'], ['i'])
+        #sel &= np.in1d(self.fields['FILTER'], ['i'])
         #if (self.moon.phase >= 9) and (self.moon.alt > 0.175):
         #    sel &= np.in1d(self.fields['FILTER'], ['i'])
         #if (self.moon.phase >= 70) and (self.moon.alt < 0.0):
@@ -1462,7 +1464,7 @@ class DelveTactician(Tactician):
 
         ## Try hard to do high priority fields
         weight += 3e1 * (self.fields['PRIORITY'] - 1)
-        weight += 1e7 * (self.fields['TILING'] > 3)
+        weight += 1e7 * (self.fields['TILING'] > 2)
 
         # Set infinite weight to all disallowed fields
         weight[~sel] = np.inf
