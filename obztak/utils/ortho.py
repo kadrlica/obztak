@@ -602,7 +602,8 @@ class DECamFocalPlane(object):
 
 ############################################################
 
-def makePlot(date=None, name=None, figsize=(10.5,8.5), dpi=80, s=50, center=None, airmass=True, moon=True, des=True, smash=False, maglites=None, bliss=None, galaxy=True):
+def makePlot(date=None, name=None, figsize=(10.5,8.5), dpi=80, s=50, center=None, airmass=True, moon=True,
+             des=True, smash=False, maglites=None, bliss=None, delve=None, galaxy=True):
     """
     Create map in orthographic projection
     """
