@@ -451,17 +451,16 @@ class Scheduler(object):
             try:
                 scheduled_fields = self.run(chunk_start,chunk_end,
                                             clip=clip,plot=False,mode=mode)
-            except ValueError:
+            except ValueError as e:
                 # Write fields even if there is an error
                 #chunks.append(self.scheduled_fields)
+                logging.warning(str(e))
                 break
 
-            if plot:
-                DeprecationWarning("Plot should be called in self.run")
-                field_select = scheduled_fields[-1:]
-                bmap = ortho.plotField(field_select,self.target_fields,self.completed_fields)
-                if (raw_input(' ...continue ([y]/n)').lower()=='n'):
-                    import pdb; pdb.set_trace()
+            if len(scheduled_fields) == 0:
+                # No new fields scheduled (probably error)
+                logging.warning("No new fields scheduled.")
+                break
 
             chunks.append(scheduled_fields)
             fieldtime = chunks[-1]['EXPTIME'][-1]*ephem.second + constants.OVERHEAD
