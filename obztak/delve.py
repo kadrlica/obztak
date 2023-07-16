@@ -948,16 +948,19 @@ class DelveFieldArray(FieldArray):
         and object NOT LIKE '%%LMi%%'
         and object NOT LIKE '%%dr2_%%'
         and object NOT LIKE '%%dr3_%%'
+        and object NOT LIKE '%%p6next_%%'
         and id NOT IN (967215)
         -- Disk corruption
         and id NOT IN (1029209, 1029212, 1029213, 1029214)
+        -- Bad build
+        and id NOT IN (1221800, 1221801)
         -- and id NOT IN (860597, 860598, 860599, 860600, 860601, 860602)
         -- Mirror compressed air on 20201025
         -- and id NOT BETWEEN 948781 and 948795
         -- Cloudy nite with lots of qc_teff = nan
         and NOT (id BETWEEN 1025565 and 1025876 and qc_teff is null)
         -- DEEP on 20230712 with poor seeing
-        and NOT (id BETWEEN 1220911 and 1220934 and qc_fwhm > 1.5)
+        and NOT (id BETWEEN 1220911 and 1220934 and qc_fwhm > 1.35)
         and (
              (COALESCE(qc_teff,-1) NOT BETWEEN 0 and 0.3
              AND COALESCE(qc_fwhm,1) BETWEEN 0.5 and 1.5)
@@ -1106,10 +1109,10 @@ class DelveTactician(Tactician):
         sel[sexB] = False
 
         ic5152 = (self.fields['HEX'] >= 100100) & (self.fields['HEX'] < 100200)
-        weight[ic5152] += 0.0
+        weight[ic5152] += 1e3
 
         ngc300 = (self.fields['HEX'] >= 100200) & (self.fields['HEX'] < 100300)
-        weight[ngc300] += 1e3
+        weight[ngc300] += 0.0
         #sel[ngc300] = False
 
         ngc55 = (self.fields['HEX'] >= 100300) & (self.fields['HEX'] < 100400)
