@@ -1213,6 +1213,8 @@ class DelveTactician(Tactician):
         sel = self.viable_fields
         sel &= (self.fields['PROGRAM'].astype(str) == 'delve-wide')
 
+        weight = np.zeros(len(sel))
+
         # GLON, GLAT cuts
         glon,glat = cel2gal(self.fields['RA'],self.fields['DEC'])
         # Remove southern galactic cap
@@ -1223,11 +1225,10 @@ class DelveTactician(Tactician):
 
         # DEC cut
         #sel &= (self.fields['DEC'] < -60)
+        #weight += 1e3 * (self.fields['DEC'] > -30
 
         # Only one tiling
         #sel &= (self.fields['TILING'] <= 3)
-
-        weight = np.zeros(len(sel))
 
         # Sky brightness selection
         sel &= self.skybright_select()
