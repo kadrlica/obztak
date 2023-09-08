@@ -8,6 +8,7 @@ import shutil
 import glob
 import subprocess
 import tempfile
+import warnings
 
 import pylab as plt
 import pandas as pd
@@ -17,6 +18,8 @@ import numpy as np
 import fitsio
 import skymap
 from skymap.utils import setdefaults
+
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 def hollywood(infiles,outfile=None,delay=10):
     print("Lights, Camera, Action...")
@@ -36,10 +39,12 @@ import argparse
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('filename')
 parser.add_argument('-o','--outfile')
-parser.add_argument('-k','--chunk',default=20,type=int,
+parser.add_argument('-k','--chunk',default=30,type=int,
                     help='number of nights per frame')
 parser.add_argument('-d','--delay',default=10,type=int,
                     help='delay between frames')
+parser.add_argument('--des_only', action='store_true',
+                    help='only plot DES fields')
 args = parser.parse_args()
 
 print("Reading %s..."%args.filename)
@@ -58,12 +63,17 @@ fields.dtype.names = names
 # Datetime selection
 sel  = ~(fields['datetime'] == 'None')
 sel &= ~(np.char.startswith(fields['datetime'],'19')) # Filter bad times
+
 # DES Selections
-if True:
+if args.des_only:
     sel &= fields['propid' ] == '2012B-0001'
     sel &= fields['exptime' ] > 30
     sel &= ((fields['ra' ] > 295) | (fields['ra'] < 97))
     sel &= (fields['dec' ] < 10)
+    bands = ['g','r','i','z','Y']
+else:
+    bands = ['g','r','i','z']
+
 fields = fields[sel]
 
 datetime = np.char.replace(fields['datetime'],' ','T').astype(np.datetime64)
@@ -71,35 +81,34 @@ timedelta = np.timedelta64(args.chunk, 'D')
 tmin = np.datetime64('2012-10-01')
 #tmin = np.datetime64('2013-08-01')
 #tmin = np.datetime64('2018-08-01')
-tmax = tmin + timedelta
+tmax = tmin # + timedelta
 
 outdir = tempfile.mkdtemp()
 shutil.rmtree(outdir,ignore_errors=True)
 os.makedirs(outdir)
 
-fig,ax = plt.subplots(2,2,figsize=(16,9))
-plt.subplots_adjust(wspace=0.01,hspace=0.02,left=0.01,right=0.99,
-                    bottom=0.01,top=0.99)
-kwargs = dict(edgecolor='none', alpha=0.3, vmin=-1, vmax=2, s=12)
-bands = ['g','r','i','z']
-
-fig = plt.figure(figsize=(24,9))
-gs=plt.GridSpec(2, 6)
-gs.update(left=0.02,right=0.98,bottom=0.02,top=0.97,wspace=0.1,hspace=0.1)
-ax = []
-ax.append(fig.add_subplot(gs[0,0:2]))
-ax.append(fig.add_subplot(gs[0,2:4]))
-ax.append(fig.add_subplot(gs[0,4:6]))
-ax.append(fig.add_subplot(gs[1,1:3]))
-ax.append(fig.add_subplot(gs[1,3:5]))
-ax = np.array(ax)
-kwargs = dict(edgecolor='none', alpha=0.1, vmin=-1, vmax=2, s=12)
-bands = ['g','r','i','z','Y']
-
+if len(bands) == 4:
+    fig,ax = plt.subplots(2,2,figsize=(16,9))
+    plt.subplots_adjust(wspace=0.01,hspace=0.02,left=0.01,right=0.99,
+                        bottom=0.01,top=0.99)
+    kwargs = dict(edgecolor='none', alpha=0.3, vmin=-1, vmax=2, s=12)
+elif len(bands) == 5:
+    fig = plt.figure(figsize=(24,9))
+    gs=plt.GridSpec(2, 6)
+    gs.update(left=0.02,right=0.98,bottom=0.02,top=0.97,
+              wspace=0.1,hspace=0.1)
+    ax = []
+    ax.append(fig.add_subplot(gs[0,0:2]))
+    ax.append(fig.add_subplot(gs[0,2:4]))
+    ax.append(fig.add_subplot(gs[0,4:6]))
+    ax.append(fig.add_subplot(gs[1,1:3]))
+    ax.append(fig.add_subplot(gs[1,3:5]))
+    ax = np.array(ax)
+    kwargs = dict(edgecolor='none', alpha=0.1, vmin=-1, vmax=2, s=12)
 
 filenames = []
+latch = False
 while True:
-
     sel = (datetime >= tmin) & (datetime <= tmax)
     for i,b in enumerate(bands):
 
@@ -107,7 +116,10 @@ while True:
         plt.cla()
 
         f = fields[sel & (fields['filter']==b)]
-        smap = skymap.SurveyMcBryde()
+        smap = skymap.SurveyMcBryde(parallels=False,meridians=False)
+        para = smap.draw_parallels(fontsize=12)
+        para[0][1][0].set_text('')
+        meri = smap.draw_meridians(fontsize=12)
         smap.draw_des(lw=1,color='k')
         smap.draw_milky_way(10,color='k')
         smap.draw_fields(f,**kwargs)
@@ -122,7 +134,6 @@ while True:
 
     if tmax > datetime.max(): break
     else: tmax += timedelta
-
 
 if not args.outfile:
     basename = os.path.basename(args.filename)

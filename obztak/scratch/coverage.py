@@ -32,8 +32,8 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('outfile',default=outfile)
 parser.add_argument('-m','--maps',action='store_true')
 parser.add_argument('-p','--plot',action='store_true')
-parser.add_argument('-q','--qa',default='data/delve-qa-20210302.csv.gz',type=str,
-                    help='qa file to update with')
+parser.add_argument('-q','--qa',default=None,
+                    action='append', help='qa file to update with')
 args = parser.parse_args()
 
 
@@ -69,7 +69,7 @@ FROM exposure WHERE
 (propid = '2016B-0288' or propid = '2017A-0367')
 and flavor = 'object' order by date
 """
-
+print("Querying SISPI:")
 print(QUERY)
 
 def update_qa(data,filename):
@@ -87,6 +87,7 @@ def update_qa(data,filename):
     """
     print("Reading QA values from %s..."%filename)
     df = fileio.read_csv(filename)
+    df.columns = df.columns.str.lower()
     print("Loaded %i QA values..."%(len(df)))
 
     x = pd.DataFrame(data).merge(df,left_on='expnum',right_on='expnum',how='left')
@@ -112,7 +113,8 @@ if args.db:
     data = db.query2recarray(QUERY)
 
     if args.qa:
-        update_qa(data,args.qa)
+        for qa_file in args.qa:
+            update_qa(data,qa_file)
 
     if os.path.exists(args.outfile): os.remove(args.outfile)
     print("Writing %s..."%args.outfile)
