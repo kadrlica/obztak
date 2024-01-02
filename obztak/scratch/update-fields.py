@@ -67,7 +67,7 @@ plt.title('Exposures no longer considered done')
 plt.show()
 
 # This block updates previous field list
-if False:
+if True:
     # Write here
     out = DelveFieldArray.load(args.old)
 

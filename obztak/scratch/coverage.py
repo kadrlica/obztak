@@ -69,8 +69,6 @@ FROM exposure WHERE
 (propid = '2016B-0288' or propid = '2017A-0367')
 and flavor = 'object' order by date
 """
-print("Querying SISPI:")
-print(QUERY)
 
 def update_qa(data,filename):
     """
@@ -105,24 +103,33 @@ def update_qa(data,filename):
     if 'fwhm' in data.dtype.names and 'fwhm_y' in x.columns:
         data['fwhm'][sel] = x[sel]['fwhm_y']
 
-
 args.db = True
 if args.db:
+    print("Querying SISPI:")
+    print(QUERY)
+
     db = Database()
     db.connect()
     data = db.query2recarray(QUERY)
 
-    if args.qa:
-        for qa_file in args.qa:
-            update_qa(data,qa_file)
-
-    if os.path.exists(args.outfile): os.remove(args.outfile)
     print("Writing %s..."%args.outfile)
-    fitsio.write(args.outfile,data)
+    fitsio.write(args.outfile, data, clobber=True)
+
+print("Reading SISPI QA from %s..."%args.outfile)
+data = pd.DataFrame(fitsio.read(args.outfile).byteswap().newbyteorder()).to_records(index=False)
+
+if args.qa:
+    for qa_file in args.qa:
+        update_qa(data,qa_file)
+
+if os.path.exists(args.outfile): os.remove(args.outfile)
+print("Writing %s..."%args.outfile)
+fitsio.write(args.outfile,data,clobber=True)
 
 # Do we want to make maps?
 if not args.maps: sys.exit()
 
+print("Reading %s..."%args.outfile)
 data = fitsio.read(args.outfile)
 
 exposures = odict([(b,data[data['filter'] ==b]) for b in BANDS])

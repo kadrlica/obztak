@@ -453,7 +453,7 @@ class Scheduler(object):
                                             clip=clip,plot=False,mode=mode)
             except ValueError as e:
                 # Write fields even if there is an error
-                #chunks.append(self.scheduled_fields)
+                chunks.append(self.scheduled_fields)
                 logging.warning(str(e))
                 break
 
