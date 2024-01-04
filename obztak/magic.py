@@ -354,11 +354,6 @@ class MagicFieldArray(FieldArray):
         return query
 
 
-class MagicConfig(Config):
-    _defaults = odict(
-    )
-    pass
-
 class MagicScheduler(Scheduler):
     _defaults = odict(list(Scheduler._defaults.items()) + [
         ('tactician','coverage'),
