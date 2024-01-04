@@ -98,6 +98,7 @@ class MagicSurvey(Survey):
             smap = skymap.survey.MaglitesSkymap()
             smap.draw_fields(fields[sel],alpha=0.3,edgecolor='none')
             smap.draw_des(color='r')
+            smap.draw_milky_way(15,color='gray')
             smap.draw_milky_way()
             #smap.draw_smash()
 
@@ -105,6 +106,7 @@ class MagicSurvey(Survey):
             smap = skymap.survey.SurveyMcBryde()
             smap.draw_fields(fields[sel],alpha=0.3,edgecolor='none')
             smap.draw_des(color='r')
+            smap.draw_milky_way(15,color='gray')
             smap.draw_milky_way()
             #smap.draw_smash()
 
@@ -173,30 +175,113 @@ class MagicSurvey(Survey):
         return fields
 
     @staticmethod
-    def footprintMAGIC(ra,dec):
+    def footprintMAGIC(ra, dec, radius=0.0):
         """ Selecting wide-field exposures plane """
+        filename = fileio.get_datafile('magic-poly.txt')
+        return Survey.select_in_path(filename,ra,dec,radius=radius)
+
+    @staticmethod
+    def region1(ra,dec):
         ra,dec = np.copy(ra), np.copy(dec)
         ra -= 360 * (ra > 180)
 
-        vertices = [
-            [90,  -30],
-            [ 0,  -30],
-            [-50, -30],
-            [-60, -32],
-            [-80, -45],
-            [-80, -60],
-            [-80, -80],
-            [  0, -80],
-            [120, -80],
-            [120, -60],
-            [105, -45],
-            [ 90, -30],
-        ]
+        vertices = [[-50,-45],
+                    [10,-45],
+                    [10,-60],
+                    [-50,-60]]
+
         path = Path(vertices)
         points = np.vstack([ra,dec]).T
         sel = path.contains_points(points)
 
         return sel
+
+    @staticmethod
+    def region3(ra,dec):
+        ra,dec = np.copy(ra), np.copy(dec)
+        ra -= 360 * (ra > 180)
+
+        vertices = [
+            [-50,-45],
+            [-15,-45],
+            [0,-52],
+            [20,-70],
+            [0,-70],
+            [-30,-60],
+            [-50,-60],
+            [-50,-45],
+        ]
+
+        path = Path(vertices)
+        points = np.vstack([ra,dec]).T
+        sel = path.contains_points(points)
+
+        return sel
+
+    def region3b(ra,dec):
+        ra,dec = np.copy(ra), np.copy(dec)
+        ra -= 360 * (ra > 180)
+
+        vertices = [
+            [-80, -45],
+            [-15, -45],
+            [ 10, -50],
+            [ 20, -70],
+            [  0, -70],
+            [-30, -60],
+            [-80, -60],
+            [-80, -45],
+        ]
+
+        path = Path(vertices)
+        points = np.vstack([ra,dec]).T
+        sel = path.contains_points(points)
+
+        return sel
+
+    def region3c(ra,dec):
+        ra,dec = np.copy(ra), np.copy(dec)
+        ra -= 360 * (ra > 180)
+
+        vertices = [
+            [-70, -50],
+            [-55, -50],
+            [-15, -50],
+            [ 10, -50],
+            [ 20, -70],
+            [  0, -70],
+            [-30, -60],
+            [-80, -60],
+            [-70, -50],
+        ]
+
+        path = Path(vertices)
+        points = np.vstack([ra,dec]).T
+        sel = path.contains_points(points)
+
+        return sel
+
+    def region3d(ra,dec):
+        ra,dec = np.copy(ra), np.copy(dec)
+        ra -= 360 * (ra > 180)
+
+        vertices = [
+            [-70, -50],
+            [-55, -50],
+            [-15, -50],
+            [ 10, -50],
+            [ 10, -57],
+            [-30, -57],
+            [-70, -57],
+            [-70, -50],
+        ]
+
+        path = Path(vertices)
+        points = np.vstack([ra,dec]).T
+        sel = path.contains_points(points)
+
+        return sel
+
 
     def plot_depth(self, fields, depth, outbase, proj='mcbryde', **kwargs):
         import skymap, skymap.survey
@@ -269,11 +354,16 @@ class MagicFieldArray(FieldArray):
         return query
 
 
+class MagicConfig(Config):
+    _defaults = odict(
+    )
+    pass
+
 class MagicScheduler(Scheduler):
     _defaults = odict(list(Scheduler._defaults.items()) + [
         ('tactician','coverage'),
-        ('windows',fileio.get_datafile("magic-windows-20230714.csv.gz")),
-        ('targets',fileio.get_datafile("magic-fields-20230714.csv.gz")),
+        ('windows',fileio.get_datafile("magic-windows.csv.gz")),
+        ('targets',fileio.get_datafile("magic-fields.csv.gz")),
     ])
 
     FieldType = MagicFieldArray
@@ -282,7 +372,7 @@ class MagicScheduler(Scheduler):
 class MagicTactician(Tactician):
     CONDITIONS = odict([
         (None,       [1.0, 1.4]),
-        ('magic',    [1.0, 1.4]),
+        ('magic',    [1.0, 1.5]),
     ])
 
     def __init__(self, *args, **kwargs):
@@ -293,7 +383,8 @@ class MagicTactician(Tactician):
     @property
     def viable_fields(self):
         viable = super(MagicTactician,self).viable_fields
-        viable &= (self.fields['PRIORITY'] >= 0)
+        #viable &= (self.fields['PRIORITY'] >= 0)
+        viable &= (self.fields['PRIORITY'] != DONE)
         return viable
 
     def skybright_select(self):
@@ -333,11 +424,15 @@ class MagicTactician(Tactician):
         sel = self.viable_fields
         weight = np.zeros(len(sel))
 
+        sel &=(self.fields['DEC'] < -40)
+        sel &= ((self.fields['RA'] > 180) | (self.fields['RA'] < 30))
         # Prefer DES region
-        sel &= (self.fields['DEC'] > -50) & (self.fields['DEC'] < -40)
-        sel &= ((self.fields['RA'] > 290) | (self.fields['RA'] < 90))
+        #sel &= ((self.fields['RA'] > 290) | (self.fields['RA'] < 90))
         inDES = Survey.footprintDES(self.fields['RA'],self.fields['DEC'])
         weight += 1e3 * ~inDES
+
+        inReg3 = MagicSurvey.region3d(self.fields['RA'],self.fields['DEC'])
+        weight += 5e4 * ~inReg3
 
         # Airmass cut
         airmass_min, airmass_max = self.CONDITIONS['magic']
@@ -363,20 +458,22 @@ class MagicTactician(Tactician):
 
         # Higher weight for rising fields (higher hour angle)
         # HA [min,max] = [-53,54] (for airmass 1.4)
-        weight += 10.0 * self.hour_angle
-        #weight += 1.0 * self.hour_angle
+        #weight += 10.0 * self.hour_angle
+        weight += 1.0 * self.hour_angle
         #weight += 0.1 * self.hour_angle
+        #weight += 10.0 * np.abs(self.hour_angle)
 
         # Higher weight for larger slews
         # slew = 10 deg -> weight = 1e2
-        weight += self.slew**2
-        #weight += self.slew
+        #weight += self.slew**2
+        weight += self.slew
         #weight += 1e3 * self.slew
 
         # Higher weight for higher airmass
         # airmass = 1.4 -> weight = 6.4
-        weight += 100. * (airmass - 1.)**3
+        #weight += 100. * (airmass - 1.)**3
         #weight += 1e3 * (airmass - 1.)**2
+        weight += 10. * airmass**3
 
         # Set infinite weight to all disallowed fields
         weight[~sel] = np.inf

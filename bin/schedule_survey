@@ -25,6 +25,7 @@ def main():
     logging.info(basedir)
 
     try:
+        print(args.utc_start, args.utc_end)
         survey = scheduler.schedule_survey(start=args.utc_start,end=args.utc_end,
                                            chunk=args.chunk,plot=args.plot,
                                            mode=args.mode,write=True,
@@ -37,7 +38,7 @@ def main():
     scheduler.completed_fields.write('survey_fields.csv')
 
     for nite,chunks in survey.items():
-        survey.write_nite(nite,chunks,dirname=basedir)
+        scheduler.write_nite(nite,chunks,dirname=basedir)
 
     return survey
 

@@ -480,6 +480,9 @@ class Scheduler(object):
 
         self.scheduled_nites = odict()
 
+        if start is None: start = self.windows[0][0]
+        if end is None:   end = self.windows[-1][1]
+
         for tstart,tend in self.windows:
             if start is not None and ephem.Date(tstart) < ephem.Date(start):
                 continue
@@ -490,7 +493,7 @@ class Scheduler(object):
             nite = get_nite(tstart)
 
             try:
-                chunks = self.schedule_nite(tstart,chunk,clip=True,plot=False,mode=mode)
+                chunks = self.schedule_nite(tstart,chunk=chunk,clip=True,plot=False,mode=mode)
             except ValueError as error:
                 ortho.plotField(self.completed_fields[-1:],self.target_fields,
                                 self.completed_fields)

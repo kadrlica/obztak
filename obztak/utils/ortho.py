@@ -261,7 +261,7 @@ class DECamBasemap(Basemap):
         defaults=dict(color='red', lw=2)
         setdefaults(kwargs,defaults)
 
-        filename = fileio.get_datafile('round13-poly.txt')
+        filename = fileio.get_datafile('des-round19-poly.txt')
         self.draw_polygon(filename,**kwargs)
 
     def draw_smash(self,**kwargs):
@@ -321,6 +321,15 @@ class DECamBasemap(Basemap):
 
         #self.tissot(RA_LMC,DEC_LMC,25,100,fc='none',**kwargs)
         #self.tissot(RA_SMC,DEC_SMC,10,100,fc='none',**kwargs)
+
+    def draw_magic(self,**kwargs):
+        """ Draw the MAGIC footprint on this Basemap instance.
+        """
+        defaults=dict(color='magenta', lw=2)
+        setdefaults(kwargs,defaults)
+
+        filename = fileio.get_datafile('magic-poly.txt')
+        self.draw_polygon(filename,**kwargs)
 
 
     def draw_airmass(self, observatory, airmass, npts=360, **kwargs):
@@ -634,6 +643,8 @@ def makePlot(date=None, name=None, figsize=(10.5,8.5), dpi=80, s=50, center=None
         if airmass is True: airmass = 1.4
     if survey=='delve' or delve:
         smap.draw_delve()
+    if survey=='magic':
+        smap.draw_magic()
 
     if airmass:
         airmass = 2.0 if isinstance(airmass,bool) else airmass
