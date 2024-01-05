@@ -420,19 +420,19 @@ class MagicTactician(Tactician):
         weight = np.zeros(len(sel))
 
         sel &=(self.fields['DEC'] < -40)
-        sel &= ((self.fields['RA'] > 180) | (self.fields['RA'] < 30))
+        #sel &= ((self.fields['RA'] > 180) | (self.fields['RA'] < 30))
         # Prefer DES region
         #sel &= ((self.fields['RA'] > 290) | (self.fields['RA'] < 90))
         inDES = Survey.footprintDES(self.fields['RA'],self.fields['DEC'])
         weight += 1e3 * ~inDES
 
-        inReg3 = MagicSurvey.region3d(self.fields['RA'],self.fields['DEC'])
-        weight += 5e4 * ~inReg3
+        #inReg3 = MagicSurvey.region3d(self.fields['RA'],self.fields['DEC'])
+        #weight += 5e4 * ~inReg3
 
         # Airmass cut
         airmass_min, airmass_max = self.CONDITIONS['magic']
 
-        if False: # Don't use seeing
+        if True: # Don't use seeing to set airmass limit
             sel &= ((airmass > airmass_min) & (airmass < airmass_max))
         elif self.fwhm <= 1.4:
             sel &= ((airmass > airmass_min) & (airmass < airmass_max))
