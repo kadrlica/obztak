@@ -28,6 +28,7 @@ from obztak.utils.date import datestring, setdefaults, nite2utc,utc2nite,datestr
 NAME    = 'DELVE'
 PROGRAM = NAME.lower()
 PROPID  = '2019A-0305'
+#PROPID  = '2023A-343956'
 PROPOSER = 'Drlica-Wagner'
 BANDS = ['g','r','i']
 TILINGS = [1,2,3,4]
@@ -36,6 +37,9 @@ DONE = -1
 TEFF_MIN_WIDE = pd.DataFrame(dict(FILTER=['g','i'],TEFF=[0.4,0.5]))
 TEFF_MIN_MC   = pd.DataFrame(dict(FILTER=['g','r','i'],TEFF=[0.3,0.3,0.45]))
 TEFF_MIN_EXTRA = pd.DataFrame(dict(FILTER=['g','r','i','z'],TEFF=[0.3,0.3,0.3,0.3]))
+
+#TEFF_MIN_WIDE = pd.DataFrame(dict(FILTER=['g','i'],TEFF=[0.2,0.2]))
+#TEFF_MIN_EXTRA = pd.DataFrame(dict(FILTER=['g','r','i','z'],TEFF=[0.2,0.2,0.2,0.2]))
 
 # Seeing limits for DELVE survey components
 FWHM_DEEP = 0.9 # arcsec
@@ -349,10 +353,27 @@ class DelveSurvey(Survey):
         ['2023/07/21','full'],
     ]
 
+    nights_2023B = [
+        ['2023/08/23','first'], #DDT
+        ['2023/09/01','full'],
+        ['2023/10/24','full'],
+        ['2023/11/01','second'],
+        ['2023/11/02','second'],
+        ['2023/11/03','second'],
+        ['2023/12/23','full'],
+        ['2023/12/29','full'],
+        ['2024/01/01','second'],
+        ['2024/01/19','first'],
+        ['2024/01/20','first'],
+        ['2024/01/28','full'],
+
+    ]
+
     extra_nights = []
 
     nights = nights_2019A + nights_2019B + nights_2020A + nights_2020B + nights_2021A \
-             + nights_2021B + nights_2022A + nights_2022B + nights_2023A + extra_nights
+             + nights_2021B + nights_2022A + nights_2022B + nights_2023A + nights_2023B \
+             + extra_nights
 
     def prepare_fields(self, infile=None, outfile=None, plot=True, **kwargs):
         """ Create the list of fields to be targeted by this survey.
@@ -447,14 +468,14 @@ class DelveSurvey(Survey):
             plt.figure()
             smap = skymap.survey.MaglitesSkymap()
             smap.draw_fields(fields[sel],alpha=0.3,edgecolor='none')
-            smap.draw_des(c='r')
+            smap.draw_des(color='r')
             smap.draw_milky_way()
             smap.draw_smash()
 
             plt.figure()
             smap = skymap.survey.SurveyMcBryde()
             smap.draw_fields(fields[sel],alpha=0.3,edgecolor='none')
-            smap.draw_des(c='r')
+            smap.draw_des(color='r')
             smap.draw_milky_way()
             smap.draw_smash()
 
@@ -810,7 +831,8 @@ class DelveSurvey(Survey):
         """ Load bright star list """
         ra,dec = np.copy(ra), np.copy(dec)
         sel = np.zeros(len(ra),dtype=bool)
-        filename = fileio.get_datafile('famous-bright-stars.csv')
+        #filename = fileio.get_datafile('famous-bright-stars.csv')
+        filename = fileio.get_datafile('bsc5p-bright-stars.csv')
         targets = fileio.read_csv(filename).to_records()
         for t in targets:
             sel |= (angsep(t['ra'],t['dec'],ra,dec) < t['radius'])
@@ -833,7 +855,10 @@ class DelveSurvey(Survey):
         """
         import healpy as hp
         # These maps are SUM(teff * exptime)
-        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20230204'
+        #if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20230204'
+        #if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20230824'
+        #if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20231013'
+        if not dirname: dirname = '/Users/kadrlica/delve/observing/v2/maps/20231226'
         if not basename: basename = 'decam_sum_expmap_%s_n1024.fits.gz'
 
         logging.info("Loading maps from: %s"%dirname)
@@ -931,22 +956,33 @@ class DelveFieldArray(FieldArray):
         COALESCE(airmass,-1) as AIRMASS, COALESCE(moonangl,-1) as MOONANGLE,
         COALESCE(ha, -1) as HOURANGLE, COALESCE(slewangl,-1) as SLEW, PROGRAM
         --2019B-1014: Felipe Olivares
-        --2022B-780972: Peter Ferguson
-        FROM exposure where propid in ('%(propid)s','2019B-1014','2022B-780972')
+        --2022B-780972: Ferguson
+        --2023A-343956: Ferguson 
+        FROM exposure
+        WHERE propid in ('%(propid)s','2019A-0305','2019B-1014','2022B-780972','2023A-343956')
         and exptime > 89
         and discard = False and delivered = True and flavor = 'object'
         and object LIKE '%(object_fmt)s%%'
         and object NOT LIKE '%%Peg4%%'
         and object NOT LIKE '%%LMi%%'
         and object NOT LIKE '%%dr2_%%'
+        and object NOT LIKE '%%dr3_%%'
+        and object NOT LIKE '%%p6next_%%'
         and id NOT IN (967215)
+        -- Disk corruption
+        and id NOT IN (1029209, 1029212, 1029213, 1029214)
+        -- Bad build
+        and id NOT IN (1221800, 1221801)
         -- and id NOT IN (860597, 860598, 860599, 860600, 860601, 860602)
         -- Mirror compressed air on 20201025
         -- and id NOT BETWEEN 948781 and 948795
         -- Cloudy nite with lots of qc_teff = nan
         and NOT (id BETWEEN 1025565 and 1025876 and qc_teff is null)
+        -- DEEP on 20230712 with poor seeing
+        and NOT (id BETWEEN 1220911 and 1220934 and qc_fwhm > 1.2)
+        and id NOT IN (1222202, 1222204, 1222205)
         and (
-             (COALESCE(qc_teff,-1) NOT BETWEEN 0 and 0.2
+             (COALESCE(qc_teff,-1) NOT BETWEEN 0 and 0.3
              AND COALESCE(qc_fwhm,1) BETWEEN 0.5 and 1.5)
              OR %(date_column)s  > (now() - interval '14 hours')
         )
@@ -958,8 +994,8 @@ class DelveFieldArray(FieldArray):
 class DelveScheduler(Scheduler):
     _defaults = odict(list(Scheduler._defaults.items()) + [
         ('tactician','coverage'),
-        ('windows',fileio.get_datafile("delve-windows-20220804.csv.gz")),
-        ('targets',fileio.get_datafile("delve-target-fields-20220804.csv.gz")),
+        ('windows',fileio.get_datafile("delve-windows.csv.gz")),
+        ('targets',fileio.get_datafile("delve-target-fields.csv.gz")),
     ])
 
     FieldType = DelveFieldArray
@@ -968,12 +1004,12 @@ class DelveScheduler(Scheduler):
 class DelveTactician(Tactician):
     CONDITIONS = odict([
         (None,       [1.0, 2.0]),
-        ('wide',     [1.0, 1.8]),
+        ('wide',     [1.0, 1.6]),
         ('deep',     [1.0, 1.4]),
         ('mc',       [1.0, 1.8]),
         ('gw',       [1.0, 2.0]),
         ('extra',    [1.0, 1.6]),
-        ('delver',   [1.0, 1.2]),
+        ('delver',   [1.0, 1.3]),
     ])
 
     def __init__(self, *args, **kwargs):
@@ -1001,23 +1037,20 @@ class DelveTactician(Tactician):
         sel = np.ones(len(self.fields),dtype=bool)
 
         if (self.sun.alt > -0.28):
-            # i-band if Sun altitude > -16 deg
+            # i,z if Sun altitude > -16 deg
             sel &= (np.char.count('iz',self.fields['FILTER'].astype(str)) > 0)
-        # Moon band constraints (alt = 0.175 rad = 10 deg)
-        elif (self.moon.phase >= 40) and (self.moon.alt > 0.175):
-            # Moon is very bright; only do i
+        elif (self.moon.phase >= 50) and (self.moon.alt > 0.175):
+            # Moon is very bright; only do i,z
             sel &= (np.char.count('iz',self.fields['FILTER'].astype(str)) > 0)
-            # Allow i,z but prefer z
-            #sel &= (np.char.count('iz',self.fields['FILTER']) > 0)
-            #weight += 1e2 * (np.char.count('i',self.fields['FILTER']) > 0)
         elif (self.moon.phase >= 30) and (self.moon.alt > 0.0):
             # Moon is moderately full; do r,i
+            sel &= (np.char.count('riz',self.fields['FILTER'].astype(str)) > 0)
+        elif (self.moon.phase >= 20) and (self.moon.alt > 0.1):
+            # Moon is up; do g,r,i
             sel &= (np.char.count('ri',self.fields['FILTER'].astype(str)) > 0)
         else:
-            # Moon is faint or down; do g,r,i
-            sel &= (np.char.count('gr',self.fields['FILTER'].astype(str)) > 0)
-            # Alternatively, only red bands if others unavailable
-            #weight += 1e8 * (np.char.count('iz',self.fields['FILTER']) > 0)
+            # Moon is faint or down; do g,r,(i)
+            sel &= (np.char.count('gri',self.fields['FILTER'].astype(str)) > 0)
         return sel
 
     @property
@@ -1090,6 +1123,20 @@ class DelveTactician(Tactician):
 
         ## Try hard to do high priority fields
         weight += 1e2 * self.fields['PRIORITY']
+        ## Weight different fields
+
+        sexB = (self.fields['HEX'] >= 100000) & (self.fields['HEX'] < 100100)
+        sel[sexB] = False
+
+        ic5152 = (self.fields['HEX'] >= 100100) & (self.fields['HEX'] < 100200)
+        weight[ic5152] += 0.0
+
+        ngc300 = (self.fields['HEX'] >= 100200) & (self.fields['HEX'] < 100300)
+        weight[ngc300] += 1e3
+        #sel[ngc300] = False
+
+        ngc55 = (self.fields['HEX'] >= 100300) & (self.fields['HEX'] < 100400)
+        sel[ngc55] = False
 
         # Set infinite weight to all disallowed fields
         weight[~sel] = np.inf
@@ -1146,17 +1193,20 @@ class DelveTactician(Tactician):
         # Sky brightness selection
         sel &= self.skybright_select()
         #sel &= np.in1d(self.fields['FILTER'], ['g','r'])
+        sel &= self.fields['FILTER'] == ['r']
 
         # Only a single tiling
         #sel &= (self.fields['PRIORITY'] == 3)
 
         # Get fields before they set
         #weight += 1.0 * self.hour_angle
-        weight += 0.1 * self.hour_angle
+        #weight += 0.1 * self.hour_angle
 
         # Prioritize early tiling fields
         #weight += 3. * 360. * self.fields['PRIORITY'] * (self.fields['TILING'] > 2)
-        weight += 3e4       * (self.fields['TILING'] > 3)
+        #weight += 3e4       * (self.fields['TILING'] > 3)
+        weight += 1e5       * (self.fields['TILING'] > 3)
+        #sel &= (self.fields['TILING'] < 4)
 
         # Slew weighting
         # slew = 10 deg -> weight = 10^2
@@ -1186,41 +1236,48 @@ class DelveTactician(Tactician):
         sel = self.viable_fields
         sel &= (self.fields['PROGRAM'].astype(str) == 'delve-wide')
 
+        weight = np.zeros(len(sel))
+
+        # RA,DEC cuts
+        #sel &= (self.fields['DEC'] < -30)
+        #sel &= ~((self.fields['RA'] > 120) & (self.fields['RA'] < 220))
+        #weight += 1e3 * (self.fields['DEC'] > -30
+
         # GLON, GLAT cuts
-        #glon,glat = cel2gal(self.fields['RA'],self.fields['DEC'])
+        glon,glat = cel2gal(self.fields['RA'],self.fields['DEC'])
         # Remove southern galactic cap
         #sel &= (glon >= 180)
-        #sel &= (glat > 0)
+        #sel &= (glat < 0)
         # Remove bulge region
-        #sel &= ~( ((glon < 30) | (glon > 330)) & (np.abs(glat) < 15) )
-
-        # DEC cut
-        #sel &= (self.fields['DEC'] < -60)
+        sel &= ~( ((glon < 30) | (glon > 330)) & (np.abs(glat) < 15) )
 
         # Only one tiling
         #sel &= (self.fields['TILING'] <= 3)
 
-        weight = np.zeros(len(sel))
-
         # Sky brightness selection
         sel &= self.skybright_select()
+
+        #if (self.moon.phase <= 10) or (self.moon.alt < 0.0):
+        #    sel &= np.in1d(self.fields['FILTER'], ['g'])
+        weight += 3e3 * np.in1d(self.fields['FILTER'], ['i'])
 
         # Airmass cut
         airmass_min, airmass_max = self.CONDITIONS['wide']
 
-        #self.fwhm = 1.1
-        if False:
+        self.fwhm = 1.0
+        if True:
             sel &= ((airmass > airmass_min) & (airmass < airmass_max))
         elif self.fwhm <= 0.9:
             sel &= ((airmass > airmass_min) & (airmass < airmass_max))
-            weight += 5e3 * (airmass - 1.0)**3
+            weight += 5e1 * (1.0/airmass)**3
         elif self.fwhm <= 1.1:
             sel &= ((airmass > airmass_min) & (airmass < 1.6))
-            weight += 1e2 * (airmass - 1.0)**3
         elif self.fwhm <= 1.4:
             sel &= ((airmass > airmass_min) & (airmass < 1.4))
+            weight += 1e2 * (airmass - 1.0)**3
         else:
             sel &= ((airmass > airmass_min) & (airmass < 1.3))
+            weight += 1e2 * (airmass - 1.0)**3
 
         #if self.fwhm <= 1.1:
         #    # Prefer fields near the pole
@@ -1240,20 +1297,20 @@ class DelveTactician(Tactician):
 
         # Higher weight for rising fields (higher hour angle)
         # HA [min,max] = [-53,54] (for airmass 1.4)
-        weight += 10.0 * self.hour_angle
-        #weight += 1.0 * self.hour_angle
+        #weight += 10.0 * self.hour_angle
+        weight += 1.0 * self.hour_angle
         #weight += 0.1 * self.hour_angle
 
         # Higher weight for larger slews
         # slew = 10 deg -> weight = 1e2
-        weight += self.slew**2
-        #weight += self.slew
+        #weight += self.slew**2
+        weight += 1e0 * self.slew
         #weight += 1e3 * self.slew
 
         # Higher weight for higher airmass
         # airmass = 1.4 -> weight = 6.4
-        weight += 100. * (airmass - 1.)**3
-        #weight += 1e3 * (airmass - 1.)**2
+        weight += 100. * (airmass - 1.0)**3
+        #weight += 1e3 * (airmass - 1.0)**2
 
         # Hack priority near edge of DES S82 (doesn't really work)
         #x = (self.fields['RA'] >= 45) & (self.fields['RA'] <= 100) \
@@ -1261,8 +1318,211 @@ class DelveTactician(Tactician):
         #self.fields['PRIORITY'][x] = np.minimum(self.fields['PRIORITY'][x],1)
 
         ## Try hard to do high priority fields
-        weight += 1e2 * (self.fields['PRIORITY'] - 1)
-        weight += 1e4 * (self.fields['TILING'] > 3)
+        weight += 1e1 * (self.fields['PRIORITY'] - 1)
+        #weight += 1e4 * (self.fields['TILING'] > 3)
+
+        # Set infinite weight to all disallowed fields
+        weight[~sel] = np.inf
+
+        return weight
+
+    def weight_extra(self):
+        """ Calculate the field weight for the z-band survey.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        weight : array of weights per field
+        """
+        airmass = self.airmass
+        moon_angle = self.moon_angle
+
+        sel = self.viable_fields
+        sel &= (self.fields['PROGRAM'] == 'delve-extra')
+
+        # Extra restriction due to dome windscreen
+        sel &= self.airmass < 1.9
+
+        weight = np.zeros(len(sel))
+
+        # Sky brightness selection
+        sel &= self.skybright_select()
+
+        # Select only one band
+        #sel &= np.in1d(self.fields['FILTER'], ['g','r','i'])
+        #sel &= np.in1d(self.fields['FILTER'], ['g','r'])
+        sel &= np.in1d(self.fields['FILTER'], ['i','z'])
+        weight += 1e3 * np.in1d(self.fields['FILTER'], ['z'])
+        #sel &= np.in1d(self.fields['FILTER'], ['i'])
+        #if (self.moon.phase >= 9) and (self.moon.alt > 0.175):
+        #    sel &= np.in1d(self.fields['FILTER'], ['i'])
+        #if (self.moon.phase >= 70) and (self.moon.alt < 0.0):
+        #    sel &= np.in1d(self.fields['FILTER'], ['i'])
+        #if (self.moon.phase >= 70) and (self.moon.alt > 0.45):
+        #    #sel &= np.in1d(self.fields['FILTER'], ['z'])
+        #    weight += 1e3 * np.in1d(self.fields['FILTER'], ['i'])
+        #if (self.moon.phase < 90) and (self.moon.alt < 0.4):
+        #    #sel &= np.in1d(self.fields['FILTER'], ['i'])
+        #    weight += 1e3 * np.in1d(self.fields['FILTER'], ['z'])
+
+        # Select only first tiling
+        #sel &= (self.fields['TILING'] <= 2)
+
+        # GLON, GLAT cuts
+        glon,glat = cel2gal(self.fields['RA'],self.fields['DEC'])
+        #sel &= (glon >= 180)
+        #sel &= (glat < 0)
+        # Remove bulge region
+        sel &= ~( ((glon < 30) | (glon > 330)) & (np.abs(glat) < 15) )
+        #sel &= (glat < -12)
+
+        # Select only one region
+        #sel &= ((self.fields['DEC'] < -30) | \
+        #        ((self.fields['RA'] > 30) & (self.fields['RA'] < 180) & \
+        #         (self.fields['DEC'] > 0)))
+        #sel &= ((self.fields['DEC'] < -30) | (self.fields['DEC'] > 0) | \
+        #        (self.fields['RA'] > 90))
+        #sel &= ((self.fields['DEC'] < -30) | (self.fields['DEC'] > 0))
+        #sel &= self.fields['DEC'] < 15
+        #sel &= (self.fields['DEC'] > 0)
+        #sel &= (self.fields['RA'] > 150)
+        #weight += 1e3 * (self.fields['DEC'] < 0)
+
+        # Airmass cut
+        #self.fwhm = 1.2
+        airmass_min, airmass_max = self.CONDITIONS['extra']
+        if True:
+            sel &= ((airmass > airmass_min) & (airmass < airmass_max))
+        elif self.fwhm <= 1.0:
+            sel &= ((airmass > airmass_min) & (airmass < airmass_max))
+            weight += 5e1 * (1.0/airmass)**3
+        elif self.fwhm <= 1.2:
+            sel &= ((airmass > airmass_min) & (airmass < 1.5))
+            #weight += 5e1 * (1.0/airmass)**3
+        else:
+            sel &= ((airmass > airmass_min) & (airmass < 1.4))
+            weight += 1e2 * (airmass - 1.0)**3
+
+        # Higher weight for higher airmass
+        # airmass = 1.4 -> weight = 6.4
+        #weight += 100. * (airmass - 1.)**3
+        weight += 1e3 * (airmass - 1.)**2
+
+        # Higher weight for fields close to the moon (when up)
+        # angle = 50 -> weight = 6.4
+        # Moon angle constraints (viable fields sets moon_angle > 20.)
+        if (self.moon.alt > -0.04) and (self.moon.phase >= 30):
+            moon_limit = 45.0
+            sel &= (moon_angle > moon_limit)
+
+            # Use a larger (smaller) weight to increase (decrease) the
+            # moon avoidance angle.
+            #weight += 100 * (35./moon_angle)**3
+            weight += 10 * (35./moon_angle)**3
+            #weight += 1 * (35./moon_angle)**3
+
+        # Higher weight for rising fields (higher hour angle)
+        # HA [min,max] = [-53,54] (for airmass 1.4)
+        weight += 10.0 * self.hour_angle
+        #weight += 2.0 * self.hour_angle
+        #weight += 0.5 * self.hour_angle
+
+        # Higher weight for larger slews
+        # slew = 10 deg -> weight = 1e2
+        #weight += self.slew**2
+        weight += self.slew
+        #weight += 1e3 * self.slew
+
+        ## Try hard to do high priority fields
+        weight += 3e1 * (self.fields['PRIORITY'] - 1)
+        weight += 1e7 * (self.fields['TILING'] > 3)
+
+        # Set infinite weight to all disallowed fields
+        weight[~sel] = np.inf
+
+        return weight
+
+    def weight_delver(self):
+        """ Calculate the field weight for the r-band survey.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        weight : array of weights per field
+        """
+        #self.fields.PROPID = '2022B-780972'
+        #self.fields.PROPID = '2023A-343956'
+        #self.fields.SISPI_DICT["propid"] = self.fields.PROPID
+
+        airmass = self.airmass
+        moon_angle = self.moon_angle
+
+        sel = self.viable_fields
+        sel &= (self.fields['PROGRAM'] == 'delve-extra')
+
+        weight = np.zeros(len(sel))
+
+        # Sky brightness selection
+        sel &= (self.fields['FILTER'] == 'r')
+
+        # GLON, GLAT cuts
+        glon,glat = cel2gal(self.fields['RA'],self.fields['DEC'])
+        #sel &= (glon >= 180)
+        sel &= (glat < -32)
+        # Remove bulge region
+        #sel &= ~( ((glon < 30) | (glon > 330)) & (np.abs(glat) < 15) )
+
+        # Select region between S82 and SPT
+        sel &= (self.fields['DEC'] < -10) & (self.fields['DEC'] > -40)
+        sel &= (self.fields['DEC'] < -15)
+        #sel &= (self.fields['RA'] > 290)
+
+        # Only first tiling
+        #sel &= np.in1d(self.fields['TILING'],[2])
+
+        # Airmass cut
+        airmass_min, airmass_max = self.CONDITIONS['delver']
+        sel &= ((airmass > airmass_min) & (airmass < airmass_max))
+
+        # Higher weight for fields close to the moon (when up)
+        # angle = 50 -> weight = 6.4
+        # Moon angle constraints (viable fields sets moon_angle > 20.)
+        if (self.moon.alt > -0.04) and (self.moon.phase >= 30):
+            moon_limit = 40.0
+            sel &= (moon_angle > moon_limit)
+
+            # Use a larger (smaller) weight to increase (decrease) the
+            # moon avoidance angle.
+            #weight += 100 * (35./moon_angle)**3
+            weight += 10 * (35./moon_angle)**3
+            #weight += 1 * (35./moon_angle)**3
+
+        # Higher weight for rising fields (higher hour angle)
+        # HA [min,max] = [-53,54] (for airmass 1.4)
+        #weight += 10.0 * self.hour_angle
+        weight += 1.0 * self.hour_angle
+        #weight += 0.1 * self.hour_angle
+
+        # Higher weight for larger slews
+        # slew = 10 deg -> weight = 1e2
+        #weight += self.slew**2
+        weight += self.slew
+        #weight += 1e3 * self.slew
+
+        # Higher weight for higher airmass
+        # airmass = 1.4 -> weight = 6.4
+        #weight += 100. * (airmass - 1.)**3
+        weight += 1e3 * (airmass - 1.)**2
+
+        ## Try hard to do high priority fields
+        weight += 1e1 * (self.fields['PRIORITY'] - 1)
+        weight += 1e5 * (self.fields['TILING'] > 3)
 
         # Set infinite weight to all disallowed fields
         weight[~sel] = np.inf
@@ -1271,6 +1531,8 @@ class DelveTactician(Tactician):
 
     def weight_gw(self):
         """ Calculate the field weight for the WIDE survey. """
+        raise DeprecationWarning
+
         import healpy as hp
         airmass = self.airmass
         moon_angle = self.moon_angle
@@ -1337,178 +1599,6 @@ class DelveTactician(Tactician):
         weight[~sel] = np.inf
 
         return weight
-
-    def weight_extra(self):
-        """ Calculate the field weight for the z-band survey.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        weight : array of weights per field
-        """
-        airmass = self.airmass
-        moon_angle = self.moon_angle
-
-        sel = self.viable_fields
-        sel &= (self.fields['PROGRAM'] == 'delve-extra')
-
-        weight = np.zeros(len(sel))
-
-        # Sky brightness selection
-        sel &= self.skybright_select()
-
-        # Select only one band
-        sel &= np.in1d(self.fields['FILTER'], ['g','r','z'])
-        #sel &= np.in1d(self.fields['FILTER'], ['g','r'])
-        # Select only first tiling
-        #sel &= (self.fields['TILING'] <= 1)
-
-        # GLON, GLAT cuts
-        #glon,glat = cel2gal(self.fields['RA'],self.fields['DEC'])
-        #sel &= (glon >= 180)
-        #sel &= (glat > 0)
-        # Remove bulge region
-        #sel &= ~( ((glon < 30) | (glon > 330)) & (np.abs(glat) < 15) )
-
-        # Select only one region
-        #sel &= (self.fields['DEC'] > -60)
-        #sel &= (self.fields['RA'] > 120)
-
-        # Airmass cut
-        airmass_min, airmass_max = self.CONDITIONS['extra']
-        if False:
-            sel &= ((airmass > airmass_min) & (airmass < airmass_max))
-        elif self.fwhm <= 1.0:
-            sel &= ((airmass > airmass_min) & (airmass < airmass_max))
-            weight += 1e2 * (airmass - 1.0)**3
-        else:
-            sel &= ((airmass > airmass_min) & (airmass < 1.4))
-
-        # Higher weight for fields close to the moon (when up)
-        # angle = 50 -> weight = 6.4
-        # Moon angle constraints (viable fields sets moon_angle > 20.)
-        if (self.moon.alt > -0.04) and (self.moon.phase >= 30):
-            moon_limit = 40.0
-            sel &= (moon_angle > moon_limit)
-
-            # Use a larger (smaller) weight to increase (decrease) the
-            # moon avoidance angle.
-            #weight += 100 * (35./moon_angle)**3
-            weight += 10 * (35./moon_angle)**3
-            #weight += 1 * (35./moon_angle)**3
-
-        # Higher weight for rising fields (higher hour angle)
-        # HA [min,max] = [-53,54] (for airmass 1.4)
-        #weight += 10.0 * self.hour_angle
-        weight += 1.0 * self.hour_angle
-        #weight += 0.1 * self.hour_angle
-
-        # Higher weight for larger slews
-        # slew = 10 deg -> weight = 1e2
-        #weight += self.slew**2
-        weight += self.slew
-        #weight += 1e3 * self.slew
-
-        # Higher weight for higher airmass
-        # airmass = 1.4 -> weight = 6.4
-        weight += 100. * (airmass - 1.)**3
-        #weight += 1e3 * (airmass - 1.)**2
-
-        ## Try hard to do high priority fields
-        weight += 3e1 * (self.fields['PRIORITY'] - 1)
-        #weight += 1e5 * (self.fields['TILING'] > 2)
-
-        # Set infinite weight to all disallowed fields
-        weight[~sel] = np.inf
-
-        return weight
-
-    def weight_delver(self):
-        """ Calculate the field weight for the r-band survey.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        weight : array of weights per field
-        """
-        self.fields.PROPID = '2022B-780972'
-        self.fields.SISPI_DICT["propid"] = self.fields.PROPID
-
-        airmass = self.airmass
-        moon_angle = self.moon_angle
-
-        sel = self.viable_fields
-        sel &= (self.fields['PROGRAM'] == 'delve-extra')
-
-        weight = np.zeros(len(sel))
-
-        # Sky brightness selection
-        sel &= (self.fields['FILTER'] == 'r')
-
-        # GLON, GLAT cuts
-        #glon,glat = cel2gal(self.fields['RA'],self.fields['DEC'])
-        #sel &= (glon >= 180)
-        #sel &= (glat > 0)
-        # Remove bulge region
-        #sel &= ~( ((glon < 30) | (glon > 330)) & (np.abs(glat) < 15) )
-
-        # Select region between S82 and SPT
-        sel &= (self.fields['DEC'] < -10) & (self.fields['DEC'] > -45)
-        sel &= (self.fields['DEC'] < -25)
-        sel &= (self.fields['RA'] > 305)
-
-        # Only first tiling
-        #sel &= np.in1d(self.fields['TILING'],[2])
-
-        # Airmass cut
-        airmass_min, airmass_max = self.CONDITIONS['delver']
-        sel &= ((airmass > airmass_min) & (airmass < airmass_max))
-
-        # Higher weight for fields close to the moon (when up)
-        # angle = 50 -> weight = 6.4
-        # Moon angle constraints (viable fields sets moon_angle > 20.)
-        if (self.moon.alt > -0.04) and (self.moon.phase >= 30):
-            moon_limit = 40.0
-            sel &= (moon_angle > moon_limit)
-
-            # Use a larger (smaller) weight to increase (decrease) the
-            # moon avoidance angle.
-            #weight += 100 * (35./moon_angle)**3
-            weight += 10 * (35./moon_angle)**3
-            #weight += 1 * (35./moon_angle)**3
-
-        # Higher weight for rising fields (higher hour angle)
-        # HA [min,max] = [-53,54] (for airmass 1.4)
-        #weight += 10.0 * self.hour_angle
-        weight += 1.0 * self.hour_angle
-        #weight += 0.1 * self.hour_angle
-
-        # Higher weight for larger slews
-        # slew = 10 deg -> weight = 1e2
-        #weight += self.slew**2
-        weight += self.slew
-        #weight += 1e3 * self.slew
-
-        # Higher weight for higher airmass
-        # airmass = 1.4 -> weight = 6.4
-        weight += 100. * (airmass - 1.)**3
-        #weight += 1e3 * (airmass - 1.)**2
-
-        ## Try hard to do high priority fields
-        weight += 1e1 * (self.fields['PRIORITY'] - 1)
-        weight += 1e5 * (self.fields['TILING'] > 1)
-
-        # Set infinite weight to all disallowed fields
-        weight[~sel] = np.inf
-
-        return weight
-
 
     def select_index(self):
         weight = self.weight

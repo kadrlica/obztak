@@ -67,7 +67,7 @@ plt.title('Exposures no longer considered done')
 plt.show()
 
 # This block updates previous field list
-if False:
+if True:
     # Write here
     out = DelveFieldArray.load(args.old)
 
@@ -107,8 +107,10 @@ if True:
     print("TODO MC: nexp=%d, exptime=%.1f h"%(todo_mc.sum(), (delve[todo_mc]['EXPTIME']+30).sum()/3600.))
     todo_deep = (delve['PRIORITY'] > 0) & (delve['PROGRAM'] == 'delve-deep')
     print("TODO DEEP: nexp=%d, exptime=%.1f h"%(todo_deep.sum(), (delve[todo_deep]['EXPTIME']+30).sum()/3600.))
+    todo_extra = (delve['PRIORITY'] > 0) & (delve['PROGRAM'] == 'delve-extra')
+    print("TODO EXTRA: nexp=%d, exptime=%.1f h"%(todo_extra.sum(), (delve[todo_extra]['EXPTIME']+30).sum()/3600.))
 
-    todo = todo_wide | todo_mc | todo_deep
+    todo = todo_wide | todo_mc | todo_deep | todo_extra
 
     plt.figure()
     smap = skymap.SurveyMcBryde()

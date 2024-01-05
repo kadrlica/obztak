@@ -45,8 +45,8 @@ def main():
     scheduler = scheduler_factory(target_fields=args.fields,
                                   windows=args.windows,
                                   completed_fields=args.complete)
-    chunks = scheduler.schedule_nite(date,start=start,chunk=args.chunk,
-                                     plot=args.plot,mode=args.mode)
+    chunks = scheduler.schedule_nite(date, start=start, chunk=args.chunk,
+                                     plot=args.plot, mode=args.mode)
 
 
 

@@ -685,7 +685,7 @@ def plotField(field, target_fields=None, completed_fields=None, options_basemap=
     setdefaults(kwargs,defaults)
 
     msg="%s: id=%10s, "%(datestring(field['DATE'][0],0),field['ID'][0])
-    msg +="ra=%(RA)-6.2f, dec=%(DEC)-6.2f, secz=%(AIRMASS)-4.2f"%field[0]
+    msg +="ra=%(RA)-6.2f, dec=%(DEC)-5.2f, secz=%(AIRMASS)-4.2f"%field[0]
     logging.info(msg)
 
     defaults = dict(date=field['DATE'][0], name='ortho')
