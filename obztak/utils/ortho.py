@@ -32,9 +32,6 @@ from obztak.utils.constants import RA_SMC,DEC_SMC,RADIUS_SMC
 from obztak.utils.constants import COLORS, CMAPS, TCOLORS
 from obztak.utils.constants import FIGSIZE, SCALE, DPI
 
-# ADW: This is bad...
-#plt.ion()
-
 ############################################################
 
 params = {
@@ -672,13 +669,15 @@ def plotField(field, target_fields=None, completed_fields=None, options_basemap=
     --------
     basemap : The basemap object
     """
+    warnings.filterwarnings("ignore", category=UserWarning, message="No data for colormapping provided via")
+
     if isinstance(field,np.core.records.record):
         tmp = FieldArray(1)
         tmp[0] = field
         field = tmp
     band = field[0]['FILTER']
     cmap = matplotlib.cm.get_cmap(CMAPS[band])
-    defaults = dict(marker='H',s=100,edgecolor='',vmin=-1,vmax=4,cmap=cmap)
+    #defaults = dict(marker='H',s=100,edgecolor='',vmin=-1,vmax=4,cmap=cmap)
     #defaults = dict(edgecolor='none', s=50, vmin=0, vmax=4, cmap='summer_r')
     #defaults = dict(edgecolor='none', s=50, vmin=0, vmax=4, cmap='gray_r')
     defaults = dict(marker='H',s=100,edgecolor='none',vmin=-1,vmax=4,cmap=cmap)
@@ -698,9 +697,9 @@ def plotField(field, target_fields=None, completed_fields=None, options_basemap=
     if target_fields is not None and len(target_fields):
         sel = target_fields['FILTER']==band
         x,y = basemap.proj(target_fields['RA'], target_fields['DEC'])
-        kw = dict(kwargs,c='w',edgecolor='0.6',s=0.8*kwargs['s'])
+        kw = dict(c='w',edgecolor='0.6',s=0.8*kwargs['s'],marker=kwargs['marker'])
         basemap.scatter(x[sel], y[sel], **kw)
-        kw = dict(kwargs,c='w',edgecolor='0.8',s=0.8*kwargs['s'])
+        kw = dict(c='w',edgecolor='0.8',s=0.8*kwargs['s'],marker=kwargs['marker'])
         basemap.scatter(x[~sel], y[~sel], **kw)
 
     # Plot completed fields
@@ -725,7 +724,7 @@ def plotField(field, target_fields=None, completed_fields=None, options_basemap=
 
     # Show the selected field
     x,y = basemap.proj(field['RA'], field['DEC'])
-    kw = dict(kwargs,edgecolor='k')
+    kw = dict(marker=kwargs['marker'],s=kwargs['s'],edgecolor='k')
     basemap.scatter(x,y,c=COLORS[band],**kw)
 
     return basemap
