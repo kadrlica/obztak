@@ -20,7 +20,7 @@ DEFAULTS = odict([
     ('RA',        dict(dtype=float,value=None)),
     ('DEC',       dict(dtype=float,value=None)),
     #('FILTER',    dict(dtype='S1',value='')),
-    ('FILTER',    dict(dtype=(np.str_,1),value='')),
+    ('FILTER',    dict(dtype=(np.str_,5),value='')),
     ('EXPTIME',   dict(dtype=float,value=90)),
     ('TILING',    dict(dtype=int,value=0)),
     ('PRIORITY',  dict(dtype=int,value=1)),

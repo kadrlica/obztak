@@ -40,6 +40,8 @@ def main():
     logging.info("Scheduling nite: %s"%(nitestr))
     logging.info("Start Time (UTC): %s"%(datestr))
 
+    print(args.fields)
+    print(args.windows)
     scheduler = scheduler_factory(target_fields=args.fields,
                                   windows=args.windows,
                                   completed_fields=args.complete)

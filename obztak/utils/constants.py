@@ -72,6 +72,9 @@ COLORS = odict([
     ('z','magenta'),
     ('Y','black'),
     ('VR','gray'),
+    ('N','blue'),
+    ('N395','blue'),
+
 ])
 
 # Band colormaps
@@ -84,6 +87,8 @@ CMAPS = odict([
     ('z','RdPu'),
     ('Y','Greys'),
     ('VR','Greys'),
+    ('N','Blues'),
+    ('N395','Blues'),
 ])
 
 # Tiling colors

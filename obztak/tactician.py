@@ -9,9 +9,6 @@ import numpy as np
 import ephem
 from collections import OrderedDict as odict
 
-from obztak import get_survey
-from obztak.utils.projector import angsep
-
 from obztak.utils import projector as proj
 from obztak.ctio import CTIO
 from obztak.utils import constants
@@ -131,8 +128,8 @@ class Tactician(object):
                 previous_field = None
 
         if previous_field:
-            return angsep(previous_field['RA'],previous_field['DEC'],
-                          self.fields['RA'], self.fields['DEC'])
+            return proj.angsep(previous_field['RA'],previous_field['DEC'],
+                               self.fields['RA'], self.fields['DEC'])
         else:
             return np.zeros(len(self.fields))
 

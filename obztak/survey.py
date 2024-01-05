@@ -16,7 +16,7 @@ from obztak.utils import constants
 from obztak.utils import fileio
 from obztak.field import FieldArray
 
-from obztak.utils.projector import cel2gal
+from obztak.utils.projector import cel2gal, angsep
 from obztak.utils.date import datestring
 from obztak.utils.constants import BANDS,SMASH_POLE,CCD_X,CCD_Y,STANDARDS,DECAM
 
@@ -381,6 +381,17 @@ class Survey(object):
         """
         glon,glat = cel2gal(ra,dec)
         return (np.fabs(glat) < angsep)
+
+    @staticmethod
+    def bright_stars(ra,dec):
+        """ Load bright star list """
+        ra,dec = np.copy(ra), np.copy(dec)
+        sel = np.zeros(len(ra),dtype=bool)
+        filename = fileio.get_datafile('famous-bright-stars.csv')
+        targets = fileio.read_csv(filename).to_records()
+        for t in targets:
+            sel |= (angsep(t['ra'],t['dec'],ra,dec) < t['radius'])
+        return sel
 
     @staticmethod
     def no_dither(ra,dec,dx,dy):
