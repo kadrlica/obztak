@@ -17,6 +17,7 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('filename')
 parser.add_argument('-o','--outfile')
 parser.add_argument('-p','--program',default=None)
+parser.add_argument('--propid',default=None)
 parser.add_argument('--priority',nargs='+',action='append',default=None,type=int)
 args = parser.parse_args()
 
@@ -26,17 +27,19 @@ if args.filename.endswith(('.fits','.fits.gz','.fz')):
 else:
     fields = pd.read_csv(args.filename,comment='#').to_records(index=False)
 
-if args.program:
-    fields = fields[fields['PROGRAM'] == args.program]
-if args.priority:
-    fields = fields[np.in1d(fields['PRIORITY'],args.priority)]
-
 names = fields.dtype.names
 names = [str(n.lower()) for n in names]
 names = ['ra' if n=='tradeg' else n for n in names]
 names = ['dec' if n=='tdecdeg' else n for n in names]
 names = ['filter' if n=='band' else n for n in names]
 fields.dtype.names = names
+
+if args.program:
+    fields = fields[fields['program'] == args.program]
+if args.propid:
+    fields = fields[fields['propid'] == args.propid]
+if args.priority:
+    fields = fields[np.in1d(fields['priority'],args.priority)]
 
 #fields = fields[fields['expnum'] <= 283862] # DES Y1A1
 #fields = fields[fields['expnum'] <= 516819] # DES Y3A2
